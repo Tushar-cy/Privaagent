@@ -27,6 +27,19 @@ async def root_health():
 # Mount API routes
 app.include_router(api_router, prefix="/api")
 
+# Mount Static Demonstration and Benchmark Directories
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+demo_path = ROOT_DIR / "demo"
+if demo_path.exists():
+    app.mount("/demo", StaticFiles(directory=str(demo_path), html=True), name="demo")
+
+benchmark_path = ROOT_DIR / "benchmark"
+if benchmark_path.exists():
+    app.mount("/benchmark", StaticFiles(directory=str(benchmark_path), html=True), name="benchmark")
+
 
 if __name__ == "__main__":
     import uvicorn
