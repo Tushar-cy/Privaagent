@@ -56,7 +56,8 @@ const VISION_KEYWORDS = [
 // Stopwords to prune from keyword indexing
 const STOPWORDS = new Set([
   "a", "an", "the", "in", "on", "at", "to", "for", "of", "and", "or", "is", "it",
-  "please", "can", "you", "me", "my", "this", "that", "representing"
+  "please", "can", "you", "me", "my", "this", "that", "representing",
+  "into", "from", "with", "by", "as", "then", "after"
 ]);
 
 /**
@@ -83,20 +84,9 @@ export function parseTask(taskStr: string): ParsedTask {
   // 2. Detect if task explicitly requires computer vision
   const requiresVision = tokens.some((t) => VISION_KEYWORDS.includes(t));
 
-  // 3. Extract keywords (excluding stopwords and the action verb)
-  const keywords = tokens.filter(
-    (t, idx) => idx !== foundVerbIndex && !STOPWORDS.has(t) && t.length > 1
-  );
-
-  // 4. Extract target role hint if mentioned
-  let targetRoleHint: string | undefined;
-  if (tokens.includes("button")) targetRoleHint = "button";
-  else if (tokens.includes("link")) targetRoleHint = "link";
-  else if (tokens.includes("input") || tokens.includes("field")) targetRoleHint = "textbox";
-  else if (tokens.includes("chart") || tokens.includes("bar")) targetRoleHint = "chart_bar";
-
-  // 5. Extract type value (e.g. "type hello into search")
+  // 3. Extract type value (e.g. "type hello into search")
   let typeValue: string | undefined;
+  const typeValueTokens = new Set<string>();
   if (actionType === "type") {
     const quoteMatch = clean.match(/["']([^"']+)["']/);
     if (quoteMatch) {
@@ -107,7 +97,31 @@ export function parseTask(taskStr: string): ParsedTask {
         typeValue = tokens[typeIndex + 1];
       }
     }
+    if (typeValue) {
+      typeValue
+        .toLowerCase()
+        .split(/[^a-z0-9_]+/)
+        .forEach((t) => {
+          if (t) typeValueTokens.add(t);
+        });
+    }
   }
+
+  // 4. Extract keywords (excluding stopwords, the action verb, and typed values)
+  const keywords = tokens.filter(
+    (t, idx) =>
+      idx !== foundVerbIndex &&
+      !STOPWORDS.has(t) &&
+      !typeValueTokens.has(t) &&
+      t.length > 1
+  );
+
+  // 5. Extract target role hint if mentioned
+  let targetRoleHint: string | undefined;
+  if (tokens.includes("button")) targetRoleHint = "button";
+  else if (tokens.includes("link")) targetRoleHint = "link";
+  else if (tokens.includes("input") || tokens.includes("field")) targetRoleHint = "textbox";
+  else if (tokens.includes("chart") || tokens.includes("bar")) targetRoleHint = "chart_bar";
 
   return {
     raw: clean,

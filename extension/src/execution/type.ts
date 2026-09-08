@@ -34,9 +34,13 @@ export function executeType(targetId: string, text: string): ExecutionResult {
     };
   }
 
-  // Scroll into view & focus
-  element.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
-  (element as HTMLElement).focus();
+  // Scroll into view & focus if available
+  if (typeof element.scrollIntoView === "function") {
+    element.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
+  }
+  if (typeof (element as HTMLElement).focus === "function") {
+    (element as HTMLElement).focus();
+  }
 
   if (isInput || isTextArea) {
     const inputElement = element as HTMLInputElement | HTMLTextAreaElement;
@@ -53,12 +57,17 @@ export function executeType(targetId: string, text: string): ExecutionResult {
       inputElement.value = text;
     }
 
+    const win = element.ownerDocument.defaultView || (typeof window !== "undefined" ? window : globalThis);
+    const EventCtor = (win as any).Event || Event;
+
     // Trigger input and change events
-    inputElement.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
-    inputElement.dispatchEvent(new Event("change", { bubbles: true, cancelable: true }));
+    inputElement.dispatchEvent(new EventCtor("input", { bubbles: true, cancelable: true }));
+    inputElement.dispatchEvent(new EventCtor("change", { bubbles: true, cancelable: true }));
   } else if (isContentEditable) {
     (element as HTMLElement).textContent = text;
-    element.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+    const win = element.ownerDocument.defaultView || (typeof window !== "undefined" ? window : globalThis);
+    const EventCtor = (win as any).Event || Event;
+    element.dispatchEvent(new EventCtor("input", { bubbles: true, cancelable: true }));
   }
 
   return {

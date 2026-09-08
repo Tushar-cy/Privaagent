@@ -30,6 +30,11 @@ function scoreElementMatch(el: PageElement, task: ParsedTask, pageState?: PageSt
   if (elTextLower.length > 0 && elTextLower.includes(task.raw.toLowerCase())) {
     score += 0.6;
   }
+  // Target ID token match (e.g. search-input contains "search", btn-open-invoice contains "invoice")
+  const idTokens = elIdLower.split(/[^a-z0-9_]+/);
+  if (task.keywords.some((kw) => idTokens.includes(kw))) {
+    score += 0.2;
+  }
 
   // 2. Keyword overlap
   let matchedKeywords = 0;

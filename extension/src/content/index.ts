@@ -10,6 +10,7 @@ import { executeAction, ExecutionResult } from "../execution";
 import { OverlayManager } from "./overlay-manager";
 import { resolveTaskAction, AgentResolutionResult } from "../agent/target-resolver";
 import { validateAction, ValidationResult } from "../validator/action-validator";
+import { runMultiTurnAgent, MultiTurnGoalResult, AgentLoopOptions } from "../agent/agent-loop";
 
 declare global {
   interface Window {
@@ -19,6 +20,7 @@ declare global {
     __privaagent_execute_action?: (action: any) => Promise<ExecutionResult>;
     __privaagent_resolve_element?: (targetId: string) => Element | null;
     __privaagent_overlay_manager?: OverlayManager;
+    __privaagent_run_goal?: (goal: string, options?: AgentLoopOptions) => Promise<MultiTurnGoalResult>;
   }
 }
 
@@ -60,6 +62,16 @@ window.__privaagent_extract = () => {
 
 window.__privaagent_execute_action = (action: any) => executeAction(action);
 window.__privaagent_resolve_element = (targetId: string) => resolveElementByTargetId(targetId);
+window.__privaagent_run_goal = (goal: string, options?: AgentLoopOptions) => {
+  if (!latestPageState) {
+    runPerception();
+  }
+  return runMultiTurnAgent(goal, latestPageState || undefined, {
+    doc: document,
+    delayBetweenStepsMs: 250,
+    ...options,
+  });
+};
 
 // Initialize on page load
 function initialize(): void {
@@ -130,8 +142,44 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
     return true; // Keep channel open for async response
   }
 
+  if (message?.type === "RUN_GOAL") {
+    handleRunGoalMessage(message.goal, message.budgetLimits, message.maxLevel)
+      .then((res) => sendResponse(res))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
   return false;
 });
+
+/**
+ * Orchestrates multi-turn compound goal reasoning and execution.
+ */
+async function handleRunGoalMessage(
+  goalStr: string,
+  budgetLimits?: any,
+  maxLevel: string = "L2"
+): Promise<MultiTurnGoalResult> {
+  if (!latestPageState) {
+    runPerception();
+  }
+
+  overlayManager.updateHUD("Multi-Turn", `Decomposing: "${goalStr.slice(0, 20)}..."`);
+
+  const result = await runMultiTurnAgent(goalStr, latestPageState || undefined, {
+    budgetLimits,
+    maxDisclosureLevel: maxLevel,
+    doc: document,
+    delayBetweenStepsMs: 250,
+  });
+
+  overlayManager.updateHUD(
+    result.status === "SUCCESS" ? "Completed" : result.status,
+    `${result.totalSteps} steps | ${result.cumulativeBytesSent} B`
+  );
+
+  return result;
+}
 
 /**
  * Orchestrates task reasoning, risk validation, and execution.

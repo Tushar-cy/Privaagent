@@ -44,31 +44,44 @@ export function executeClick(targetId: string): ExecutionResult {
     };
   }
 
-  // Scroll into view if off-screen
-  element.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
+  // Scroll into view if off-screen and method exists
+  if (typeof element.scrollIntoView === "function") {
+    element.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
+  }
 
-  // Synthesize realistic user interaction sequence
+  const win = element.ownerDocument.defaultView || (typeof window !== "undefined" ? window : globalThis);
+  const MouseEventCtor = (win as any).MouseEvent || MouseEvent;
+  const PointerEventCtor = (win as any).PointerEvent || null;
+
   const centerX = rect.left + rect.width / 2;
   const centerY = rect.top + rect.height / 2;
 
   const eventInit: MouseEventInit = {
     bubbles: true,
     cancelable: true,
-    view: window,
+    view: win as any,
     clientX: centerX,
     clientY: centerY,
   };
 
-  element.dispatchEvent(new PointerEvent("pointerdown", eventInit));
-  element.dispatchEvent(new MouseEvent("mousedown", eventInit));
-  element.dispatchEvent(new PointerEvent("pointerup", eventInit));
-  element.dispatchEvent(new MouseEvent("mouseup", eventInit));
+  if (PointerEventCtor) {
+    try {
+      element.dispatchEvent(new PointerEventCtor("pointerdown", eventInit));
+    } catch (_) {}
+  }
+  element.dispatchEvent(new MouseEventCtor("mousedown", eventInit));
+  if (PointerEventCtor) {
+    try {
+      element.dispatchEvent(new PointerEventCtor("pointerup", eventInit));
+    } catch (_) {}
+  }
+  element.dispatchEvent(new MouseEventCtor("mouseup", eventInit));
 
   if (element instanceof HTMLElement) {
     element.click();
-    element.focus();
+    if (typeof element.focus === "function") element.focus();
   } else {
-    element.dispatchEvent(new MouseEvent("click", eventInit));
+    element.dispatchEvent(new MouseEventCtor("click", eventInit));
   }
 
   return {
