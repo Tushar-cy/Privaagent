@@ -165,7 +165,23 @@
     <div class="card-grid">
       <!-- 1. PII Profile Card -->
       <section class="card" id="profile-section">
-        <h2>Customer Profile</h2>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+          <h2 style="margin: 0; border: none; padding: 0;">Customer Profile</h2>
+          <!-- User Avatar Photo with Face for BlazeFace Detection -->
+          <svg id="user-avatar" width="48" height="48" viewBox="0 0 48 48" role="img" aria-label="Customer Profile Photo" style="border-radius: 50%; background: #e0f2fe;">
+            <!-- Simple stylized human face -->
+            <circle cx="24" cy="24" r="20" fill="#fed7aa" />
+            <!-- Eyes -->
+            <circle cx="18" cy="20" r="2.5" fill="#1e293b" />
+            <circle cx="30" cy="20" r="2.5" fill="#1e293b" />
+            <!-- Nose -->
+            <path d="M 24 22 L 23 26 L 25 26 Z" fill="#ea580c" />
+            <!-- Smile / Mouth -->
+            <path d="M 18 29 Q 24 35 30 29" stroke="#1e293b" stroke-width="2" fill="none" stroke-linecap="round" />
+            <!-- Hair -->
+            <path d="M 10 18 Q 24 6 38 18 Q 24 12 10 18 Z" fill="#451a03" />
+          </svg>
+        </div>
         <div class="field-row">
           <span class="field-label">Account Name:</span>
           <span class="field-val" id="user-name">Rahul Sharma</span>
