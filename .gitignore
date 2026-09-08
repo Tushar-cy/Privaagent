@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+dist/
+build/
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+
+# Environment & local settings
+.env
+.env.local
+*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Antigravity & AI logs / scratch
+scratch/
+*.log

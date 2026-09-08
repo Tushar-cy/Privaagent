@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privaagent Control Panel</title>
+    <style>
+      body {
+        width: 340px;
+        min-height: 260px;
+        margin: 0;
+        padding: 16px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #0f172a;
+        color: #f8fafc;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid #334155;
+        padding-bottom: 12px;
+      }
+      .title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #38bdf8;
+      }
+      .badge {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 12px;
+        background-color: #1e293b;
+        color: #4ade80;
+        border: 1px solid #22c55e44;
+      }
+      .section {
+        margin-top: 14px;
+      }
+      .label {
+        font-size: 12px;
+        color: #94a3b8;
+        margin-bottom: 4px;
+      }
+      .status-box {
+        background-color: #1e293b;
+        border-radius: 6px;
+        padding: 10px;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+      .metric-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .metric-card {
+        background: #1e293b;
+        padding: 8px;
+        border-radius: 6px;
+        border-left: 3px solid #38bdf8;
+      }
+      .metric-card .val {
+        font-size: 14px;
+        font-weight: 600;
+        color: #f1f5f9;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="title">Privaagent</div>
+      <div class="badge" id="agent-status">L0 Local Only</div>
+    </div>
+
+    <div class="section">
+      <div class="label">Architecture Status</div>
+      <div class="status-box" id="status-info">
+        Adaptive Minimum-Disclosure Core initialized. Waiting for task input...
+      </div>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="label">PII Redacted</div>
+        <div class="val" id="pii-count">0 items</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Outbound Bytes</div>
+        <div class="val" id="bytes-sent">0 B (L0)</div>
+      </div>
+    </div>
+
+    <script type="module" src="./index.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PageState",
+  "type": "object",
+  "required": [
+    "url",
+    "timestamp",
+    "elements"
+  ],
+  "properties": {
+    "url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "title": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "number",
+      "description": "Epoch timestamp in milliseconds"
+    },
+    "viewport": {
+      "type": "object",
+      "properties": {
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "scrollX": { "type": "number" },
+        "scrollY": { "type": "number" }
+      }
+    },
+    "elements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PageElement"
+      }
+    }
+  },
+  "$defs": {
+    "PageElement": {
+      "type": "object",
+      "required": [
+        "target_id",
+        "role",
+        "text",
+        "bbox",
+        "confidence",
+        "sensitive",
+        "task_relevance",
+        "sources"
+      ],
+      "properties": {
+        "target_id": {
+          "type": "string",
+          "description": "Unique, stable element identifier within the current page snapshot"
+        },
+        "role": {
+          "type": "string",
+          "description": "Element semantic or visual role (e.g. button, input, heading, text, link, canvas, chart_bar, image)"
+        },
+        "text": {
+          "type": "string",
+          "description": "Visible text or accessible label of the element"
+        },
+        "bbox": {
+          "type": "array",
+          "description": "[x, y, width, height] viewport coordinates",
+          "items": { "type": "number" },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Perception extraction confidence (1.0 for DOM ground truth)"
+        },
+        "sensitive": {
+          "type": "boolean",
+          "description": "Flagged true if element contains PII, secrets, or sensitive tokens"
+        },
+        "task_relevance": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Heuristic or model-scored relevance of this element to current task"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["dom", "a11y", "ocr", "vision", "cv"]
+          },
+          "description": "Perception channels contributing evidence for this element"
+        },
+        "interactable": {
+          "type": "boolean",
+          "default": true
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

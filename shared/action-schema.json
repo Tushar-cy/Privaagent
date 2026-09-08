@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Action",
+  "type": "object",
+  "required": [
+    "action",
+    "target_id",
+    "reason"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": ["click", "type", "scroll", "select", "navigate"],
+      "description": "The primitive browser action to execute"
+    },
+    "target_id": {
+      "type": "string",
+      "description": "Reference to target_id from the PageState element to interact with"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Explanation of why this action fulfills or progresses the task"
+    },
+    "value": {
+      "type": "string",
+      "description": "Text payload to input (for type action) or option value (for select action)"
+    },
+    "delta": {
+      "type": "object",
+      "description": "Pixel scroll delta (for scroll action)",
+      "properties": {
+        "x": { "type": "number", "default": 0 },
+        "y": { "type": "number", "default": 0 }
+      }
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Target URL (for navigate action)"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "default": 1.0
+    }
+  }
+}

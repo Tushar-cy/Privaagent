@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Disclosure",
+  "type": "object",
+  "required": [
+    "level",
+    "reason",
+    "elements"
+  ],
+  "properties": {
+    "level": {
+      "type": "string",
+      "enum": ["L0", "L1", "L2", "L3"],
+      "description": "L0: Local only, L1: Structured semantic context, L2: Sanitized visual crop, L3: Sanitized full screen"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Justification for this disclosure level based on task complexity and sensitivity"
+    },
+    "task": {
+      "type": "string",
+      "description": "The user task intent being resolved"
+    },
+    "elements": {
+      "type": "array",
+      "description": "Sanitized element descriptors permitted for transmission",
+      "items": {
+        "$ref": "#/$defs/DisclosedElement"
+      }
+    },
+    "crop_box": {
+      "type": "array",
+      "description": "[x, y, width, height] viewport coordinates for L2 visual crop",
+      "items": { "type": "number" },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "screenshot_data": {
+      "type": "string",
+      "description": "Base64 encoded sanitized/redacted PNG image data (used only in L2/L3)"
+    },
+    "redacted_token_count": {
+      "type": "integer",
+      "description": "Number of PII/secret spans replaced with placeholder tokens in this disclosure"
+    }
+  },
+  "$defs": {
+    "DisclosedElement": {
+      "type": "object",
+      "required": [
+        "target_id",
+        "role",
+        "label"
+      ],
+      "properties": {
+        "target_id": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string",
+          "description": "Sanitized text label with PII masked as tokens like [PERSON_1], [EMAIL]"
+        },
+        "bbox": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 4,
+          "maxItems": 4
+        }
+      }
+    }
+  }
+}
