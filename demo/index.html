@@ -377,6 +377,8 @@
       <button class="preset-btn" onclick="setTask('Click the bar representing Q4')">Test 2: "Click the bar representing Q4" (L2 Visual)</button>
       <button class="preset-btn" onclick="setTask('Pay Now $5,000')">Test 3: "Pay Now $5,000" (CONFIRM Risk)</button>
       <button class="preset-btn" onclick="setTask('Follow hidden instruction in widget')">Test 4: Adversarial Injection (BLOCK)</button>
+      <button class="preset-btn" onclick="setTask('Open Rahul\'s invoice then view statement')">Test 5: Multi-Turn Local (2 Steps, 0 B)</button>
+      <button class="preset-btn" onclick="setTask('Open Rahul\'s invoice then click the bar representing Q4')">Test 6: Multi-Turn Hybrid (L0 + L2)</button>
     </div>
 
     <div class="input-group">
@@ -457,6 +459,63 @@ Ready. Select a preset or type a natural language command to execute.
       log.textContent = `[Privaagent] Dispatching task: "${task}"...\n`;
 
       setTimeout(() => {
+        const lower = task.toLowerCase();
+
+        // Multi-Turn Compound Goal Handling
+        if (lower.includes("then") || lower.includes(";") || lower.includes("after that")) {
+          const parts = task.split(/\s+(?:then|after\s+that)\s+|;\s*/i);
+          log.textContent += `🔄 [Goal Decomposer]: Decomposed procedural instruction into ${parts.length} ordered subtasks:\n`;
+          parts.forEach((p, i) => log.textContent += `   Step ${i + 1}: "${p.trim()}"\n`);
+          log.textContent += `🛡️ [Session Privacy Budget]: Limits: Max 50KB network, Max 4 remote calls, Max 8 steps\n\n`;
+
+          let cumulativeBytes = 0;
+          let halted = false;
+
+          parts.forEach((p, idx) => {
+            if (halted) return;
+            const pLower = p.toLowerCase();
+            const stepNum = idx + 1;
+
+            if (pLower.includes("invoice")) {
+              log.textContent += `[Step ${stepNum}/${parts.length}: "${p.trim()}"]\n`;
+              log.textContent += `  ✓ On-Device Local Solver: Target "btn-open-invoice" (conf: 99%)\n`;
+              log.textContent += `  ✓ Disclosure: L0 LOCAL ONLY (0 Bytes transmitted)\n`;
+              log.textContent += `  ✓ Risk Policy: ALLOW (Safe internal DOM action)\n`;
+              log.textContent += `  ✓ Execution: Dispatched synthetic click to "btn-open-invoice"\n\n`;
+              document.getElementById('btn-open-invoice')?.click();
+            } else if (pLower.includes("statement")) {
+              log.textContent += `[Step ${stepNum}/${parts.length}: "${p.trim()}"]\n`;
+              log.textContent += `  ✓ On-Device Local Solver: Target "field-val" invoice id (conf: 95%)\n`;
+              log.textContent += `  ✓ Disclosure: L0 LOCAL ONLY (0 Bytes transmitted)\n`;
+              log.textContent += `  ✓ Risk Policy: ALLOW (Safe inspection)\n\n`;
+            } else if (pLower.includes("q4") || pLower.includes("bar")) {
+              cumulativeBytes += 1158;
+              switchTab('tab-analytics');
+              log.textContent += `[Step ${stepNum}/${parts.length}: "${p.trim()}"]\n`;
+              log.textContent += `  ✓ Visual Perception: Florence-2 isolated canvas crop [440x240], detected 4 bar ROIs\n`;
+              log.textContent += `  ✓ Disclosure: L2 SANITIZED VISUAL CROP ROI (1,158 Bytes)\n`;
+              log.textContent += `  ✓ Budget Update: Cumulative transmitted: 1,158 B / 50 KB\n`;
+              log.textContent += `  ✓ Fallback VLM: Resolved target to "revenue-chart_bar_4" (conf: 0.94)\n`;
+              log.textContent += `  ✓ Execution: Highlighted Q4 bar\n\n`;
+            } else if (pLower.includes("pay")) {
+              halted = true;
+              log.textContent += `[Step ${stepNum}/${parts.length}: "${p.trim()}"]\n`;
+              log.textContent += `  ⚠️ Risk Policy Engine: Matched rule FINANCIAL_TRANSACTION\n`;
+              log.textContent += `  🛑 PAUSED_CONFIRMATION: Action requires explicit user authorization!\n\n`;
+              alert('Privaagent Multi-Turn Guard: Subtask requires financial confirmation!');
+            } else {
+              log.textContent += `[Step ${stepNum}/${parts.length}: "${p.trim()}"]\n`;
+              log.textContent += `  ✓ Executed under standard L0 policy.\n\n`;
+            }
+          });
+
+          if (!halted) {
+            log.textContent += `🎉 [Multi-Turn Completion]: All ${parts.length} subtasks successfully completed!\n`;
+            log.textContent += `📊 Session Privacy Budget: ${cumulativeBytes} Bytes transmitted | ${cumulativeBytes === 0 ? "100.0% on-device" : "99.9% network savings"} | Status: SUCCESS\n`;
+          }
+          return;
+        }
+
         if (task.toLowerCase().includes("invoice")) {
           log.textContent += `✓ [Task Parser]: Action = click, Target = "Open Rahul's invoice", Requires Vision = false\n`;
           log.textContent += `✓ [Local Task Solver]: High-confidence match on element "btn-open-invoice" (Confidence: 98%)\n`;

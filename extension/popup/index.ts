@@ -67,82 +67,143 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Execute Agent Task
+  // Chip quick actions
+  document.querySelectorAll(".chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const cmd = chip.getAttribute("data-cmd");
+      if (cmd && taskInputEl) {
+        taskInputEl.value = cmd;
+        runTask();
+      }
+    });
+  });
+
+  // Execute Agent Task or Compound Multi-Turn Goal
   function runTask() {
     const task = taskInputEl?.value?.trim();
     if (!task) return;
 
     const maxLevel = selCeilingEl?.value || "L2";
+    const isCompound = /\s+(?:then|after\s+that|followed\s+by|and\s+then)\s+|;/i.test(task);
 
     if (btnRunEl) {
       btnRunEl.disabled = true;
-      btnRunEl.textContent = "Running...";
+      btnRunEl.textContent = isCompound ? "Planning..." : "Running...";
     }
 
     queryActiveTab((tabId) => {
-      chrome.tabs.sendMessage(
-        tabId,
-        { type: "RUN_TASK", task, maxLevel },
-        (res) => {
-          if (btnRunEl) {
-            btnRunEl.disabled = false;
-            btnRunEl.textContent = "Run";
+      const messagePayload = isCompound
+        ? { type: "RUN_GOAL", goal: task, maxLevel }
+        : { type: "RUN_TASK", task, maxLevel };
+
+      chrome.tabs.sendMessage(tabId, messagePayload, (res) => {
+        if (btnRunEl) {
+          btnRunEl.disabled = false;
+          btnRunEl.textContent = "Run";
+        }
+
+        if (chrome.runtime.lastError || !res) {
+          alert(`Execution failed: ${chrome.runtime.lastError?.message || "No response from tab"}`);
+          return;
+        }
+
+        // Display Privacy Ledger Card
+        if (ledgerCardEl) ledgerCardEl.style.display = "block";
+
+        // Handle Multi-Turn Goal Result
+        if (isCompound || res.decomposed) {
+          const status = res.status || (res.success ? "SUCCESS" : "FAILED");
+          if (ledgerLevelEl) {
+            ledgerLevelEl.textContent = `MULTI-STEP: ${status}`;
+            ledgerLevelEl.className = `ledger-badge ${
+              status === "SUCCESS" ? "badge-l0" : status === "PAUSED_CONFIRMATION" ? "badge-l1" : "badge-l2"
+            }`;
+          }
+          if (ledgerActionEl) {
+            ledgerActionEl.textContent = `${res.totalSteps || 0} SUBTASKS EXECUTED`;
+          }
+          if (ledgerTargetEl) {
+            ledgerTargetEl.textContent = (res.decomposed?.subtasks || []).join(" ➔ ");
+          }
+          if (ledgerVerdictEl) {
+            ledgerVerdictEl.textContent = status;
+            ledgerVerdictEl.style.color =
+              status === "SUCCESS"
+                ? "var(--success)"
+                : status === "PAUSED_CONFIRMATION"
+                ? "var(--warning)"
+                : "var(--danger)";
+          }
+          if (ledgerBytesEl) {
+            const bytes = res.cumulativeBytesSent || 0;
+            const savings = bytes === 0 ? 100 : Math.max(0, 100 - (bytes / (1200 * 1024)) * 100);
+            ledgerBytesEl.textContent = `${bytes} Bytes (${savings.toFixed(1)}% saved vs screenshot)`;
+            if (metricSavingsEl) metricSavingsEl.textContent = `${savings.toFixed(0)}%`;
+          }
+          if (ledgerLatencyEl) {
+            ledgerLatencyEl.textContent = "Privacy Budget Monitored";
+          }
+          if (ledgerReasonEl) {
+            if (res.history && res.history.length > 0) {
+              const lines = res.history.map(
+                (h: any) =>
+                  `Step ${h.stepIndex}: [${h.level}] ${h.action.action.toUpperCase()} -> ${h.action.target_id} (${h.verdict}, ${h.bytesSent}B)`
+              );
+              ledgerReasonEl.textContent = lines.join("\n");
+              if (res.error) ledgerReasonEl.textContent += `\nHALTED: ${res.error}`;
+            } else {
+              ledgerReasonEl.textContent = res.error || "Execution completed.";
+            }
+          }
+          return;
+        }
+
+        // Handle Single Step Task Result
+        if (res.resolution) {
+          const level = res.resolution.disclosure.level;
+          if (ledgerLevelEl) {
+            ledgerLevelEl.textContent = `${level} ${level === "L0" ? "LOCAL" : "FALLBACK"}`;
+            ledgerLevelEl.className = `ledger-badge badge-${level.toLowerCase()}`;
           }
 
-          if (chrome.runtime.lastError || !res) {
-            alert(`Execution failed: ${chrome.runtime.lastError?.message || "No response"}`);
-            return;
+          if (ledgerActionEl) {
+            ledgerActionEl.textContent = res.resolution.action.action.toUpperCase();
           }
-
-          // Display Privacy Ledger Card
-          if (ledgerCardEl) ledgerCardEl.style.display = "block";
-
-          if (res.resolution) {
-            const level = res.resolution.disclosure.level;
-            if (ledgerLevelEl) {
-              ledgerLevelEl.textContent = `${level} ${level === "L0" ? "LOCAL" : "FALLBACK"}`;
-              ledgerLevelEl.className = `ledger-badge badge-${level.toLowerCase()}`;
-            }
-
-            if (ledgerActionEl) {
-              ledgerActionEl.textContent = res.resolution.action.action.toUpperCase();
-            }
-            if (ledgerTargetEl) {
-              ledgerTargetEl.textContent = res.resolution.action.target_id;
-            }
-            if (ledgerBytesEl) {
-              const bytes = res.resolution.networkBytesSent || 0;
-              const savings = bytes === 0 ? 100 : Math.max(0, 100 - (bytes / (1200 * 1024)) * 100);
-              ledgerBytesEl.textContent = `${bytes} Bytes (${savings.toFixed(1)}% saved vs screenshot)`;
-              if (metricSavingsEl) metricSavingsEl.textContent = `${savings.toFixed(0)}%`;
-            }
-            if (ledgerLatencyEl) {
-              ledgerLatencyEl.textContent = `${res.resolution.latencyMs.toFixed(1)} ms`;
-            }
-            if (ledgerReasonEl) {
-              ledgerReasonEl.textContent = res.resolution.action.reason || "";
-            }
+          if (ledgerTargetEl) {
+            ledgerTargetEl.textContent = res.resolution.action.target_id;
           }
-
-          if (res.validation) {
-            if (ledgerVerdictEl) {
-              ledgerVerdictEl.textContent = res.validation.verdict;
-              ledgerVerdictEl.style.color =
-                res.validation.verdict === "ALLOW"
-                  ? "var(--success)"
-                  : res.validation.verdict === "CONFIRM"
-                  ? "var(--warning)"
-                  : "var(--danger)";
-            }
+          if (ledgerBytesEl) {
+            const bytes = res.resolution.networkBytesSent || 0;
+            const savings = bytes === 0 ? 100 : Math.max(0, 100 - (bytes / (1200 * 1024)) * 100);
+            ledgerBytesEl.textContent = `${bytes} Bytes (${savings.toFixed(1)}% saved vs screenshot)`;
+            if (metricSavingsEl) metricSavingsEl.textContent = `${savings.toFixed(0)}%`;
           }
-
-          if (!res.success && res.error) {
-            if (ledgerReasonEl) {
-              ledgerReasonEl.textContent = `ERROR / POLICY: ${res.error}`;
-            }
+          if (ledgerLatencyEl) {
+            ledgerLatencyEl.textContent = `${res.resolution.latencyMs.toFixed(1)} ms`;
+          }
+          if (ledgerReasonEl) {
+            ledgerReasonEl.textContent = res.resolution.action.reason || "";
           }
         }
-      );
+
+        if (res.validation) {
+          if (ledgerVerdictEl) {
+            ledgerVerdictEl.textContent = res.validation.verdict;
+            ledgerVerdictEl.style.color =
+              res.validation.verdict === "ALLOW"
+                ? "var(--success)"
+                : res.validation.verdict === "CONFIRM"
+                ? "var(--warning)"
+                : "var(--danger)";
+          }
+        }
+
+        if (!res.success && res.error) {
+          if (ledgerReasonEl) {
+            ledgerReasonEl.textContent = `ERROR / POLICY: ${res.error}`;
+          }
+        }
+      });
     });
   }
 

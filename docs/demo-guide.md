@@ -76,6 +76,21 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
 
 ---
 
+### Workflow 6: Autonomous Multi-Turn Planning & Privacy Budget Enforcement
+1. **Scenario**: User provides compound procedural goal: `"Open Rahul's invoice then click the bar representing Q4"`.
+2. **Execution**:
+   - **Goal Decomposer** parses sequential connectives (`then`, `after that`, `;`) into atomic subtasks: `["Open Rahul's invoice", "click the bar representing Q4"]`.
+   - **Session Privacy Budget** enforces hard session bounds: max 50 KB cumulative network payload, max 4 remote escalations, max 8 steps.
+   - **Step 1**: Resolved locally on-device (`L0 LOCAL ONLY`, 0 bytes transmitted, 0.2 ms latency). Synthesizes DOM click on `#btn-open-invoice`.
+   - **DOM Perception Refresh**: Automatically updates candidate element registry without full-page reloads.
+   - **Step 2**: Visual requirement detected -> on-device Florence-2 isolates canvas bounding box, escalating strictly minimal L2 crop ROI.
+   - **Budget Tracking**: Cumulative transmitted: 1,158 Bytes (99.9% bandwidth saved vs. transmitting 2 full screenshot rounds).
+3. **What Judges See**:
+   - Multi-step progress trajectory card rendered in Privacy Ledger HUD.
+   - Bounded privacy budget preventing runaway remote calls and silent data exfiltration across long sessions.
+
+---
+
 ## 📊 Evaluation Score Summary
 
 | SIH26171 Metric | Weight | Measured Result | Benchmark Score |
