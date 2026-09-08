@@ -9,6 +9,7 @@ import { resolveTaskAction, AgentResolutionResult } from "./target-resolver";
 import { validateAction, ValidationResult } from "../validator/action-validator";
 import { executeAction, ExecutionResult } from "../execution";
 import { extractPageState } from "../semantic/dom-extractor";
+import { PrivacyAuditVault } from "../privacy/audit-vault";
 
 export interface StepRecord {
   stepIndex: number;
@@ -21,6 +22,16 @@ export interface StepRecord {
   success: boolean;
   verdict: string;
   error?: string;
+}
+
+function extractSensitiveEntityTypes(state: PageState | null): string[] {
+  if (!state) return [];
+  return state.elements
+    .filter((e) => e.sensitive)
+    .flatMap((e) => {
+      const dets = (e.metadata?.sensitive_detections as any[]) || [];
+      return dets.length > 0 ? dets.map((d) => String(d.type)) : ["SENSITIVE"];
+    });
 }
 
 export interface MultiTurnGoalResult {
@@ -140,6 +151,19 @@ export async function runMultiTurnAgent(
         error: validation.error,
       });
 
+      PrivacyAuditVault.getInstance().record({
+        goal: goalStr,
+        subtask,
+        disclosureLevel: resolution.disclosure.level,
+        entitiesMasked: extractSensitiveEntityTypes(currentState),
+        outboundBytes: resolution.networkBytesSent,
+        action: resolution.action.action,
+        targetId: resolution.action.target_id,
+        riskVerdict: "BLOCK",
+        policyApplied: validation.error || "Blocked by security policy",
+        isLocal: resolution.isLocal,
+      });
+
       return {
         goal: goalStr,
         decomposed,
@@ -163,6 +187,19 @@ export async function runMultiTurnAgent(
         success: false,
         verdict: "CONFIRM",
         error: validation.policyResult?.requiredUserConfirmation || "Action requires user confirmation.",
+      });
+
+      PrivacyAuditVault.getInstance().record({
+        goal: goalStr,
+        subtask,
+        disclosureLevel: resolution.disclosure.level,
+        entitiesMasked: extractSensitiveEntityTypes(currentState),
+        outboundBytes: resolution.networkBytesSent,
+        action: resolution.action.action,
+        targetId: resolution.action.target_id,
+        riskVerdict: "CONFIRM",
+        policyApplied: validation.policyResult?.requiredUserConfirmation || "Action requires user confirmation.",
+        isLocal: resolution.isLocal,
       });
 
       return {
@@ -195,6 +232,19 @@ export async function runMultiTurnAgent(
       success: execution.success,
       verdict: validation.verdict,
       error: execution.error,
+    });
+
+    PrivacyAuditVault.getInstance().record({
+      goal: goalStr,
+      subtask,
+      disclosureLevel: resolution.disclosure.level,
+      entitiesMasked: extractSensitiveEntityTypes(currentState),
+      outboundBytes: resolution.networkBytesSent,
+      action: resolution.action.action,
+      targetId: resolution.action.target_id,
+      riskVerdict: validation.verdict,
+      policyApplied: execution.error || "Execution completed",
+      isLocal: resolution.isLocal,
     });
 
     const postStepBudget = budget.getStatus();

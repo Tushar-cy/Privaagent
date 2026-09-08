@@ -11,6 +11,7 @@ import { OverlayManager } from "./overlay-manager";
 import { resolveTaskAction, AgentResolutionResult } from "../agent/target-resolver";
 import { validateAction, ValidationResult } from "../validator/action-validator";
 import { runMultiTurnAgent, MultiTurnGoalResult, AgentLoopOptions } from "../agent/agent-loop";
+import { PrivacyAuditVault, DPDPComplianceReport } from "../privacy/audit-vault";
 
 declare global {
   interface Window {
@@ -21,6 +22,7 @@ declare global {
     __privaagent_resolve_element?: (targetId: string) => Element | null;
     __privaagent_overlay_manager?: OverlayManager;
     __privaagent_run_goal?: (goal: string, options?: AgentLoopOptions) => Promise<MultiTurnGoalResult>;
+    __privaagent_audit_vault?: PrivacyAuditVault;
   }
 }
 
@@ -28,6 +30,16 @@ let latestPageState: PageState | null = null;
 let latestDurationMs: number = 0;
 const overlayManager = new OverlayManager();
 window.__privaagent_overlay_manager = overlayManager;
+
+function extractSensitiveEntityTypes(state: PageState | null): string[] {
+  if (!state) return [];
+  return state.elements
+    .filter((e) => e.sensitive)
+    .flatMap((e) => {
+      const dets = (e.metadata?.sensitive_detections as any[]) || [];
+      return dets.length > 0 ? dets.map((d) => String(d.type)) : ["SENSITIVE"];
+    });
+}
 
 /**
  * Runs complete on-device perception pass, annotates privacy, and updates overlays.
@@ -72,6 +84,7 @@ window.__privaagent_run_goal = (goal: string, options?: AgentLoopOptions) => {
     ...options,
   });
 };
+window.__privaagent_audit_vault = PrivacyAuditVault.getInstance();
 
 // Initialize on page load
 function initialize(): void {
@@ -149,6 +162,17 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === "GET_COMPLIANCE_REPORT") {
+    sendResponse(PrivacyAuditVault.getInstance().generateComplianceReport());
+    return true;
+  }
+
+  if (message?.type === "CLEAR_AUDIT_VAULT") {
+    PrivacyAuditVault.getInstance().clear();
+    sendResponse({ ok: true });
+    return true;
+  }
+
   return false;
 });
 
@@ -221,6 +245,18 @@ async function handleRunTaskMessage(taskStr: string, maxLevel: string = "L2"): P
 
   if (!validation.valid || validation.verdict === "BLOCK") {
     overlayManager.updateHUD("BLOCKED", "Action blocked by safety policy");
+    PrivacyAuditVault.getInstance().record({
+      goal: taskStr,
+      subtask: taskStr,
+      disclosureLevel: resolution.disclosure.level,
+      entitiesMasked: extractSensitiveEntityTypes(latestPageState),
+      outboundBytes: resolution.networkBytesSent,
+      action: resolution.action.action,
+      targetId: resolution.action.target_id,
+      riskVerdict: "BLOCK",
+      policyApplied: validation.error || "Blocked by security policy",
+      isLocal: resolution.isLocal,
+    });
     return {
       success: false,
       resolution,
@@ -231,6 +267,18 @@ async function handleRunTaskMessage(taskStr: string, maxLevel: string = "L2"): P
 
   if (validation.verdict === "CONFIRM") {
     overlayManager.updateHUD("CONFIRM", "User confirmation required");
+    PrivacyAuditVault.getInstance().record({
+      goal: taskStr,
+      subtask: taskStr,
+      disclosureLevel: resolution.disclosure.level,
+      entitiesMasked: extractSensitiveEntityTypes(latestPageState),
+      outboundBytes: resolution.networkBytesSent,
+      action: resolution.action.action,
+      targetId: resolution.action.target_id,
+      riskVerdict: "CONFIRM",
+      policyApplied: validation.policyResult?.requiredUserConfirmation || "High-risk action",
+      isLocal: resolution.isLocal,
+    });
     return {
       success: false,
       resolution,
@@ -244,6 +292,19 @@ async function handleRunTaskMessage(taskStr: string, maxLevel: string = "L2"): P
   const execution = await executeAction(resolution.action);
 
   overlayManager.updateHUD(resolution.disclosure.level, execution.success ? "Done" : "Execution failed");
+
+  PrivacyAuditVault.getInstance().record({
+    goal: taskStr,
+    subtask: taskStr,
+    disclosureLevel: resolution.disclosure.level,
+    entitiesMasked: extractSensitiveEntityTypes(latestPageState),
+    outboundBytes: resolution.networkBytesSent,
+    action: resolution.action.action,
+    targetId: resolution.action.target_id,
+    riskVerdict: validation.verdict,
+    policyApplied: execution.error || "Executed successfully",
+    isLocal: resolution.isLocal,
+  });
 
   return {
     success: execution.success,
