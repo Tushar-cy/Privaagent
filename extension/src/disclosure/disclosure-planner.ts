@@ -48,7 +48,11 @@ export function planDisclosure(
       level: "L2",
       reason: `Target element "${options.targetCropTargetId}" requires visual reasoning; transmitting sanitized visual crop ROI only.`,
       task,
-      elements: disclosedElements.filter((el) => el.target_id === options.targetCropTargetId),
+      elements: disclosedElements.filter((el) => {
+        if (el.target_id === options.targetCropTargetId) return true;
+        const originalEl = pageState.elements.find((orig) => orig.target_id === el.target_id);
+        return originalEl && (originalEl.metadata as any)?.derived_from === options.targetCropTargetId;
+      }),
       crop_box: targetElement?.bbox,
       screenshot_data: options.sanitizedScreenshotBase64,
       redacted_token_count: totalRedactedTokens,
