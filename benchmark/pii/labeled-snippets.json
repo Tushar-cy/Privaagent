@@ -1,0 +1,152 @@
+[
+  {
+    "id": "snippet-01",
+    "text": "Please contact Rahul Sharma at rahul.sharma@example.com for invoice billing.",
+    "ground_truth": [
+      { "type": "PERSON", "text": "Rahul Sharma" },
+      { "type": "EMAIL", "text": "rahul.sharma@example.com" }
+    ]
+  },
+  {
+    "id": "snippet-02",
+    "text": "Your Indian mobile number is +91 98765 43210. Verify via OTP.",
+    "ground_truth": [
+      { "type": "PHONE", "text": "+91 98765 43210" }
+    ]
+  },
+  {
+    "id": "snippet-03",
+    "text": "Permanent Account Number: ABCDE1234F registered with tax authority.",
+    "ground_truth": [
+      { "type": "PAN", "text": "ABCDE1234F" }
+    ]
+  },
+  {
+    "id": "snippet-04",
+    "text": "Customer Aadhaar identity card: 9876 5432 1098 submitted for eKYC.",
+    "ground_truth": [
+      { "type": "AADHAAR", "text": "9876 5432 1098" }
+    ]
+  },
+  {
+    "id": "snippet-05",
+    "text": "API Secret: sk-proj-7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t do not commit to repo.",
+    "ground_truth": [
+      { "type": "SECRET_KEY", "text": "sk-proj-7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t" }
+    ]
+  },
+  {
+    "id": "snippet-06",
+    "text": "GitHub deployment token ghp_1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r has admin write access.",
+    "ground_truth": [
+      { "type": "SECRET_KEY", "text": "ghp_1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r" }
+    ]
+  },
+  {
+    "id": "snippet-07",
+    "text": "AWS S3 Bucket access key: AKIAIOSFODNN7EXAMPLE",
+    "ground_truth": [
+      { "type": "SECRET_KEY", "text": "AKIAIOSFODNN7EXAMPLE" }
+    ]
+  },
+  {
+    "id": "snippet-08",
+    "text": "Invoice ID INV-2024-9042 generated on 15-Oct-2026 for amount ₹ 45,200.00.",
+    "ground_truth": []
+  },
+  {
+    "id": "snippet-09",
+    "text": "Valid Visa card 4532 0150 0000 0007 processed for checkout payment.",
+    "ground_truth": [
+      { "type": "CREDIT_CARD", "text": "4532 0150 0000 0007" }
+    ]
+  },
+  {
+    "id": "snippet-10",
+    "text": "Invalid card sequence 1234 5678 9012 3456 failed Luhn check.",
+    "ground_truth": []
+  },
+  {
+    "id": "snippet-11",
+    "text": "Connect to internal database host at 192.168.1.145 on port 5432.",
+    "ground_truth": [
+      { "type": "IPV4", "text": "192.168.1.145" }
+    ]
+  },
+  {
+    "id": "snippet-12",
+    "text": "Dr. Priya Patel works at Tata Consultancy Services headquarters.",
+    "ground_truth": [
+      { "type": "PERSON", "text": "Priya Patel" },
+      { "type": "ORG", "text": "Tata Consultancy Services" }
+    ]
+  },
+  {
+    "id": "snippet-13",
+    "text": "Send billing disputes to accounts.receivable+billing@subdomain.corp.in.",
+    "ground_truth": [
+      { "type": "EMAIL", "text": "accounts.receivable+billing@subdomain.corp.in" }
+    ]
+  },
+  {
+    "id": "snippet-14",
+    "text": "Bare mobile number 9876543210 entered without country prefix.",
+    "ground_truth": [
+      { "type": "PHONE", "text": "9876543210" }
+    ]
+  },
+  {
+    "id": "snippet-15",
+    "text": "High entropy session cookie: d41d8cd98f00b204e9800998ecf8427e9128381a",
+    "ground_truth": [
+      { "type": "SECRET_KEY", "text": "d41d8cd98f00b204e9800998ecf8427e9128381a" }
+    ]
+  },
+  {
+    "id": "snippet-16",
+    "text": "Order confirmation SKU-90812-BLU shipped via standard courier.",
+    "ground_truth": []
+  },
+  {
+    "id": "snippet-17",
+    "text": "Mr. Vikram Mehta holds PAN BKZPM9821L for commercial filings.",
+    "ground_truth": [
+      { "type": "PERSON", "text": "Vikram Mehta" },
+      { "type": "PAN", "text": "BKZPM9821L" }
+    ]
+  },
+  {
+    "id": "snippet-18",
+    "text": "Aadhaar verification completed for 2345-6789-0123 under UIDAI standards.",
+    "ground_truth": [
+      { "type": "AADHAAR", "text": "2345-6789-0123" }
+    ]
+  },
+  {
+    "id": "snippet-19",
+    "text": "Server IPv6 cluster address: 2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+    "ground_truth": [
+      { "type": "IPV6", "text": "2001:0db8:85a3:0000:0000:8a2e:0370:7334" }
+    ]
+  },
+  {
+    "id": "snippet-20",
+    "text": "Total items: 4, Subtotal: $1,240.00, Estimated Tax: $105.40, Status: Completed.",
+    "ground_truth": []
+  },
+  {
+    "id": "snippet-21",
+    "text": "Secondary emergency contact phone is +91-70123-45678.",
+    "ground_truth": [
+      { "type": "PHONE", "text": "+91-70123-45678" }
+    ]
+  },
+  {
+    "id": "snippet-22",
+    "text": "Enterprise agreement signed by Ananya Rao on behalf of Infosys Technologies.",
+    "ground_truth": [
+      { "type": "PERSON", "text": "Ananya Rao" },
+      { "type": "ORG", "text": "Infosys Technologies" }
+    ]
+  }
+]
