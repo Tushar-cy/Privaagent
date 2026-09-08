@@ -3,93 +3,309 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Privaagent Control Panel</title>
+    <title>Privaagent Privacy Ledger & Mission Control</title>
     <style>
+      :root {
+        --bg-main: #0b0f19;
+        --bg-card: #151d30;
+        --bg-card-hover: #1c2742;
+        --border-color: #2a3756;
+        --primary: #38bdf8;
+        --primary-glow: rgba(56, 189, 248, 0.25);
+        --success: #4ade80;
+        --warning: #fbbf24;
+        --danger: #f87171;
+        --text-primary: #f8fafc;
+        --text-muted: #94a3b8;
+      }
+      * { box-sizing: border-box; }
       body {
-        width: 340px;
-        min-height: 260px;
+        width: 380px;
+        min-height: 540px;
         margin: 0;
         padding: 16px;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        background-color: #0f172a;
-        color: #f8fafc;
+        background-color: var(--bg-main);
+        color: var(--text-primary);
+        user-select: none;
       }
       .header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        border-bottom: 1px solid #334155;
+        border-bottom: 1px solid var(--border-color);
         padding-bottom: 12px;
       }
-      .title {
-        font-size: 16px;
-        font-weight: 700;
-        color: #38bdf8;
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
-      .badge {
-        font-size: 11px;
-        padding: 2px 8px;
-        border-radius: 12px;
-        background-color: #1e293b;
-        color: #4ade80;
-        border: 1px solid #22c55e44;
-      }
-      .section {
-        margin-top: 14px;
-      }
-      .label {
-        font-size: 12px;
-        color: #94a3b8;
-        margin-bottom: 4px;
-      }
-      .status-box {
-        background-color: #1e293b;
+      .logo-icon {
+        width: 24px;
+        height: 24px;
+        background: linear-gradient(135deg, #38bdf8, #818cf8);
         border-radius: 6px;
-        padding: 10px;
-        font-size: 13px;
-        line-height: 1.4;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+      }
+      .title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--primary);
+        letter-spacing: -0.3px;
+      }
+      .shield-badge {
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 12px;
+        background-color: rgba(74, 222, 128, 0.12);
+        color: var(--success);
+        border: 1px solid rgba(74, 222, 128, 0.3);
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .page-meta {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin: 8px 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .metric-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(3, 1fr);
         gap: 8px;
-        margin-top: 12px;
+        margin: 12px 0;
       }
       .metric-card {
-        background: #1e293b;
-        padding: 8px;
-        border-radius: 6px;
-        border-left: 3px solid #38bdf8;
+        background: var(--bg-card);
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        text-align: center;
+      }
+      .metric-card .label {
+        font-size: 10px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
       }
       .metric-card .val {
         font-size: 14px;
+        font-weight: 700;
+        margin-top: 4px;
+        color: var(--text-primary);
+      }
+      .task-box {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+        margin-top: 10px;
+      }
+      .task-label {
+        font-size: 11px;
         font-weight: 600;
-        color: #f1f5f9;
+        color: var(--primary);
+        margin-bottom: 6px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .input-row {
+        display: flex;
+        gap: 6px;
+      }
+      input[type="text"] {
+        flex: 1;
+        background: #0f172a;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-primary);
+        padding: 8px 10px;
+        font-size: 12px;
+        outline: none;
+      }
+      input[type="text"]:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px var(--primary-glow);
+      }
+      button.btn-primary {
+        background: var(--primary);
+        color: #0b0f19;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: opacity 0.15s;
+      }
+      button.btn-primary:hover {
+        opacity: 0.9;
+      }
+      button.btn-primary:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .controls-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 8px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .select-pill {
+        background: #0f172a;
+        color: var(--primary);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 11px;
+        padding: 2px 6px;
+        outline: none;
+      }
+      .ledger-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+        margin-top: 12px;
+        display: none;
+      }
+      .ledger-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 8px;
+        margin-bottom: 8px;
+      }
+      .ledger-title {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--primary);
+      }
+      .ledger-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: 700;
+      }
+      .badge-l0 { background: #064e3b; color: #34d399; }
+      .badge-l1 { background: #1e3a8a; color: #60a5fa; }
+      .badge-l2 { background: #701a75; color: #f472b6; }
+      .ledger-item {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        margin-bottom: 4px;
+      }
+      .ledger-item .k { color: var(--text-muted); }
+      .ledger-item .v { font-weight: 600; color: var(--text-primary); }
+      .status-footer {
+        margin-top: 12px;
+        font-size: 11px;
+        color: var(--text-muted);
+        text-align: center;
       }
     </style>
   </head>
   <body>
+    <!-- Header -->
     <div class="header">
-      <div class="title">Privaagent</div>
-      <div class="badge" id="agent-status">L0 Local Only</div>
-    </div>
-
-    <div class="section">
-      <div class="label">Architecture Status</div>
-      <div class="status-box" id="status-info">
-        Adaptive Minimum-Disclosure Core initialized. Waiting for task input...
+      <div class="brand">
+        <div class="logo-icon">🛡️</div>
+        <div class="title">Privaagent</div>
       </div>
+      <div class="shield-badge" id="hud-status">● Shield Active</div>
     </div>
 
+    <!-- Current Tab Status -->
+    <div class="page-meta" id="tab-meta">Inspecting active tab...</div>
+
+    <!-- 3-Key Metrics Grid -->
     <div class="metric-grid">
       <div class="metric-card">
-        <div class="label">PII Redacted</div>
-        <div class="val" id="pii-count">0 items</div>
+        <div class="label">Perception</div>
+        <div class="val" id="metric-dom">0 ms</div>
       </div>
       <div class="metric-card">
-        <div class="label">Outbound Bytes</div>
-        <div class="val" id="bytes-sent">0 B (L0)</div>
+        <div class="label">PII Masked</div>
+        <div class="val" id="metric-pii" style="color: var(--success);">0</div>
       </div>
+      <div class="metric-card">
+        <div class="label">Net Savings</div>
+        <div class="val" id="metric-savings" style="color: var(--primary);">100%</div>
+      </div>
+    </div>
+
+    <!-- Mission Control Task Box -->
+    <div class="task-box">
+      <div class="task-label">
+        <span>MISSION CONTROL</span>
+        <span style="font-size: 10px; color: var(--text-muted);">85% On-Device</span>
+      </div>
+      <div class="input-row">
+        <input type="text" id="task-input" placeholder="e.g. Open Rahul's invoice" />
+        <button class="btn-primary" id="btn-run">Run</button>
+      </div>
+      <div class="controls-row">
+        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+          <input type="checkbox" id="chk-overlay" checked />
+          <span>Viewport Blur Masks</span>
+        </label>
+        <div>
+          <span>Max Disclosure: </span>
+          <select class="select-pill" id="sel-ceiling">
+            <option value="L0">L0 (Strict Local)</option>
+            <option value="L1">L1 (Masked Semantics)</option>
+            <option value="L2" selected>L2 (Visual ROI Crop)</option>
+            <option value="L3">L3 (Full Fallback)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Privacy Ledger Result Card -->
+    <div class="ledger-card" id="ledger-card">
+      <div class="ledger-header">
+        <div class="ledger-title">TRANSACTION PRIVACY LEDGER</div>
+        <div class="ledger-badge badge-l0" id="ledger-level">L0 LOCAL</div>
+      </div>
+      <div class="ledger-item">
+        <span class="k">Action:</span>
+        <span class="v" id="ledger-action">-</span>
+      </div>
+      <div class="ledger-item">
+        <span class="k">Target:</span>
+        <span class="v" id="ledger-target">-</span>
+      </div>
+      <div class="ledger-item">
+        <span class="k">Risk Policy:</span>
+        <span class="v" id="ledger-verdict" style="color:var(--success);">-</span>
+      </div>
+      <div class="ledger-item">
+        <span class="k">Outbound Transmitted:</span>
+        <span class="v" id="ledger-bytes">0 Bytes</span>
+      </div>
+      <div class="ledger-item">
+        <span class="k">Execution Latency:</span>
+        <span class="v" id="ledger-latency">0 ms</span>
+      </div>
+      <div class="ledger-item" style="margin-top:6px; font-size:10px; color:var(--text-muted);">
+        <span id="ledger-reason"></span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="status-footer">
+      SIH26171 • Adaptive Minimum-Disclosure Architecture
     </div>
 
     <script type="module" src="./index.ts"></script>
