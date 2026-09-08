@@ -310,13 +310,18 @@
     </div>
 
     <!-- Compliance Vault Actions -->
-    <div style="margin-top: 12px; display: flex; justify-content: space-between; gap: 8px;">
-      <button id="btn-compliance" style="flex:1; background: #151d30; border: 1px solid var(--border-color); color: var(--primary); padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">
-        📜 DPDP 2023 Audit Report
+    <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+      <button id="btn-view-certificate" style="background: rgba(16, 185, 129, 0.15); border: 1px solid var(--primary); color: var(--primary); padding: 7px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        🛡️ Open DPDP Compliance Portal
       </button>
-      <button id="btn-clear-vault" style="background: #151d30; border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;">
-        Clear Vault
-      </button>
+      <div style="display: flex; gap: 6px;">
+        <button id="btn-compliance" style="flex:1; background: #151d30; border: 1px solid var(--border-color); color: var(--text-primary); padding: 5px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer;">
+          📜 Inspect Ledger
+        </button>
+        <button id="btn-clear-vault" style="background: #151d30; border: 1px solid var(--border-color); color: var(--text-muted); padding: 5px 8px; border-radius: 6px; font-size: 10px; cursor: pointer;">
+          Clear
+        </button>
+      </div>
     </div>
 
     <!-- Footer -->

@@ -217,9 +217,17 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // DPDP Compliance Report Export & Vault Clear
+  // DPDP Compliance Report Export & Portal Opener
+  const btnViewCertEl = document.getElementById("btn-view-certificate");
   const btnComplianceEl = document.getElementById("btn-compliance");
   const btnClearVaultEl = document.getElementById("btn-clear-vault");
+
+  if (btnViewCertEl) {
+    btnViewCertEl.addEventListener("click", () => {
+      const reportUrl = chrome.runtime.getURL("report/compliance-dashboard.html");
+      chrome.tabs.create({ url: reportUrl });
+    });
+  }
 
   if (btnComplianceEl) {
     btnComplianceEl.addEventListener("click", () => {
@@ -252,7 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ledgerLatencyEl.textContent = `Zero-Net Ratio: ${report.onDeviceZeroNetworkRatio}%`;
           }
           if (ledgerReasonEl) {
-            ledgerReasonEl.textContent = `DPDP Act 2023 / GDPR Art. 25 Audit Proof Verified. Transactions logged: ${report.totalTransactions}. Hashes chained cryptographically.`;
+            ledgerReasonEl.textContent = `Root Hash: ${report.cryptographicRootHash || "N/A"} | Integrity: ${report.ledgerIntegrity || "VERIFIED"}\nDPDP Act 2023 / GDPR Art. 25 Audit Proof Verified. Transactions logged: ${report.totalTransactions}. Hashes chained cryptographically.`;
           }
         });
       });

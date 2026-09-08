@@ -6,3 +6,4 @@ export * from "./ner-detector";
 export * from "./sensitivity";
 export * from "./redactor";
 export * from "./audit-vault";
+export * from "./synthetic-replacer";

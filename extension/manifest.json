@@ -25,5 +25,11 @@
   "action": {
     "default_popup": "popup/index.html",
     "default_title": "Privaagent"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["report/*", "assets/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }
