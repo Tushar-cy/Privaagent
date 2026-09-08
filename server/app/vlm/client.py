@@ -80,13 +80,23 @@ class VLMClient:
             })
             return self._extract_and_validate_json(mock_json, candidate_ids)
 
-        # 2. Remote Hosted Endpoint (e.g. vLLM / OpenAI-compatible endpoint hosting Qwen2-VL)
+        # 2. Remote Hosted Endpoint (e.g. vLLM / Ollama / OpenAI-compatible endpoint hosting Qwen2-VL)
         async with httpx.AsyncClient(timeout=30.0) as client:
+            user_content: Any = user_prompt
+            if disclosure.image_data:
+                img_url = disclosure.image_data
+                if not img_url.startswith("data:"):
+                    img_url = f"data:image/png;base64,{img_url}"
+                user_content = [
+                    {"type": "text", "text": user_prompt},
+                    {"type": "image_url", "image_url": {"url": img_url}},
+                ]
+
             payload = {
                 "model": self.model_id,
                 "messages": [
                     {"role": "system", "content": VLM_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
+                    {"role": "user", "content": user_content},
                 ],
                 "temperature": 0.1,
                 "response_format": {"type": "json_object"},
