@@ -1,7 +1,7 @@
 # 🛡️ Privaagent
 
 > **Adaptive Minimum-Disclosure Browser Agent with On-Device Visual Perception**  
-> *Developed for Smart India Hackathon 2024 — Problem Statement SIH26171 (Department of Space / ISRO)*  
+> *Developed for Smart India Hackathon 2026 — Problem Statement SIH26171 (Department of Space / ISRO)*  
 > *Track: Smart Automation • Category: Software*
 
 [![Chrome MV3](https://img.shields.io/badge/Chrome_Extension-MV3-blue.svg)](https://developer.chrome.com/docs/extensions/mv3/)
@@ -305,6 +305,6 @@ Privaagent/
 ## 👨‍💻 Author & Acknowledgements
 
 * **Developed by**: Tushar ([@Tushar-cy](https://github.com/Tushar-cy))
-* **Initiative**: Smart India Hackathon 2024
+* **Initiative**: Smart India Hackathon 2026
 * **Problem Statement**: SIH26171 — *On-device Visual Perception for Light-weight Browser Agents*
 * **Nodal Agency**: Department of Space / Indian Space Research Organisation (ISRO)
