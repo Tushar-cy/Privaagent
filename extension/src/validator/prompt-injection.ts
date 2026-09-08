@@ -32,8 +32,24 @@ export function scanTextForInjection(text: string): InjectionCheckResult {
   const matchedPatterns: string[] = [];
   let maxScore = 0.0;
 
+  // 1. Check for zero-width steganography obfuscation
+  const zeroWidthCount = (text.match(/[\u200B-\u200D\uFEFF\u2060]/g) || []).length;
+  if (zeroWidthCount >= 3) {
+    matchedPatterns.push("ZERO_WIDTH_STEGANOGRAPHY");
+    if (0.85 > maxScore) maxScore = 0.85;
+  }
+
+  // 2. Check for markdown image exfiltration strings
+  if (/!\[.*?\]\(https?:\/\/[^\s)]+\?[^)]*(?:cookie|token|secret|key|data|pii)=/i.test(text)) {
+    matchedPatterns.push("MARKDOWN_IMAGE_EXFILTRATION");
+    if (0.95 > maxScore) maxScore = 0.95;
+  }
+
+  // 3. De-obfuscate text by stripping zero-width spaces before pattern matching
+  const deobfuscated = text.replace(/[\u200B-\u200D\uFEFF\u2060]/g, "");
+
   for (const { pattern, score, label } of INJECTION_PATTERNS) {
-    if (pattern.test(text)) {
+    if (pattern.test(deobfuscated)) {
       matchedPatterns.push(label);
       if (score > maxScore) {
         maxScore = score;

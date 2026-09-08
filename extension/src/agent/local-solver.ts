@@ -14,7 +14,7 @@ export interface LocalSolveResult {
 /**
  * Computes semantic relevance score between a task and a candidate DOM element.
  */
-function scoreElementMatch(el: PageElement, task: ParsedTask): number {
+function scoreElementMatch(el: PageElement, task: ParsedTask, pageState?: PageState): number {
   if (!el.text && !el.target_id) return 0;
 
   const elTextLower = (el.text || "").toLowerCase();
@@ -65,6 +65,32 @@ function scoreElementMatch(el: PageElement, task: ParsedTask): number {
     score *= 0.4;
   }
 
+  // 6. Spatial proximity heuristic (below, under, above)
+  if (pageState && el.bbox) {
+    const rawLower = task.raw.toLowerCase();
+    const spatialMatch = rawLower.match(/\b(below|under|above|near)\s+([a-zA-Z0-9_\-\s]+)/i);
+    if (spatialMatch) {
+      const relation = spatialMatch[1].toLowerCase();
+      const anchorKw = spatialMatch[2].trim().toLowerCase();
+
+      const anchorEl = pageState.elements.find(
+        (a) =>
+          a.target_id !== el.target_id &&
+          ((a.text && a.text.toLowerCase().includes(anchorKw)) || a.target_id.toLowerCase().includes(anchorKw))
+      );
+
+      if (anchorEl && anchorEl.bbox) {
+        const [, anchorY, , anchorH] = anchorEl.bbox;
+        const [, elY] = el.bbox;
+        if ((relation === "below" || relation === "under") && elY >= anchorY) {
+          score += 0.25;
+        } else if (relation === "above" && elY <= anchorY) {
+          score += 0.25;
+        }
+      }
+    }
+  }
+
   return Math.min(1.0, score);
 }
 
@@ -76,7 +102,7 @@ export function solveTaskLocally(pageState: PageState, task: ParsedTask): LocalS
   let bestCandidate: PageElement | null = null;
 
   for (const element of pageState.elements) {
-    const score = scoreElementMatch(element, task);
+    const score = scoreElementMatch(element, task, pageState);
     if (score > bestScore) {
       bestScore = score;
       bestCandidate = element;

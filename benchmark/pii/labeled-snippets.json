@@ -148,5 +148,33 @@
       { "type": "PERSON", "text": "Ananya Rao" },
       { "type": "ORG", "text": "Infosys Technologies" }
     ]
+  },
+  {
+    "id": "snippet-23",
+    "text": "Send payment to UPI VPA rahul@okhdfcbank for merchant settlement.",
+    "ground_truth": [
+      { "type": "UPI_ID", "text": "rahul@okhdfcbank" }
+    ]
+  },
+  {
+    "id": "snippet-24",
+    "text": "Bank RTGS branch routing code is IFSC: SBIN0001234.",
+    "ground_truth": [
+      { "type": "IFSC", "text": "SBIN0001234" }
+    ]
+  },
+  {
+    "id": "snippet-25",
+    "text": "Indian citizen travel passport reference: A1234567 verified.",
+    "ground_truth": [
+      { "type": "PASSPORT_IN", "text": "A1234567" }
+    ]
+  },
+  {
+    "id": "snippet-26",
+    "text": "Election Commission voter identity card EPIC: ABC1234567.",
+    "ground_truth": [
+      { "type": "VOTER_ID", "text": "ABC1234567" }
+    ]
   }
 ]

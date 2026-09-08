@@ -2,7 +2,7 @@
 // Returns exact character spans and types.
 
 export interface PIISpan {
-  type: "EMAIL" | "PHONE" | "AADHAAR" | "PAN" | "CREDIT_CARD" | "IPV4" | "IPV6";
+  type: "EMAIL" | "PHONE" | "AADHAAR" | "PAN" | "CREDIT_CARD" | "IPV4" | "IPV6" | "UPI_ID" | "IFSC" | "PASSPORT_IN" | "VOTER_ID";
   start: number;
   end: number;
   text: string;
@@ -97,6 +97,30 @@ const PATTERNS: Array<{
     type: "IPV6",
     regex: /\b(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}\b/g,
     confidence: 0.95,
+  },
+  // 8. Indian UPI VPA ID (e.g. user@okhdfcbank, rahul@paytm, 9876543210@upi)
+  {
+    type: "UPI_ID",
+    regex: /\b[a-zA-Z0-9.\-_]{2,64}@(okhdfcbank|okaxis|oksbi|paytm|upi|ybl|axl|ibl|apl|icici|kotak|barodampay|postbank|axisbank|sbi|hdfcbank)\b/gi,
+    confidence: 0.98,
+  },
+  // 9. Indian Financial System Code (IFSC): 4 letters + 0 + 6 alphanumeric
+  {
+    type: "IFSC",
+    regex: /\b[A-Z]{4}0[A-Z0-9]{6}\b/g,
+    confidence: 0.98,
+  },
+  // 10. Indian Passport: 1 uppercase letter followed by 7 digits
+  {
+    type: "PASSPORT_IN",
+    regex: /\b[A-Z][1-9][0-9]{6}\b/g,
+    confidence: 0.94,
+  },
+  // 11. Indian Voter ID / EPIC: 3 uppercase letters followed by 7 digits
+  {
+    type: "VOTER_ID",
+    regex: /\b[A-Z]{3}[0-9]{7}\b/g,
+    confidence: 0.96,
   },
 ];
 

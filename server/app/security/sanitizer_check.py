@@ -14,6 +14,10 @@ LEAK_PATTERNS = [
     ("AADHAAR", re.compile(r"\b[2-9]\d{3}[\s-]?\d{4}[\s-]?\d{4}\b")),
     ("EMAIL", re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")),
     ("SECRET_KEY", re.compile(r"\b(?:sk-|ghp_|AKIA)[a-zA-Z0-9_\-]{16,}\b")),
+    ("UPI_ID", re.compile(r"\b[a-zA-Z0-9.\-_]{2,64}@(okhdfcbank|okaxis|oksbi|paytm|upi|ybl|axl|ibl|apl|icici|kotak)\b", re.IGNORECASE)),
+    ("IFSC", re.compile(r"\b[A-Z]{4}0[A-Z0-9]{6}\b")),
+    ("PASSPORT_IN", re.compile(r"\b[A-Z][1-9][0-9]{6}\b")),
+    ("VOTER_ID", re.compile(r"\b[A-Z]{3}[0-9]{7}\b")),
 ]
 
 

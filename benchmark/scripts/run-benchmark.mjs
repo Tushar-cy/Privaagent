@@ -170,7 +170,11 @@ const KNOWN_PII_PATTERNS = [
   /[A-Z]{5}[0-9]{4}[A-Z]/,               // PAN
   /[2-9]\d{3}\s?\d{4}\s?\d{4}/,          // Aadhaar
   /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/, // Email
-  /(?:sk-|ghp_|AKIA)[a-zA-Z0-9_\-]{16,}/ // Secret Key
+  /(?:sk-|ghp_|AKIA)[a-zA-Z0-9_\-]{16,}/, // Secret Key
+  /[a-zA-Z0-9.\-_]{2,64}@(okhdfcbank|okaxis|oksbi|paytm|upi|ybl|axl|ibl|apl|icici|kotak)/i, // UPI
+  /[A-Z]{4}0[A-Z0-9]{6}/,                // IFSC
+  /[A-Z][1-9][0-9]{6}/,                  // Indian Passport
+  /[A-Z]{3}[0-9]{7}/                     // Voter ID
 ];
 
 let leakCount = 0;
@@ -224,13 +228,12 @@ console.log(`  - Redaction Precision Score: ${redactionPrecisionScore.toFixed(2)
 // =========================================================================
 console.log(">>> [METRIC 4/5] Evaluating Client Resource Utilization (Weight: 20%)...");
 
-// Warm-up run to eliminate cold JSDOM parsing overhead
-extractPageState(doc1);
-
 // 1. Measure DOM extraction latency (< 50ms constraint)
+const benchDom = createDOMEnvironment(path.resolve(ROOT_DIR, "benchmark/pages/test-page-1.html"));
+const benchDoc = benchDom.window.document;
 const domLatencies = [];
-for (let i = 0; i < 5; i++) {
-  const { durationMs } = extractPageState(doc1);
+for (let i = 0; i < 3; i++) {
+  const { durationMs } = extractPageState(benchDoc);
   domLatencies.push(durationMs);
 }
 console.log("  - DOM Latency runs:", domLatencies.map((l) => l.toFixed(2) + "ms").join(", "));
