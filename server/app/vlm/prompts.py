@@ -24,10 +24,10 @@ CRITICAL OPERATIONAL RULES:
 """
 
 
-def build_user_prompt(task: str, elements_summary: str, crop_info: str = "") -> str:
-    prompt = f"USER TASK: {task}\n\n"
+def build_user_prompt(task: str, elements_summary: str, crop_info: str = "", level: str = "L1") -> str:
+    prompt = f"DISCLOSURE LEVEL: {level}\nUSER TASK: {task}\n\n"
     if crop_info:
-        prompt += f"VISUAL REGION: {crop_info}\n\n"
+        prompt += f"VISUAL CONTEXT: {crop_info}\n\n"
     prompt += f"AVAILABLE SANITIZED CANDIDATES:\n{elements_summary}\n\n"
     prompt += "Select the optimal action and return ONLY the Action JSON object."
     return prompt

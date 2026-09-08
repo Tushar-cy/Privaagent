@@ -192,7 +192,31 @@ for (const secret of rawSensitiveStrings) {
     throw new Error(`CRITICAL LEAK: Raw secret/PII '${secret}' was transmitted in outbound payload!`);
   }
 }
-console.log("✓ Privacy integrity verified: ZERO raw PII strings leaked in outbound payload.");
+// ----------------------------------------------------
+// TEST 6: L3 Full-Page Sanitized Screenshot Escalation
+// ----------------------------------------------------
+console.log("\n[TEST 6] Testing L3 Full-Page Sanitized Disclosure Escalation...");
+const l3Result = await resolveTaskAction("Analyze entire visual page layout", pageState, {
+  forceEscalationLevel: "L3",
+  sanitizedScreenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  fetchFn: mockFetch,
+});
+
+console.log(`  - Disclosure Level: ${l3Result.disclosure.level}`);
+console.log(`  - Crop Box: ${l3Result.disclosure.crop_box}`);
+console.log(`  - Has Screenshot Data: ${Boolean(l3Result.disclosure.screenshot_data)}`);
+
+if (l3Result.disclosure.level !== "L3") {
+  throw new Error(`Expected disclosure level L3, got ${l3Result.disclosure.level}`);
+}
+if (l3Result.disclosure.crop_box !== undefined) {
+  throw new Error(`Expected crop_box to be undefined for L3 full-page disclosure!`);
+}
+if (!l3Result.disclosure.screenshot_data) {
+  throw new Error("Expected L3 disclosure to include sanitized full screenshot data!");
+}
+console.log("✓ L3 escalation verified: full sanitized viewport screenshot without localized crop box.");
 
 console.log("\n--------------------------------------------------");
 console.log("[ALL TESTS PASSED] Prompt 4 Agent & Backend Pipeline successfully verified!");
+

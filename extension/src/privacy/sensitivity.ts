@@ -63,6 +63,24 @@ export function annotateElementSensitivity(element: PageElement): PageElement {
     }
   }
 
+  // 4. Password & Credential Input Field Protection
+  // Input fields with type="password", role="password", or containing "password" in ID/name
+  // are unconditionally classified as sensitive=true to prevent credential leaks.
+  const isPasswordField =
+    element.role === "password" ||
+    (element.metadata as Record<string, unknown> | undefined)?.type === "password" ||
+    element.target_id.toLowerCase().includes("password") ||
+    element.target_id.toLowerCase().includes("passwd");
+
+  if (isPasswordField) {
+    detections.push({
+      type: "PASSWORD" as any,
+      span: [0, Math.max(1, text.length)],
+      text: text || "********",
+      confidence: 1.0,
+    });
+  }
+
   if (detections.length > 0) {
     element.sensitive = true;
     element.metadata = {

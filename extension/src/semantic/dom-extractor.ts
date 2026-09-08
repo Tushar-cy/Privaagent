@@ -3,6 +3,7 @@
 
 import { PageElement, PageState, PerceptionSource } from "../common/types";
 import { getElementA11yInfo } from "./accessibility";
+import { getPerformanceProfiler } from "../common/profiler";
 
 // Map to resolve target_id back to live DOM elements in O(1) time
 const elementRegistry = new Map<string, Element>();
@@ -191,7 +192,10 @@ export function extractPageState(): ExtractionResult {
         Math.round(rect.height),
       ],
       confidence: 1.0,
-      sensitive: false,
+      // Password inputs are unconditionally sensitive regardless of their value content.
+      // Generic password strings are not matched by PII regex patterns, so this explicit
+      // flag ensures they are redacted before any network transmission.
+      sensitive: el instanceof HTMLInputElement && el.type === "password",
       task_relevance: tagName === "canvas" ? 0.0 : 0.5,
       sources,
       interactable: tagName !== "p" && tagName !== "span" && !/^h[1-6]$/.test(tagName),
@@ -201,6 +205,7 @@ export function extractPageState(): ExtractionResult {
   }
 
   const durationMs = performance.now() - startTime;
+  getPerformanceProfiler().recordStage("dom_extraction", durationMs, { elementCount: elements.length });
 
   const pageState: PageState = {
     url: window.location.href,

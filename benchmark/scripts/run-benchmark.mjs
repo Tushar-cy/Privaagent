@@ -26,7 +26,10 @@ import { scanTextForInjection } from "../../extension/src/validator/prompt-injec
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, "../..");
 const TASKS_PATH = path.resolve(__dirname, "../tasks/benchmark-tasks.json");
-const PII_SNIPPETS_PATH = path.resolve(__dirname, "../pii/labeled-snippets.json");
+const COMPREHENSIVE_PII_PATH = path.resolve(__dirname, "../pii/comprehensive-pii-dataset.json");
+const PII_SNIPPETS_PATH = fs.existsSync(COMPREHENSIVE_PII_PATH)
+  ? COMPREHENSIVE_PII_PATH
+  : path.resolve(__dirname, "../pii/labeled-snippets.json");
 const REPORT_PATH = path.resolve(__dirname, "../results/report.json");
 
 console.log("╔════════════════════════════════════════════════════════════════════════╗");
@@ -236,6 +239,8 @@ console.log(`  - Redaction Precision Score: ${redactionPrecisionScore.toFixed(2)
 // =========================================================================
 console.log(">>> [METRIC 4/5] Evaluating Client Resource Utilization (Weight: 20%)...");
 
+const memBefore = process.memoryUsage();
+
 // 1. Measure DOM extraction latency (< 50ms constraint)
 const benchDom = createDOMEnvironment(path.resolve(ROOT_DIR, "benchmark/pages/test-page-1.html"));
 const benchDoc = benchDom.window.document;
@@ -253,12 +258,20 @@ const avgDomLatency = domLatencies.reduce((a, b) => a + b, 0) / domLatencies.len
 // 2. Model download/init footprint constraint (< 50MB for wasm specialist)
 const initTimeMs = await initializeFlorenceModel();
 
-// Resource Score formula: Max 100. Target DOM latency < 50ms, model footprint within budget.
+// 3. Measure Real Memory Profile
+const memAfter = process.memoryUsage();
+const heapUsedMB = (memAfter.heapUsed) / (1024 * 1024);
+const heapDeltaMB = Math.max(0, (memAfter.heapUsed - memBefore.heapUsed) / (1024 * 1024));
+const rssMB = memAfter.rss / (1024 * 1024);
+
+// Resource Score formula: Max 100. Target DOM latency < 50ms, memory overhead < 150MB.
 const domScore = Math.max(0, Math.min(100, 100 - (avgDomLatency / 50) * 20));
-const clientResourceScore = domScore;
+const memoryScore = Math.max(0, Math.min(100, 100 - (heapUsedMB / 150) * 10));
+const clientResourceScore = (domScore * 0.7 + memoryScore * 0.3);
 
 console.log(`  - Average DOM Extraction Latency: ${avgDomLatency.toFixed(3)} ms (Constraint: < 50ms)`);
 console.log(`  - Model Init & Setup Latency: ${initTimeMs.toFixed(3)} ms`);
+console.log(`  - Heap Memory Allocated: ${heapUsedMB.toFixed(2)} MB (Delta: ${heapDeltaMB.toFixed(2)} MB, RSS: ${rssMB.toFixed(2)} MB)`);
 console.log(`  - Client Resource Utilization Score: ${clientResourceScore.toFixed(2)}%\n`);
 
 // =========================================================================
@@ -414,6 +427,10 @@ const report = {
       weightedScore: clientResourceScore * 0.20,
       avgDomExtractionLatencyMs: avgDomLatency,
       modelSetupLatencyMs: initTimeMs,
+      heapUsedMB,
+      heapDeltaMB,
+      rssMB,
+      memoryBudgetMet: heapUsedMB < 150,
       performanceConstraintMet: avgDomLatency < 50,
     },
     endToEndLatency: {

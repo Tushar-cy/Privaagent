@@ -6,6 +6,7 @@ import { runFlorenceVision, initializeFlorenceModel, VisionResult } from "./visi
 import { runFallbackOCR, OCRResult } from "./ocr";
 import { detectFacesInCrop, FaceDetectionResult } from "./face-detector";
 import { fusePerceptionEvidence, FusionResult } from "./evidence-fusion";
+import { getPerformanceProfiler } from "../common/profiler";
 
 export {
   captureElementPixels,
@@ -31,14 +32,18 @@ export async function processVisualRegion(
 
   // 2. Run Florence-2 Vision (<OD> + <OCR>)
   const visionRes = await runFlorenceVision(targetId, crop, "<OD>");
+  getPerformanceProfiler().recordStage("florence_vision", visionRes.inferenceTimeMs);
 
   // 3. Run Fallback / Cross-check OCR
   const ocrRes = await runFallbackOCR(targetId, crop);
+  getPerformanceProfiler().recordStage("tesseract_ocr", ocrRes.inferenceTimeMs);
 
   // 4. Run Dedicated BlazeFace Specialist
   const faceRes = await detectFacesInCrop(crop, element);
+  getPerformanceProfiler().recordStage("face_detection", faceRes.inferenceTimeMs);
 
   // 5. Evidence Fusion
+  const fusionStart = performance.now();
   const result = fusePerceptionEvidence(
     basePageState,
     targetId,
@@ -46,6 +51,7 @@ export async function processVisualRegion(
     ocrRes,
     faceRes
   );
+  getPerformanceProfiler().recordStage("evidence_fusion", performance.now() - fusionStart);
 
   return result;
 }

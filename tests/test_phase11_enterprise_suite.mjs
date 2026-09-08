@@ -107,7 +107,7 @@ const r1 = vault.record({
   riskVerdict: "ALLOW",
   isLocal: true,
 });
-assert.strictEqual(r1.previousHash, "0000000000000000", "Genesis record must point to 0000000000000000");
+assert.strictEqual(r1.previousHash, "0".repeat(64), "Genesis record must point to 64 zeroes");
 
 const r2 = vault.record({
   goal: "Search for statement then open invoice",
@@ -142,10 +142,10 @@ console.log(`✓ Verified 3 sequential blocks chained cryptographically: Root Ha
 
 // Tamper simulation: Attacker modifies an action in Block 1
 const records = vault.getRecords();
-records[1].previousHash = "deadbeef12345678"; // Broken link
+records[1].previousHash = "deadbeef".repeat(8); // Broken link (64 chars)
 const tamperedCheck = vault.verifyLedgerIntegrity();
 // Note that records was a shallow copy; let's directly mutate internal record for strict tamper test
-vault["records"][1].previousHash = "deadbeef12345678";
+vault["records"][1].previousHash = "deadbeef".repeat(8);
 const detectedTamper = vault.verifyLedgerIntegrity();
 assert.strictEqual(detectedTamper.valid, false, "Tampered chain must be detected as invalid");
 assert.strictEqual(detectedTamper.tamperedIndex, 1, "Must report tampered index 1");
@@ -161,7 +161,8 @@ assert.ok(cert.certificateId.startsWith("PRIVAAGENT-DPDP-"), "Certificate ID pre
 assert.strictEqual(cert.status, "CERTIFIED_ZERO_NETWORK_LEAK");
 assert.strictEqual(cert.report.complianceStatus, "FULLY_COMPLIANT");
 assert.strictEqual(cert.report.unredactedLeaksDetected, 0);
-assert.strictEqual(cert.verificationHash.length, 16);
+assert.strictEqual(cert.verificationHash.length, 64);
+
 console.log(`✓ Exported Signed Certificate: ID = ${cert.certificateId}`);
 console.log(`  - Standard: ${cert.report.standard}`);
 console.log(`  - Status: ${cert.status}`);

@@ -4,6 +4,7 @@
 import { Action, PageElement, PageState } from "../common/types";
 import { inspectElementForHiddenInjection } from "./prompt-injection";
 import { evaluateActionRisk, PolicyEvaluationResult, PolicyVerdict } from "./risk-policy";
+import { getPerformanceProfiler } from "../common/profiler";
 
 export interface ValidationResult {
   valid: boolean;
@@ -51,11 +52,13 @@ export function validateAction(
   doc: Document = document,
   options: ValidatorOptions = {}
 ): ValidationResult {
+  const startTime = performance.now();
   const allowedDrift = options.allowedDriftPx || 150;
 
   // Pure navigation actions do not require an existing target element
   if (action.action === "navigate") {
     const policyResult = evaluateActionRisk(action, null, options.currentOrigin || (typeof window !== "undefined" ? window.location.origin : undefined));
+    getPerformanceProfiler().recordStage("action_validation", performance.now() - startTime);
     return {
       valid: policyResult.verdict !== "BLOCK",
       verdict: policyResult.verdict,
@@ -155,6 +158,9 @@ export function validateAction(
     candidateMeta,
     options.currentOrigin || (typeof window !== "undefined" ? window.location.origin : undefined)
   );
+
+  const duration = performance.now() - startTime;
+  getPerformanceProfiler().recordStage("action_validation", duration);
 
   return {
     valid: policyResult.verdict !== "BLOCK",

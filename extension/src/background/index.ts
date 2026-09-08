@@ -33,6 +33,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
     }
 
+    case "CAPTURE_TAB": {
+      // Capture visible tab using chrome.tabs API in MV3 service worker
+      const targetWindowId = sender.tab?.windowId ?? chrome.windows?.WINDOW_ID_CURRENT;
+      if (chrome.tabs?.captureVisibleTab) {
+        chrome.tabs.captureVisibleTab(
+          targetWindowId,
+          { format: "png" },
+          (dataUrl) => {
+            if (chrome.runtime.lastError || !dataUrl) {
+              const errMsg = chrome.runtime.lastError?.message || "Failed to capture visible tab";
+              console.warn("[Privaagent Service Worker] Tab capture failed:", errMsg);
+              sendResponse({ success: false, error: errMsg });
+            } else {
+              sendResponse({ success: true, dataUrl });
+            }
+          }
+        );
+        return true; // Keep message channel open for async response
+      } else {
+        sendResponse({
+          success: false,
+          error: "chrome.tabs.captureVisibleTab API unavailable in current environment",
+        });
+      }
+      break;
+    }
+
     case "UPDATE_BADGE": {
       const level = message.level || "L0";
       const customText = message.text || (level === "L0" ? "0B" : level);

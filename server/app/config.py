@@ -10,14 +10,20 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     LOG_LEVEL: str = "info"
 
-    # CORS configuration
-    CORS_ORIGINS: List[str] = ["*"]
+    # CORS configuration - restricted to extension origins and local dev servers
+    CORS_ORIGINS: List[str] = [
+        "chrome-extension://*",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
     # VLM configuration
-    VLM_PROVIDER: str = "mock"
-    VLM_MODEL_ID: str = "Qwen/Qwen2-VL-7B-Instruct"
-    VLM_API_BASE_URL: str = "http://localhost:8080/v1"
-    VLM_API_KEY: str = ""
+    VLM_PROVIDER: str = "remote"
+    VLM_MODEL_ID: str = "qwen2.5vl:3b-instruct-q4_K_M"
+    VLM_API_BASE_URL: str = "http://localhost:11434/v1"
+    VLM_API_KEY: str = "ollama"
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

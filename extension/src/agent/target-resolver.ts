@@ -6,6 +6,8 @@ import { planDisclosure } from "../disclosure/disclosure-planner";
 import { parseTask, ParsedTask } from "./task-parser";
 import { solveTaskLocally, LocalSolveResult } from "./local-solver";
 import { requestRemoteAction, RemoteResolutionOptions } from "./action-planner";
+import { captureAndSanitizeTab } from "./capture-tab";
+import { getPerformanceProfiler } from "../common/profiler";
 
 export interface AgentResolutionResult {
   action: Action;
@@ -37,6 +39,7 @@ export async function resolveTaskAction(
   const localResult: LocalSolveResult = solveTaskLocally(pageState, parsedTask);
 
   if (localResult.action && !options.forceEscalationLevel && !parsedTask.requiresVision) {
+    const latencyMs = performance.now() - startTime;
     const l0Disclosure: Disclosure = {
       level: "L0",
       reason: "Task solved locally on-device with zero network transmission.",
@@ -45,19 +48,29 @@ export async function resolveTaskAction(
       redacted_token_count: 0,
     };
 
+    getPerformanceProfiler().recordStage("local_solver", latencyMs);
+    getPerformanceProfiler().recordStage("e2e_task_resolution", latencyMs);
+    getPerformanceProfiler().recordBandwidth(1200000, 0, 0);
+
     return {
       action: localResult.action,
       isLocal: true,
       disclosure: l0Disclosure,
       parsedTask,
       networkBytesSent: 0,
-      latencyMs: performance.now() - startTime,
+      latencyMs,
     };
   }
 
   // 2. FALLBACK PATH: Escalation through Minimum Disclosure Ladder
+  const isVisualEscalation =
+    (parsedTask.requiresVision ||
+      options.forceEscalationLevel === "L2" ||
+      options.forceEscalationLevel === "L3") &&
+    options.forceEscalationLevel !== "L1";
+
   let targetCropId: string | undefined = undefined;
-  if (parsedTask.requiresVision) {
+  if (isVisualEscalation && options.forceEscalationLevel !== "L3") {
     const matchingEl = pageState.elements.find((el) => {
       const matchesRole = Boolean(parsedTask.targetRoleHint && el.role === parsedTask.targetRoleHint);
       const matchesKw = parsedTask.keywords.some(
@@ -84,19 +97,45 @@ export async function resolveTaskAction(
     }
   }
 
+  // Automatic on-device screenshot capture and redaction if not supplied
+  let screenshotData = options.sanitizedScreenshotBase64;
+  if (isVisualEscalation && !screenshotData) {
+    try {
+      const sensitiveBoxes = pageState.elements
+        .filter((el) => el.sensitive)
+        .map((el) => el.bbox);
+      const targetEl = targetCropId
+        ? pageState.elements.find((el) => el.target_id === targetCropId)
+        : undefined;
+      const cropBox = options.forceEscalationLevel === "L3" ? undefined : targetEl?.bbox;
+      screenshotData = await captureAndSanitizeTab(sensitiveBoxes, cropBox);
+    } catch (_) {
+      // Graceful fallback if tab capture is unavailable in current context
+    }
+  }
+
   const disclosure = planDisclosure(taskStr, pageState, {
     isSolvableLocally: false,
-    requiresVision: parsedTask.requiresVision,
-    targetCropTargetId: targetCropId,
-    sanitizedScreenshotBase64: options.sanitizedScreenshotBase64,
+    requiresVision: isVisualEscalation,
+    targetCropTargetId: options.forceEscalationLevel === "L3" ? undefined : targetCropId,
+    sanitizedScreenshotBase64: screenshotData,
     resolveLiveElement: options.resolveLiveElement,
+    forceLevel: options.forceEscalationLevel,
   });
+
 
   // Calculate outbound payload size
   const outboundBytes = JSON.stringify(disclosure).length;
 
   // Dispatch sanitized payload across the HTTPS boundary
+  const remoteStart = performance.now();
   const remoteAction = await requestRemoteAction(disclosure, options);
+  const remoteLatency = performance.now() - remoteStart;
+  const totalLatency = performance.now() - startTime;
+
+  getPerformanceProfiler().recordStage("vlm_network_call", remoteLatency);
+  getPerformanceProfiler().recordStage("e2e_task_resolution", totalLatency);
+  getPerformanceProfiler().recordBandwidth(1200000, outboundBytes, disclosure.redacted_token_count || 0);
 
   return {
     action: remoteAction,
@@ -104,6 +143,6 @@ export async function resolveTaskAction(
     disclosure,
     parsedTask,
     networkBytesSent: outboundBytes,
-    latencyMs: performance.now() - startTime,
+    latencyMs: totalLatency,
   };
 }

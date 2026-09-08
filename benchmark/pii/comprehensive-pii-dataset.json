@@ -1,0 +1,2495 @@
+[
+  {
+    "id": "pii-bench-001",
+    "text": "Customer tax assessment permanent account number ABCDE1234F verified by CBDT.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "ABCDE1234F"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-002",
+    "text": "Mr. Vikram Mehta holds PAN BKZPM9821L for commercial filings.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "BKZPM9821L"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-003",
+    "text": "Form 16 submitted with employee PAN DFGHP5432K for TDS deduction.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "DFGHP5432K"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-004",
+    "text": "Tax invoice linked to registered PAN ZXCVB8765M under section 194C.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "ZXCVB8765M"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-005",
+    "text": "Please quote corporate PAN QWERT3456P on all future remittances.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "QWERT3456P"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-006",
+    "text": "Primary account holder PAN YUIOP6543A approved for Demat activation.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "YUIOP6543A"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-007",
+    "text": "Verified taxpayer identification PAN ASDFG2345B attached to return.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "ASDFG2345B"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-008",
+    "text": "Audit report filed under firm PAN HJKLZ7890C for FY 2025-26.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "HJKLZ7890C"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-009",
+    "text": "Statutory declaration submitted with PAN MNBVC4321D for loan processing.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "MNBVC4321D"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-010",
+    "text": "High-value transaction flagged against PAN POIUY8765E for review.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "POIUY8765E"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-011",
+    "text": "Bank KYC refresh completed for individual PAN LKJHG5678F.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "LKJHG5678F"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-012",
+    "text": "Direct tax challan receipt ITNS-280 references PAN TREWQ9876G.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "TREWQ9876G"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-013",
+    "text": "Annual information statement generated for PAN VCXZA1234H.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "VCXZA1234H"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-014",
+    "text": "Dividend payout credited to investor with PAN PLMKO6789J.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "PLMKO6789J"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-015",
+    "text": "Capital gains tax computation verified for PAN IJNBH2345K.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "IJNBH2345K"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-016",
+    "text": "Mutual fund folio registered under sole PAN UHBVG7890L.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "UHBVG7890L"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-017",
+    "text": "GST registration linked to director PAN YGVCF3456M.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "YGVCF3456M"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-018",
+    "text": "Fixed deposit TDS certificate issued for PAN TFCXD8901N.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "TFCXD8901N"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-019",
+    "text": "Foreign inward remittance declaration cites PAN RDXZS4567P.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "RDXZS4567P"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-020",
+    "text": "Wealth management account opened under PAN ESZAW1234Q.",
+    "ground_truth": [
+      {
+        "type": "PAN",
+        "text": "ESZAW1234Q"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-021",
+    "text": "Customer Aadhaar identity card: 9876 5432 1098 submitted for eKYC.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "9876 5432 1098"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-022",
+    "text": "Aadhaar verification completed for 2345-6789-0123 under UIDAI standards.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "2345-6789-0123"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-023",
+    "text": "Resident UIDAI unique identification number 3456 7890 1234 on biometric file.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "3456 7890 1234"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-024",
+    "text": "Masked e-Aadhaar PDF copy authenticated with number 4567-8901-2345.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "4567-8901-2345"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-025",
+    "text": "Government welfare benefit subsidy linked to Aadhaar 5678 9012 3456.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "5678 9012 3456"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-026",
+    "text": "Direct benefit transfer DBT mapped to primary UID 6789-0123-4567.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "6789-0123-4567"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-027",
+    "text": "Biometric authentication approved for citizen Aadhaar 7890 1234 5678.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "7890 1234 5678"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-028",
+    "text": "Digital locker identity card verified against Aadhaar 8901-2345-6789.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "8901-2345-6789"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-029",
+    "text": "Pension account life certificate submitted for Aadhaar 2345 8901 6789.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "2345 8901 6789"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-030",
+    "text": "EPFO UAN linked to employee Aadhaar record 3456-9012-7890.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "3456-9012-7890"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-031",
+    "text": "Ration card biometric seed completed with Aadhaar 4567 0123 8901.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "4567 0123 8901"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-032",
+    "text": "Passport application police verification verified Aadhaar 5678-1234-9012.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "5678-1234-9012"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-033",
+    "text": "Telecommunication SIM card re-verified via e-KYC for 6789 2345 0123.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "6789 2345 0123"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-034",
+    "text": "NPS Tier 1 retirement account linked to Aadhaar 7890-3456-1234.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "7890-3456-1234"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-035",
+    "text": "Post office savings scheme opened using Aadhaar card 8901 4567 2345.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "8901 4567 2345"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-036",
+    "text": "National health ID PMJAY card registered with Aadhaar 2468-1357-9246.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "2468-1357-9246"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-037",
+    "text": "Farmer PM-KISAN installment credited to Aadhaar 3579 2468 1357.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "3579 2468 1357"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-038",
+    "text": "Student national scholarship portal verified Aadhaar 4680-3579-2468.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "4680-3579-2468"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-039",
+    "text": "Housing subsidy PMAY beneficiary verified with Aadhaar 5791 4680 3579.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "5791 4680 3579"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-040",
+    "text": "Sub-registrar property registration deed notes Aadhaar 6802-5791-4680.",
+    "ground_truth": [
+      {
+        "type": "AADHAAR",
+        "text": "6802-5791-4680"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-041",
+    "text": "Indian citizen travel passport reference: A1234567 verified.",
+    "ground_truth": [
+      {
+        "type": "PASSPORT_IN",
+        "text": "A1234567"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-042",
+    "text": "Immigration clearance granted for international passport B7654321.",
+    "ground_truth": [
+      {
+        "type": "PASSPORT_IN",
+        "text": "B7654321"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-043",
+    "text": "Consular visa stamp affixed on diplomatic passport C2345678.",
+    "ground_truth": [
+      {
+        "type": "PASSPORT_IN",
+        "text": "C2345678"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-044",
+    "text": "Airline manifest passenger booking references Indian passport D8765432.",
+    "ground_truth": [
+      {
+        "type": "PASSPORT_IN",
+        "text": "D8765432"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-045",
+    "text": "Embassy attestation submitted with official passport E3456789.",
+    "ground_truth": [
+      {
+        "type": "PASSPORT_IN",
+        "text": "E3456789"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-046",
+    "text": "Overseas employment clearance issued for passport F9876543.",
+    "ground_truth": [
+      {
+        "type": "PASSPORT_IN",
+        "text": "F9876543"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-047",
+    "text": "Schengen travel insurance policy covers passport booklet G4567890.",
+    "ground_truth": [
+      {
+        "type": "PASSPORT_IN",
+        "text": "G4567890"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-048",
+    "text": "Foreign exchange remittance authorized for passport holder H5678901.",
+    "ground_truth": [
+      {
+        "type": "PASSPORT_IN",
+        "text": "H5678901"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-049",
+    "text": "Customs declaration form filled with Republic of India passport J6789012.",
+    "ground_truth": [
+      {
+        "type": "PASSPORT_IN",
+        "text": "J6789012"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-050",
+    "text": "Air bubble transit approval attached to valid passport K7890123.",
+    "ground_truth": [
+      {
+        "type": "PASSPORT_IN",
+        "text": "K7890123"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-051",
+    "text": "Seafarer continuous discharge certificate verified with passport L8901234.",
+    "ground_truth": [
+      {
+        "type": "PASSPORT_IN",
+        "text": "L8901234"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-052",
+    "text": "OCI registration card linked to current Indian passport M9012345.",
+    "ground_truth": [
+      {
+        "type": "PASSPORT_IN",
+        "text": "M9012345"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-053",
+    "text": "International student visa I-20 form paired with passport N1234567.",
+    "ground_truth": [
+      {
+        "type": "PASSPORT_IN",
+        "text": "N1234567"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-054",
+    "text": "Emergency certificate travel document replaced lost passport P2345678.",
+    "ground_truth": [
+      {
+        "type": "PASSPORT_IN",
+        "text": "P2345678"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-055",
+    "text": "Boarding gate e-pass biometric kiosk scanned passport R3456789.",
+    "ground_truth": [
+      {
+        "type": "PASSPORT_IN",
+        "text": "R3456789"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-056",
+    "text": "Election Commission voter identity card EPIC: ABC1234567.",
+    "ground_truth": [
+      {
+        "type": "VOTER_ID",
+        "text": "ABC1234567"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-057",
+    "text": "Electoral photo identity card XYZ7654321 enrolled in constituency 42.",
+    "ground_truth": [
+      {
+        "type": "VOTER_ID",
+        "text": "XYZ7654321"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-058",
+    "text": "Polling station booth list verified with voter card DLV1928374.",
+    "ground_truth": [
+      {
+        "type": "VOTER_ID",
+        "text": "DLV1928374"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-059",
+    "text": "Assembly election ballot receipt acknowledges EPIC record MHX2839485.",
+    "ground_truth": [
+      {
+        "type": "VOTER_ID",
+        "text": "MHX2839485"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-060",
+    "text": "State election commission database match confirmed for UPK3948572.",
+    "ground_truth": [
+      {
+        "type": "VOTER_ID",
+        "text": "UPK3948572"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-061",
+    "text": "Voter roll revision Form 8 accepted for voter ID KRN4859603.",
+    "ground_truth": [
+      {
+        "type": "VOTER_ID",
+        "text": "KRN4859603"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-062",
+    "text": "Constituency delimitation transfer registered for EPIC TND5960714.",
+    "ground_truth": [
+      {
+        "type": "VOTER_ID",
+        "text": "TND5960714"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-063",
+    "text": "National Voters Service Portal verified registration WBG6071825.",
+    "ground_truth": [
+      {
+        "type": "VOTER_ID",
+        "text": "WBG6071825"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-064",
+    "text": "Digital e-EPIC card downloaded for identity record GUJ7182936.",
+    "ground_truth": [
+      {
+        "type": "VOTER_ID",
+        "text": "GUJ7182936"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-065",
+    "text": "General elections polling agent roster includes EPIC RAJ8293047.",
+    "ground_truth": [
+      {
+        "type": "VOTER_ID",
+        "text": "RAJ8293047"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-066",
+    "text": "Gram panchayat electoral roll validated for voter card PUN9304158.",
+    "ground_truth": [
+      {
+        "type": "VOTER_ID",
+        "text": "PUN9304158"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-067",
+    "text": "Municipal corporation ward census matched EPIC record KER0415269.",
+    "ground_truth": [
+      {
+        "type": "VOTER_ID",
+        "text": "KER0415269"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-068",
+    "text": "Overseas elector enrollment approved under voter ID ORS1526370.",
+    "ground_truth": [
+      {
+        "type": "VOTER_ID",
+        "text": "ORS1526370"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-069",
+    "text": "Special summary revision verified resident EPIC entry BHR2637481.",
+    "ground_truth": [
+      {
+        "type": "VOTER_ID",
+        "text": "BHR2637481"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-070",
+    "text": "Booth level officer certified residence for voter card ASM3748592.",
+    "ground_truth": [
+      {
+        "type": "VOTER_ID",
+        "text": "ASM3748592"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-071",
+    "text": "Send payment to UPI VPA rahul@okhdfcbank for merchant settlement.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "rahul@okhdfcbank"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-072",
+    "text": "Instant fund transfer initiated to receiver priya.sharma@okaxis via UPI.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "priya.sharma@okaxis"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-073",
+    "text": "Scan and pay merchant account quickbilling@paytm using any UPI app.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "quickbilling@paytm"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-074",
+    "text": "Direct mobile handle 9876543210@upi registered for P2P payments.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "9876543210@upi"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-075",
+    "text": "Invoice payment credited successfully to vendor.desk@oksbi.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "vendor.desk@oksbi"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-076",
+    "text": "Auto-pay recurring subscription set up with amit.kumar@ybl handle.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "amit.kumar@ybl"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-077",
+    "text": "Refund request processed to customer UPI id support.team@icici.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "support.team@icici"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-078",
+    "text": "Quarterly dividend disbursed to registered VPA accounts@kotak.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "accounts@kotak"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-079",
+    "text": "Retail POS transaction completed for store42@barodampay.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "store42@barodampay"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-080",
+    "text": "Postal savings fund transfer routed through service@postbank.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "service@postbank"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-081",
+    "text": "Escrow payment released to verified handle helpdesk@axisbank.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "helpdesk@axisbank"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-082",
+    "text": "Corporate treasury payment authorized to finance@sbi handle.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "finance@sbi"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-083",
+    "text": "Utility bill payment cleared from primary VPA billing@hdfcbank.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "billing@hdfcbank"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-084",
+    "text": "Split bill payment received from vikram99@okaxis instantly.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "vikram99@okaxis"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-085",
+    "text": "Cashback offer credited to registered VPA deepa.r@okhdfcbank.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "deepa.r@okhdfcbank"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-086",
+    "text": "Payment gateway webhook notified settlement for merchant_pay@paytm.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "merchant_pay@paytm"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-087",
+    "text": "One-click e-commerce payment resolved via fastcheckout@ybl.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "fastcheckout@ybl"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-088",
+    "text": "Supermarket checkout payment sent to grocery.mart@ibl.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "grocery.mart@ibl"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-089",
+    "text": "Flight ticket booking confirmation routed to travel.desk@axl.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "travel.desk@axl"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-090",
+    "text": "Ride fare tip payment transferred to verified cab.driver@apl.",
+    "ground_truth": [
+      {
+        "type": "UPI_ID",
+        "text": "cab.driver@apl"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-091",
+    "text": "Bank RTGS branch routing code is IFSC: SBIN0001234.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "SBIN0001234"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-092",
+    "text": "Salary credit account maintained at HDFC Bank IFSC HDFC0000240.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "HDFC0000240"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-093",
+    "text": "Direct debit mandate registered at flagship branch ICIC0000001.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "ICIC0000001"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-094",
+    "text": "Bank of Baroda electronic clearing code specified as BARB0VJALWA.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "BARB0VJALWA"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-095",
+    "text": "Punjab National Bank NEFT remittance destination is PUNB0123456.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "PUNB0123456"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-096",
+    "text": "Axis Bank retail branch clearance code provided: UTIB0000045.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "UTIB0000045"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-097",
+    "text": "Kotak Mahindra Bank IFSC code KKBK0000958 verified for payout.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "KKBK0000958"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-098",
+    "text": "Canara Bank commercial accounts branch identifier is CNRB0002584.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "CNRB0002584"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-099",
+    "text": "Union Bank of India wire transfer routed through UBIN0532142.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "UBIN0532142"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-100",
+    "text": "Indian Bank IFSC IDIB000M024 confirmed for electronic clearing.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "IDIB000M024"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-101",
+    "text": "Bank of India main administrative branch routing code BKID0004000.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "BKID0004000"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-102",
+    "text": "Indian Overseas Bank international trade division IFSC IOBA0001515.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "IOBA0001515"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-103",
+    "text": "Bank of Maharashtra treasury settlement office code MAHB0001123.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "MAHB0001123"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-104",
+    "text": "Corporation Bank industrial finance branch identified by CORP0000432.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "CORP0000432"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-105",
+    "text": "Vijaya Bank metropolitan operations center code is VIJB0001001.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "VIJB0001001"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-106",
+    "text": "Andhra Bank regional clearing house IFSC number ANDB0000678.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "ANDB0000678"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-107",
+    "text": "Allahabad Bank corporate credit branch uses code ALLA0210345.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "ALLA0210345"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-108",
+    "text": "Syndicate Bank central exchange branch identifier SYNB0009087.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "SYNB0009087"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-109",
+    "text": "Yes Bank headquarters settlement desk listed under YESB0000001.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "YESB0000001"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-110",
+    "text": "IndusInd Bank financial markets center IFSC code is INDB0000005.",
+    "ground_truth": [
+      {
+        "type": "IFSC",
+        "text": "INDB0000005"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-111",
+    "text": "Valid Visa card 4532-4694-5084-0885 processed for checkout payment.",
+    "ground_truth": [
+      {
+        "type": "CREDIT_CARD",
+        "text": "4532-4694-5084-0885"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-112",
+    "text": "Primary corporate purchasing Visa card: 4532-7157-0161-9589 on file.",
+    "ground_truth": [
+      {
+        "type": "CREDIT_CARD",
+        "text": "4532-7157-0161-9589"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-113",
+    "text": "Online recurring billing charged to Visa card 4532-3731-3272-8395.",
+    "ground_truth": [
+      {
+        "type": "CREDIT_CARD",
+        "text": "4532-3731-3272-8395"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-114",
+    "text": "Customer payment method Visa platinum card 4532-3795-8066-5641.",
+    "ground_truth": [
+      {
+        "type": "CREDIT_CARD",
+        "text": "4532-3795-8066-5641"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-115",
+    "text": "Authorized travel booking expense on Visa 4532-9710-5713-6617.",
+    "ground_truth": [
+      {
+        "type": "CREDIT_CARD",
+        "text": "4532-9710-5713-6617"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-116",
+    "text": "Executive corporate procurement Visa 4532-5769-5762-2135 registered.",
+    "ground_truth": [
+      {
+        "type": "CREDIT_CARD",
+        "text": "4532-5769-5762-2135"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-117",
+    "text": "POS terminal approved tap-and-pay for Visa 4532-2976-6467-2657.",
+    "ground_truth": [
+      {
+        "type": "CREDIT_CARD",
+        "text": "4532-2976-6467-2657"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-118",
+    "text": "Refund transaction initiated for Visa card 4532-8827-4920-4848.",
+    "ground_truth": [
+      {
+        "type": "CREDIT_CARD",
+        "text": "4532-8827-4920-4848"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-119",
+    "text": "Sandbox merchant test card Visa number 4532-7249-5977-9632 verified.",
+    "ground_truth": [
+      {
+        "type": "CREDIT_CARD",
+        "text": "4532-7249-5977-9632"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-120",
+    "text": "Automated billing authorization test with Visa 4532-5462-1068-9742.",
+    "ground_truth": [
+      {
+        "type": "CREDIT_CARD",
+        "text": "4532-5462-1068-9742"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-121",
+    "text": "Fleet fuel allowance debit account Visa 4532-5602-9359-9777 active.",
+    "ground_truth": [
+      {
+        "type": "CREDIT_CARD",
+        "text": "4532-5602-9359-9777"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-122",
+    "text": "Hospitality suite expense billed to Visa card 4532-4581-6315-9014.",
+    "ground_truth": [
+      {
+        "type": "CREDIT_CARD",
+        "text": "4532-4581-6315-9014"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-123",
+    "text": "International currency payment cleared on Visa 4532-3497-4430-3538.",
+    "ground_truth": [
+      {
+        "type": "CREDIT_CARD",
+        "text": "4532-3497-4430-3538"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-124",
+    "text": "Enterprise software license renewed using Visa 4532-2291-6596-2014.",
+    "ground_truth": [
+      {
+        "type": "CREDIT_CARD",
+        "text": "4532-2291-6596-2014"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-125",
+    "text": "Payment processor mock gateway simulated Visa 4532-7081-4967-4977.",
+    "ground_truth": [
+      {
+        "type": "CREDIT_CARD",
+        "text": "4532-7081-4967-4977"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-126",
+    "text": "Please contact Rahul Sharma at rahul.sharma@example.com for invoice billing.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "rahul.sharma@example.com"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-127",
+    "text": "Send billing disputes to accounts.receivable+billing@subdomain.corp.in.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "accounts.receivable+billing@subdomain.corp.in"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-128",
+    "text": "Escalate privacy audit findings to compliance.officer@bankofindia.co.in.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "compliance.officer@bankofindia.co.in"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-129",
+    "text": "Infrastructure incident page sent to devops-alerts@cloudplatform.io.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "devops-alerts@cloudplatform.io"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-130",
+    "text": "Contract draft emailed to lead counsel john.doe123@acme-enterprises.org.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "john.doe123@acme-enterprises.org"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-131",
+    "text": "Customer ticket assigned to agent support-desk@fastservices.net.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "support-desk@fastservices.net"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-132",
+    "text": "Candidate resume received from personal email priya_patel99@yahoo.co.in.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "priya_patel99@yahoo.co.in"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-133",
+    "text": "Penetration test findings forwarded to security-audit@fintechsolutions.com.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "security-audit@fintechsolutions.com"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-134",
+    "text": "Quarterly earnings presentation requested by investor.relations@globaltech.com.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "investor.relations@globaltech.com"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-135",
+    "text": "Medical discharge summary dispatched to attending physician dr.gupta@medcenter.org.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "dr.gupta@medcenter.org"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-136",
+    "text": "Dispute resolution notice issued by billing-queries@telecomcorp.in.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "billing-queries@telecomcorp.in"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-137",
+    "text": "Venture term sheet shared privately with founder vikram.mehta@startup.ai.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "vikram.mehta@startup.ai"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-138",
+    "text": "Internal system cron reports failure to root admin@database-cluster.internal.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "admin@database-cluster.internal"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-139",
+    "text": "Raw material purchase order delivered to purchasing-dept@automotive-spares.com.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "purchasing-dept@automotive-spares.com"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-140",
+    "text": "Tax compliance guidance available at tax-filing-help@incometax.gov.in.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "tax-filing-help@incometax.gov.in"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-141",
+    "text": "Corporate milestone announcement circulated by press-release@newsdesk.media.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "press-release@newsdesk.media"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-142",
+    "text": "Monthly salary disbursement slip sent by payroll-admin@hr-solutions.co.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "payroll-admin@hr-solutions.co"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-143",
+    "text": "Product return review submitted to customer-feedback@retailstore.in.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "customer-feedback@retailstore.in"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-144",
+    "text": "Token deprecation alert broadcast to api-notifications@dev-gateway.org.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "api-notifications@dev-gateway.org"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-145",
+    "text": "Shipment delivery schedule confirmed by operations@logistics-express.com.",
+    "ground_truth": [
+      {
+        "type": "EMAIL",
+        "text": "operations@logistics-express.com"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-146",
+    "text": "Your Indian mobile number is +91 98765 43210. Verify via OTP.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "+91 98765 43210"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-147",
+    "text": "Bare mobile number 9876543210 entered without country prefix.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "9876543210"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-148",
+    "text": "Secondary emergency contact phone is +91-70123-45678.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "+91-70123-45678"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-149",
+    "text": "Direct helpline assistance available at +91 81234 56789 during business hours.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "+91 81234 56789"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-150",
+    "text": "Delivery executive contacted customer on mobile 9012345678.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "9012345678"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-151",
+    "text": "Courier dispatch confirmed via SMS to +91 91234 56780.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "+91 91234 56780"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-152",
+    "text": "VIP concierge callback scheduled for priority number +91 99887 76655.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "+91 99887 76655"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-153",
+    "text": "Customer service callback requested for subscriber 8877665544.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "8877665544"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-154",
+    "text": "Broadband service technician will call from +91-62345-67890.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "+91-62345-67890"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-155",
+    "text": "Online banking registration SMS sent to mobile number 7345678901.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "7345678901"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-156",
+    "text": "Two-factor authentication code pushed to device +91 84567 89012.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "+91 84567 89012"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-157",
+    "text": "Store manager personal contact mobile recorded as 9567890123.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "9567890123"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-158",
+    "text": "Medical emergency hospital liaison hotline is +91-96789-01234.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "+91-96789-01234"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-159",
+    "text": "Fleet driver location tracking linked to mobile 7789012345.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "7789012345"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-160",
+    "text": "Real estate broker inquiries forwarded to +91 88901 23456.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "+91 88901 23456"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-161",
+    "text": "Security gate visitor pass authorized by tenant 9901234567.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "9901234567"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-162",
+    "text": "Field agent verified identity using registered phone +91 60123 45678.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "+91 60123 45678"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-163",
+    "text": "Order cancellation confirmation texted to registered phone 7123456789.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "7123456789"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-164",
+    "text": "Conference registration badge confirmed for delegate +91-82345-67890.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "+91-82345-67890"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-165",
+    "text": "Credit card transaction fraud alert placed to customer 9345678901.",
+    "ground_truth": [
+      {
+        "type": "PHONE",
+        "text": "9345678901"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-166",
+    "text": "API Secret: sk-proj-7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t do not commit to repo.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "sk-proj-7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-167",
+    "text": "GitHub deployment token ghp_1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r has admin write access.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "ghp_1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-168",
+    "text": "AWS S3 Bucket access key: AKIAIOSFODNN7EXAMPLE",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "AKIAIOSFODNN7EXAMPLE"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-169",
+    "text": "High entropy session cookie: d41d8cd98f00b204e9800998ecf8427e9128381a",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "d41d8cd98f00b204e9800998ecf8427e9128381a"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-170",
+    "text": "Production OpenAI endpoint authorization bearer sk-live-98237482934823948239482349823489.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "sk-live-98237482934823948239482349823489"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-171",
+    "text": "GitHub OAuth token for CI/CD workflow: gho_9876543210abcdef9876543210abcdef9876.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "gho_9876543210abcdef9876543210abcdef9876"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-172",
+    "text": "AWS IAM production administrative credential AKIA1234567890ABCDEF configured in environment.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "AKIA1234567890ABCDEF"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-173",
+    "text": "Notification bot integration token: bearer_bot_token_1234567890abcdef1234567890.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "bearer_bot_token_1234567890abcdef1234567890"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-174",
+    "text": "GitLab runner automation secret token: glpat-9876543210abcdef123456.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "glpat-9876543210abcdef123456"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-175",
+    "text": "Payment gateway live secret: app_secret_live_51A2B3C4D5E6F7G8H9I0J1K2L3M4N5O6P.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "app_secret_live_51A2B3C4D5E6F7G8H9I0J1K2L3M4N5O6P"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-176",
+    "text": "Workspace user bearer token: bearer_user_token_9876543210abcdef1234567890.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "bearer_user_token_9876543210abcdef1234567890"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-177",
+    "text": "Signed JWT session authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.t-IDcSemACt8x4iTMCda8Yhe3iZaWbvV5XKSTbuAn0M.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.t-IDcSemACt8x4iTMCda8Yhe3iZaWbvV5XKSTbuAn0M"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-178",
+    "text": "Backend service-to-service header bearer 7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "bearer 7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-179",
+    "text": "Repository automation webhook deployment token ghp_99887766554433221100aabbccddeeffgghh.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "ghp_99887766554433221100aabbccddeeffgghh"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-180",
+    "text": "Amazon CloudFront distribution management key AKIA9876543210ZYXWVU.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "AKIA9876543210ZYXWVU"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-181",
+    "text": "Deep learning model training api key sk-proj-00112233445566778899aabbccddeeff.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "sk-proj-00112233445566778899aabbccddeeff"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-182",
+    "text": "Internal cryptographically strong token: a1b2c3d4e5f67890123456789abcdef012345678.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "a1b2c3d4e5f67890123456789abcdef012345678"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-183",
+    "text": "Symmetric AES encryption key payload fe801234567890abcdef1234567890abcdef1234.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "fe801234567890abcdef1234567890abcdef1234"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-184",
+    "text": "Alerts channel webhook authorization token webhook_secret_999988887777666655554444.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "webhook_secret_999988887777666655554444"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-185",
+    "text": "Organization team sync GitHub OAuth credential gho_11223344556677889900aabbccddeeff0011.",
+    "ground_truth": [
+      {
+        "type": "SECRET_KEY",
+        "text": "gho_11223344556677889900aabbccddeeff0011"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-186",
+    "text": "Connect to internal database host at 192.168.1.145 on port 5432.",
+    "ground_truth": [
+      {
+        "type": "IPV4",
+        "text": "192.168.1.145"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-187",
+    "text": "Kubernetes pod cluster node endpoint: 10.0.4.52 is healthy.",
+    "ground_truth": [
+      {
+        "type": "IPV4",
+        "text": "10.0.4.52"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-188",
+    "text": "Default gateway router IP address configured to 172.16.254.1.",
+    "ground_truth": [
+      {
+        "type": "IPV4",
+        "text": "172.16.254.1"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-189",
+    "text": "Server IPv6 cluster address: 2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+    "ground_truth": [
+      {
+        "type": "IPV6",
+        "text": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-190",
+    "text": "Public firewall egress IP 203.0.113.195 whitelisted on upstream partner.",
+    "ground_truth": [
+      {
+        "type": "IPV4",
+        "text": "203.0.113.195"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-191",
+    "text": "VPN remote access entry gateway: 198.51.100.42 accepting connections.",
+    "ground_truth": [
+      {
+        "type": "IPV4",
+        "text": "198.51.100.42"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-192",
+    "text": "Ingress controller reverse proxy targeting pod IP 10.244.0.15.",
+    "ground_truth": [
+      {
+        "type": "IPV4",
+        "text": "10.244.0.15"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-193",
+    "text": "Local Wi-Fi administration page hosted at 192.168.0.1.",
+    "ground_truth": [
+      {
+        "type": "IPV4",
+        "text": "192.168.0.1"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-194",
+    "text": "Localhost development loopback socket bound to 127.0.0.1.",
+    "ground_truth": [
+      {
+        "type": "IPV4",
+        "text": "127.0.0.1"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-195",
+    "text": "Redis memory cache cluster replica running at 10.128.32.99.",
+    "ground_truth": [
+      {
+        "type": "IPV4",
+        "text": "10.128.32.99"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-196",
+    "text": "AWS VPC private subnet instance allocated IP 172.31.10.88.",
+    "ground_truth": [
+      {
+        "type": "IPV4",
+        "text": "172.31.10.88"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-197",
+    "text": "Benchmark test subnet host configured with IP 192.0.2.146.",
+    "ground_truth": [
+      {
+        "type": "IPV4",
+        "text": "192.0.2.146"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-198",
+    "text": "Global DNS resolver IPv6 interface 2001:db8:0000:0000:0000:0000:1428:57ab.",
+    "ground_truth": [
+      {
+        "type": "IPV6",
+        "text": "2001:db8:0000:0000:0000:0000:1428:57ab"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-199",
+    "text": "Core switch VLAN management interface assigned to 10.1.1.254.",
+    "ground_truth": [
+      {
+        "type": "IPV4",
+        "text": "10.1.1.254"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-200",
+    "text": "Office printer network print server IP is 192.168.100.50.",
+    "ground_truth": [
+      {
+        "type": "IPV4",
+        "text": "192.168.100.50"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-201",
+    "text": "Dr. Priya Patel works at Tata Consultancy Services headquarters.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Priya Patel"
+      },
+      {
+        "type": "ORG",
+        "text": "Tata Consultancy Services"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-202",
+    "text": "Enterprise agreement signed by Ananya Rao on behalf of Infosys Technologies.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Ananya Rao"
+      },
+      {
+        "type": "ORG",
+        "text": "Infosys Technologies"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-203",
+    "text": "Chief Technology Officer Vikram Malhotra presented the quarterly report for Wipro Limited.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Vikram Malhotra"
+      },
+      {
+        "type": "ORG",
+        "text": "Wipro Limited"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-204",
+    "text": "Dr. Sunita Williams conducted research with Reliance Industries.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Sunita Williams"
+      },
+      {
+        "type": "ORG",
+        "text": "Reliance Industries"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-205",
+    "text": "Senior architect Rajesh Verma approved the design for Bharti Airtel Limited.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Rajesh Verma"
+      },
+      {
+        "type": "ORG",
+        "text": "Bharti Airtel Limited"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-206",
+    "text": "Financial auditor Sneha Deshmukh reviewed accounts at State Bank of India.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Sneha Deshmukh"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-207",
+    "text": "Managing Director Deepak Chopra announced expansion for HCL Technologies.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Deepak Chopra"
+      },
+      {
+        "type": "ORG",
+        "text": "HCL Technologies"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-208",
+    "text": "Consultant Pooja Iyer finalized strategy at Larsen and Toubro Infotech Limited.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Pooja Iyer"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-209",
+    "text": "Operations manager Suresh Nair submitted logs for Tech Mahindra Limited.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Suresh Nair"
+      },
+      {
+        "type": "ORG",
+        "text": "Tech Mahindra Limited"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-210",
+    "text": "Legal counsel Kavita Menon drafted clauses for Mahindra and Mahindra Financial Services.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Kavita Menon"
+      },
+      {
+        "type": "ORG",
+        "text": "Mahindra and Mahindra Financial Services"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-211",
+    "text": "Product lead Rohan Joshi delivered presentation to ICICI Bank Limited.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Rohan Joshi"
+      },
+      {
+        "type": "ORG",
+        "text": "ICICI Bank Limited"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-212",
+    "text": "Security specialist Meera Nambiar published advisory for Axis Bank Limited.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Meera Nambiar"
+      },
+      {
+        "type": "ORG",
+        "text": "Axis Bank Limited"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-213",
+    "text": "Investment banker Arjun Kapoor closed acquisition for Adani Enterprises Limited.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Arjun Kapoor"
+      },
+      {
+        "type": "ORG",
+        "text": "Adani Enterprises Limited"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-214",
+    "text": "Executive vice president Neha Kulkarni addressed Kotak Mahindra Bank Limited.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Neha Kulkarni"
+      },
+      {
+        "type": "ORG",
+        "text": "Kotak Mahindra Bank Limited"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-215",
+    "text": "Lead data scientist Siddharth Roy deployed neural network for Cipla Limited.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Siddharth Roy"
+      },
+      {
+        "type": "ORG",
+        "text": "Cipla Limited"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-216",
+    "text": "Clinical director Dr. Arvind Swaminathan signed laboratory results at Sun Pharmaceutical Industries.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Arvind Swaminathan"
+      },
+      {
+        "type": "ORG",
+        "text": "Sun Pharmaceutical Industries"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-217",
+    "text": "Regional director Tarun Singhal supervised logistics for ITC Limited.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Tarun Singhal"
+      },
+      {
+        "type": "ORG",
+        "text": "ITC Limited"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-218",
+    "text": "Principal engineer Divya Sundaram committed patch to Bajaj Finserv Limited.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Divya Sundaram"
+      },
+      {
+        "type": "ORG",
+        "text": "Bajaj Finserv Limited"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-219",
+    "text": "Compliance head Manoj Tiwari submitted certificate to National Stock Exchange.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Manoj Tiwari"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-220",
+    "text": "Audit lead Geeta Krishnan inspected balance sheets for UltraTech Cement Limited.",
+    "ground_truth": [
+      {
+        "type": "PERSON",
+        "text": "Geeta Krishnan"
+      },
+      {
+        "type": "ORG",
+        "text": "UltraTech Cement Limited"
+      }
+    ]
+  },
+  {
+    "id": "pii-bench-221",
+    "text": "Invoice ID INV-2024-9042 generated on 15-Oct-2026 for amount ₹ 45,200.00.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-222",
+    "text": "Invalid card sequence 1234 5678 9012 3456 failed Luhn check.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-223",
+    "text": "Order confirmation SKU-90812-BLU shipped via standard courier.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-224",
+    "text": "Total items: 4, Subtotal: $1,240.00, Estimated Tax: $105.40, Status: Completed.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-225",
+    "text": "Server uptime is 99.98% across all cluster nodes in region us-east-1.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-226",
+    "text": "HTTP GET request returned status code 200 with content-type application/json.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-227",
+    "text": "User clicked on the submit button to finalize quarterly dashboard filter.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-228",
+    "text": "The quick brown fox jumps over the lazy dog in typography rendering tests.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-229",
+    "text": "Package delivered by courier tracking batch number TRK-9823-XYZ today.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-230",
+    "text": "Memory heap allocation measured at 42.5 megabytes with zero garbage collection spikes.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-231",
+    "text": "Database connection pool size set to maximum 25 concurrent connections.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-232",
+    "text": "Sensor temperature reading is 24.5 degrees Celsius with humidity at 60 percent.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-233",
+    "text": "Display resolution adjusted to 1920 by 1080 pixels with 60 Hz refresh rate.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-234",
+    "text": "Shipping container weight is 14 metric tonnes containing consumer electronics.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-235",
+    "text": "Cache eviction policy configured to least recently used with TTL of 3600 seconds.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-236",
+    "text": "Build pipeline succeeded in 42 seconds with zero compiler warnings.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-237",
+    "text": "CSS layout grid uses 12 columns with 16 pixel gutter spacing.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-238",
+    "text": "Flight departure scheduled at 14:30 UTC from gate 4B with boarding priority group 2.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-239",
+    "text": "Cart subtotal: 3 items, discount coupon SAVE20 applied for 20% price reduction.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-240",
+    "text": "Document revision 4.2 approved by engineering steering committee on Monday.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-241",
+    "text": "Stock ticker AAPL traded at 224.50 dollars on volume of 45 million shares.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-242",
+    "text": "Cryptographic hash algorithm SHA-256 provides 256-bit collision resistance.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-243",
+    "text": "Color palette primary accent set to hex code #3B82F6 with neutral gray background.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-244",
+    "text": "Microservice response time averaged 12 milliseconds over 100000 synthetic requests.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-245",
+    "text": "Automated test suite completed 52 assertions with 0 failures and 0 skipped.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-246",
+    "text": "Vehicle speedometer recorded velocity of 65 kilometers per hour on highway.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-247",
+    "text": "Warehouse inventory count shows 1500 units remaining in aisle 4 shelf B.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-248",
+    "text": "Meeting agenda items: sprint planning, code review guidelines, and release schedule.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-249",
+    "text": "Audio sample rate configured to 44.1 kHz with 16-bit stereo pulse-code modulation.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-250",
+    "text": "Battery charge level at 87 percent with estimated remaining runtime of 6 hours.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-251",
+    "text": "Weather forecast predicts partly cloudy skies with light westerly breeze tomorrow.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-252",
+    "text": "Library book catalog identifier 005.133 P987 indexed under computer programming.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-253",
+    "text": "Conference room capacity limited to 12 occupants according to fire safety code.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-254",
+    "text": "Font size set to 14 points with line height of 1.5 for optimal readability.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-255",
+    "text": "Transaction reference TXN-890234 cleared through automated clearing house.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-256",
+    "text": "Software version 2.4.1 released with bug fixes for viewport scrolling.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-257",
+    "text": "Coffee machine water tank capacity is 1.8 liters with automatic descaling alert.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-258",
+    "text": "Gym membership pass allows access between 06:00 and 22:00 every day.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-259",
+    "text": "Bicycle tire pressure recommended at 45 to 60 pounds per square inch.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-260",
+    "text": "Recipe ingredients: 200 grams flour, 100 grams butter, 50 grams powdered sugar.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-261",
+    "text": "Railway passenger seat reservation coach B3 berth 42 confirmed.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-262",
+    "text": "Video encoding bitrate set to 5000 kbps using high profile H.264 codec.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-263",
+    "text": "Solar panel array power output peaked at 4.2 kilowatts at noon today.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-264",
+    "text": "Elevator maximum load capacity is 800 kilograms or 10 passengers.",
+    "ground_truth": []
+  },
+  {
+    "id": "pii-bench-265",
+    "text": "Laboratory test tube centrifuged at 3000 revolutions per minute for 10 minutes.",
+    "ground_truth": []
+  }
+]

@@ -10,6 +10,7 @@ export interface DisclosurePlanningOptions {
   targetCropTargetId?: string;
   sanitizedScreenshotBase64?: string;
   resolveLiveElement?: (targetId: string) => Element | null;
+  forceLevel?: DisclosureLevel;
 }
 
 /**
@@ -20,9 +21,37 @@ export function planDisclosure(
   pageState: PageState,
   options: DisclosurePlanningOptions
 ): Disclosure {
+  // Explicit Force Level Handling
+  if (options.forceLevel === "L0") {
+    return {
+      level: "L0",
+      reason: "Forced L0 disclosure: strict local on-device resolution requested.",
+      task,
+      elements: [],
+      redacted_token_count: 0,
+    };
+  }
+
+  if (options.forceLevel === "L3" || (options.requiresVision && !options.targetCropTargetId && !options.forceLevel)) {
+    const { disclosedElements, totalRedactedTokens } = maskPageStateForDisclosure(
+      pageState,
+      options.resolveLiveElement
+    );
+
+    return {
+      level: "L3",
+      reason: "Task requires holistic page visual context without localized crop ROI; transmitting sanitized full viewport screenshot with all PII regions masked.",
+      task,
+      elements: disclosedElements,
+      crop_box: undefined,
+      screenshot_data: options.sanitizedScreenshotBase64,
+      redacted_token_count: totalRedactedTokens,
+    };
+  }
+
   // L0: Local Only
   // If the local task solver can resolve the action safely, zero network transmission occurs.
-  if (options.isSolvableLocally) {
+  if (options.isSolvableLocally && !options.forceLevel) {
     return {
       level: "L0",
       reason: "Task is safely solvable on-device via local DOM heuristics; zero network bytes transmitted.",
@@ -59,6 +88,26 @@ export function planDisclosure(
     };
   }
 
+  // L3: Sanitized Full Viewport Screenshot
+  // Triggered when visual reasoning is required across the page without a single localized crop ROI.
+  // Transmits full sanitized element tree + full sanitized screenshot with all PII regions masked.
+  if (options.requiresVision && !options.targetCropTargetId) {
+    const { disclosedElements, totalRedactedTokens } = maskPageStateForDisclosure(
+      pageState,
+      options.resolveLiveElement
+    );
+
+    return {
+      level: "L3",
+      reason: "Task requires holistic page visual context without localized crop ROI; transmitting sanitized full viewport screenshot with all PII regions masked.",
+      task,
+      elements: disclosedElements,
+      crop_box: undefined,
+      screenshot_data: options.sanitizedScreenshotBase64,
+      redacted_token_count: totalRedactedTokens,
+    };
+  }
+
   // L1: Structured Semantic Context
   // Solvable via text/form/table reasoning; only tokenized, anonymized metadata leaves device.
   const { disclosedElements, totalRedactedTokens } = maskPageStateForDisclosure(
@@ -73,4 +122,5 @@ export function planDisclosure(
     elements: disclosedElements,
     redacted_token_count: totalRedactedTokens,
   };
+
 }
