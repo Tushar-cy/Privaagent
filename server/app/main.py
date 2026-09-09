@@ -63,6 +63,10 @@ benchmark_path = ROOT_DIR / "benchmark"
 if benchmark_path.exists():
     app.mount("/benchmark", StaticFiles(directory=str(benchmark_path), html=True), name="benchmark")
 
+extension_path = ROOT_DIR / "extension"
+if extension_path.exists():
+    app.mount("/extension", StaticFiles(directory=str(extension_path)), name="extension")
+
 
 if __name__ == "__main__":
     import uvicorn
