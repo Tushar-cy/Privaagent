@@ -26,6 +26,17 @@ declare global {
   }
 }
 
+function safeSendBackgroundMessage(message: any): void {
+  if (typeof chrome === "undefined" || !chrome.runtime?.sendMessage) return;
+  try {
+    chrome.runtime.sendMessage(message, () => {
+      void chrome.runtime?.lastError;
+    });
+  } catch {
+    // Non-blocking
+  }
+}
+
 let latestPageState: PageState | null = null;
 let latestDurationMs: number = 0;
 let shieldEnabled: boolean = true; // Runtime state; restored from storage on init
@@ -59,9 +70,9 @@ function runPerception(): PageState {
     overlayManager.renderRedactionOverlays(latestPageState);
     overlayManager.updateHUD("L0", "Privacy Shield Active");
 
-    // Update badge with PII count
+    // Update badge with PII count safely
     const piiCount = latestPageState.elements.filter((e) => e.sensitive).length;
-    chrome.runtime?.sendMessage?.({
+    safeSendBackgroundMessage({
       type: "UPDATE_BADGE",
       level: "L0",
       text: piiCount > 0 ? `${piiCount}` : "0B",
@@ -123,12 +134,12 @@ function setShieldEnabled(enabled: boolean): void {
       overlayManager.renderRedactionOverlays(latestPageState);
     }
     overlayManager.updateHUD("L0", "Privacy Shield Active");
-    chrome.runtime?.sendMessage?.({ type: "UPDATE_BADGE", level: "L0", text: "ON" });
+    safeSendBackgroundMessage({ type: "UPDATE_BADGE", level: "L0", text: "ON" });
   } else {
     overlayManager.setVisible(false);
     // Clear overlays by re-rendering with visible=false
     overlayManager.updateHUD("OFF", "Shield Disabled");
-    chrome.runtime?.sendMessage?.({ type: "UPDATE_BADGE", level: "BLOCKED", text: "OFF" });
+    safeSendBackgroundMessage({ type: "UPDATE_BADGE", level: "BLOCKED", text: "OFF" });
   }
   overlayManager.setVisible(enabled);
 }

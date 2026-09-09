@@ -77,12 +77,54 @@ document.addEventListener("DOMContentLoaded", () => {
     }, durationMs);
   }
 
+  // ─── Zero-Leak Message Dispatchers (Suppresses Unchecked runtime.lastError) ──
+  function sendTabMsg(tabId: number, message: any, callback?: (response: any) => void) {
+    if (typeof chrome === "undefined" || !chrome.tabs?.sendMessage) {
+      if (callback) callback(null);
+      return;
+    }
+    try {
+      chrome.tabs.sendMessage(tabId, message, (response) => {
+        // ALWAYS read lastError to suppress Chrome Unchecked runtime.lastError logs
+        const err = chrome.runtime?.lastError;
+        if (callback) {
+          callback(err ? null : response);
+        }
+      });
+    } catch {
+      if (callback) callback(null);
+    }
+  }
+
+  function sendRuntimeMsg(message: any, callback?: (response: any) => void) {
+    if (typeof chrome === "undefined" || !chrome.runtime?.sendMessage) {
+      if (callback) callback(null);
+      return;
+    }
+    try {
+      chrome.runtime.sendMessage(message, (response) => {
+        // ALWAYS read lastError to suppress Chrome Unchecked runtime.lastError logs
+        const err = chrome.runtime?.lastError;
+        if (callback) {
+          callback(err ? null : response);
+        }
+      });
+    } catch {
+      if (callback) callback(null);
+    }
+  }
+
   // ─── Active Tab Query ────────────────────────────────────────────────────
   function queryActiveTab(callback: (tabId: number) => void) {
     if (typeof chrome !== "undefined" && chrome.tabs?.query) {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs?.[0]?.id) {
-          callback(tabs[0].id);
+        const activeTab = tabs?.[0];
+        if (activeTab?.id) {
+          const url = activeTab.url || "";
+          if (url.startsWith("chrome://") || url.startsWith("edge://") || url.startsWith("about:")) {
+            if (tabUrlEl) tabUrlEl.textContent = "Protected Browser Page (Standalone Mode)";
+          }
+          callback(activeTab.id);
         } else {
           if (tabUrlEl) tabUrlEl.textContent = "Standalone / Benchmark Mode";
         }
@@ -163,12 +205,12 @@ document.addEventListener("DOMContentLoaded", () => {
     headerEl?.classList.add("scanning");
 
     queryActiveTab((tabId) => {
-      chrome.tabs.sendMessage(tabId, { type: "GET_PAGE_STATE" }, (response) => {
+      sendTabMsg(tabId, { type: "GET_PAGE_STATE" }, (response) => {
         logoEl?.classList.remove("pulsing");
         headerEl?.classList.remove("scanning");
 
-        if (chrome.runtime.lastError || !response) {
-          if (tabUrlEl) tabUrlEl.textContent = "Content script active or dev tab";
+        if (!response) {
+          if (tabUrlEl) tabUrlEl.textContent = "Protected Browser Page or Dev Tab";
           return;
         }
 
@@ -243,10 +285,10 @@ document.addEventListener("DOMContentLoaded", () => {
       chrome.storage?.local?.set({ privaagent_shield_enabled: enabled });
 
       queryActiveTab((tabId) => {
-        chrome.tabs.sendMessage(tabId, { type: "TOGGLE_OVERLAYS", visible: enabled }, () => {});
+        sendTabMsg(tabId, { type: "TOGGLE_OVERLAYS", visible: enabled });
       });
 
-      chrome.runtime.sendMessage({ type: "SET_SHIELD_STATE", enabled });
+      sendRuntimeMsg({ type: "SET_SHIELD_STATE", enabled });
 
       showToast(
         enabled ? "✅ Privacy Shield activated — PII redaction running" : "⏸ Shield paused — overlays hidden",
@@ -261,7 +303,7 @@ document.addEventListener("DOMContentLoaded", () => {
     selModeEl.addEventListener("change", () => {
       const mode = selModeEl.value;
       queryActiveTab((tabId) => {
-        chrome.tabs.sendMessage(tabId, { type: "SET_REDACTION_MODE", mode });
+        sendTabMsg(tabId, { type: "SET_REDACTION_MODE", mode });
       });
       chrome.storage?.local?.set({ privaagent_redaction_mode: mode });
       showToast(
@@ -319,14 +361,14 @@ document.addEventListener("DOMContentLoaded", () => {
       : { type: "RUN_TASK", task, maxLevel, simulateUnsafeSanitization };
 
     queryActiveTab((tabId) => {
-      chrome.tabs.sendMessage(tabId, payload, (res) => {
+      sendTabMsg(tabId, payload, (res) => {
         if (btnRunEl) {
           btnRunEl.disabled = false;
           btnRunEl.textContent = "▶ Run";
         }
 
-        if (chrome.runtime.lastError || !res) {
-          showToast(`Execution failed: ${chrome.runtime.lastError?.message || "No response from content script"}`, "error");
+        if (!res) {
+          showToast("Execution note: Open http://127.0.0.1:8000/demo/ to test full agent interaction on demo page", "warning");
           return;
         }
 
@@ -483,7 +525,7 @@ document.addEventListener("DOMContentLoaded", () => {
       btnBenchmarkEl.textContent = "⚡ Running 20-Point SIH Jury Suite...";
 
       queryActiveTab((tabId) => {
-        chrome.tabs.sendMessage(tabId, { type: "GET_PAGE_STATE" }, (pageStateRes) => {
+        sendTabMsg(tabId, { type: "GET_PAGE_STATE" }, (pageStateRes) => {
           btnBenchmarkEl.disabled = false;
           btnBenchmarkEl.textContent = "⚡ Run Live SIH Benchmark Suite (Jury Proof)";
 
@@ -520,7 +562,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const precision = (vectorsPassed / testVectors.length) * 100;
 
-          chrome.tabs.sendMessage(tabId, { type: "GET_COMPLIANCE_REPORT" }, (report) => {
+          sendTabMsg(tabId, { type: "GET_COMPLIANCE_REPORT" }, (report) => {
             const merkleRoot = report?.cryptographicRootHash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
             // SIH Official 5-Pillar Score computation
@@ -592,9 +634,9 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btnInspectEl) {
     btnInspectEl.addEventListener("click", () => {
       queryActiveTab((tabId) => {
-        chrome.tabs.sendMessage(tabId, { type: "GET_COMPLIANCE_REPORT" }, (report) => {
-          if (chrome.runtime.lastError || !report) {
-            showToast("No compliance records found for this session", "warning");
+        sendTabMsg(tabId, { type: "GET_COMPLIANCE_REPORT" }, (report) => {
+          if (!report) {
+            showToast("No compliance records found for this session. Run an action to record.", "warning");
             return;
           }
           if (!ledgerBoxEl) return;
@@ -614,7 +656,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btnClearEl) {
     btnClearEl.addEventListener("click", () => {
       queryActiveTab((tabId) => {
-        chrome.tabs.sendMessage(tabId, { type: "CLEAR_AUDIT_VAULT" }, () => {
+        sendTabMsg(tabId, { type: "CLEAR_AUDIT_VAULT" }, () => {
           if (ledgerBoxEl) ledgerBoxEl.classList.remove("show");
           showToast("Privacy Audit Vault cleared", "success", 2000);
         });

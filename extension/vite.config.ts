@@ -47,9 +47,10 @@ function extensionPostBuildPlugin() {
       // 4. Mirror complete finalized dist to root privaagent-extension
       try {
         const rootUnpacked = resolve(__dirname, "../privaagent-extension");
-        if (!fs.existsSync(rootUnpacked)) {
-          fs.mkdirSync(rootUnpacked, { recursive: true });
+        if (fs.existsSync(rootUnpacked)) {
+          fs.rmSync(rootUnpacked, { recursive: true, force: true });
         }
+        fs.mkdirSync(rootUnpacked, { recursive: true });
         fs.cpSync(resolve(__dirname, "dist"), rootUnpacked, { recursive: true });
       } catch (err) {
         console.warn("[Vite Post-Build] Mirror to privaagent-extension warning:", err);
