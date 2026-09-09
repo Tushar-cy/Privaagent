@@ -62,8 +62,8 @@ const SECRET_PREFIXES: Array<{ prefix: string; minLen: number; confidence: numbe
 const KEY_VALUE_PATTERNS: RegExp[] = [
   // api_key=VALUE or apikey=VALUE (URL params, form fields)
   /(?:api[_-]?key|apikey|access[_-]?token|auth[_-]?token|secret[_-]?key|client[_-]?secret|private[_-]?key)\s*[=:]\s*([A-Za-z0-9_\-\.]{16,})/gi,
-  // Authorization: Bearer VALUE
-  /Authorization\s*:\s*(?:Bearer|Token)\s+([A-Za-z0-9_\-\.]{16,})/gi,
+  // Authorization: Bearer VALUE or header bearer VALUE
+  /(?:Authorization\s*:\s*)?(?:Bearer|Token)\s+([A-Za-z0-9_\-\.]{16,})/gi,
   // "key": "VALUE" or 'key': 'VALUE' JSON-style
   /"(?:api[_-]?key|apikey|access[_-]?token|auth[_-]?token|secret[_-]?key|client[_-]?secret)"\s*:\s*"([A-Za-z0-9_\-\.]{16,})"/gi,
 ];
@@ -160,9 +160,10 @@ export function detectSecrets(text: string, entropyThreshold: number = 3.3): Sec
     const hasNumbers = /\d/.test(token);
     const hasLetters = /[a-zA-Z]/.test(token);
     const hasMixed = /[a-z]/.test(token) && /[A-Z]/.test(token);
+    const isHexToken = /^[0-9a-fA-F]{32,}$/.test(token);
 
-    // High entropy random-looking string (cryptographic key material)
-    if (entropy >= entropyThreshold && token.length >= 24 && hasNumbers && hasLetters && hasMixed) {
+    // High entropy random-looking string (cryptographic key material, hex tokens, long API keys)
+    if (entropy >= entropyThreshold && token.length >= 24 && hasNumbers && hasLetters && (hasMixed || isHexToken || token.length >= 32)) {
       addResult(start, end, token, Math.min(0.95, 0.7 + (entropy - 3.0) * 0.2), entropy);
     }
   }

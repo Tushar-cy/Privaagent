@@ -19,7 +19,7 @@ $suites = @(
     @{ Name = "9. Phase 11 Differential Privacy and Hash Chaining"; Cmd = "npx.cmd tsx ..\tests\test_phase11_enterprise_suite.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "10. Live HTTP Trust Boundary and Defense-in-Depth"; Cmd = "node ..\tests\test_live_http_end_to_end.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "11. Official SIH26171 5-Metric Benchmark"; Cmd = "npx.cmd tsx ..\benchmark\scripts\run-benchmark.mjs"; Dir = "$ROOT\extension" },
-    @{ Name = "12. FastAPI Backend Pytest Suite"; Cmd = "pytest -p no:cacheprovider ..\tests\"; Dir = "$ROOT\server" }
+    @{ Name = "12. FastAPI Backend Pytest Suite"; Cmd = ".\venv\Scripts\pytest.exe -p no:cacheprovider ..\tests\"; Dir = "$ROOT\server" }
 )
 
 $passed = 0

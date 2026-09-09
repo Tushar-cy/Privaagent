@@ -167,6 +167,12 @@ class VLMClient:
                 )
 
                 if response.status_code != 200:
+                    if settings.DEBUG or self.provider == "mock":
+                        logger.warning(
+                            f"[VLMClient] VLM API returned status {response.status_code}. "
+                            "Falling back to mock response (DEBUG/Test Mode)."
+                        )
+                        return self._mock_response(disclosure, reason_prefix="[Offline Fallback] ")
                     raise RuntimeError(
                         f"VLM API returned status {response.status_code}: {response.text}"
                     )
@@ -182,12 +188,23 @@ class VLMClient:
                 )
 
         except httpx.ConnectError:
+            if settings.DEBUG or self.provider == "mock":
+                logger.warning(
+                    f"[VLMClient] Cannot connect to VLM endpoint at {self.api_base_url}. "
+                    "Falling back to mock response (DEBUG/Test Mode)."
+                )
+                return self._mock_response(disclosure, reason_prefix="[Offline Fallback] ")
             raise RuntimeError(
                 f"Cannot connect to VLM endpoint at {self.api_base_url}. "
                 f"Please ensure Ollama is running: 'ollama serve' "
                 f"and the model is available: 'ollama pull {self.model_id}'"
             )
         except httpx.TimeoutException:
+            if settings.DEBUG or self.provider == "mock":
+                logger.warning(
+                    "[VLMClient] VLM inference timed out. Falling back to mock response (DEBUG/Test Mode)."
+                )
+                return self._mock_response(disclosure, reason_prefix="[Offline Fallback] ")
             raise RuntimeError(
                 f"VLM inference timed out after 45s. The model '{self.model_id}' may be too large "
                 f"for your hardware. Try a smaller model: 'ollama pull qwen2.5vl:3b-instruct-q4_K_M'"

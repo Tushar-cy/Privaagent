@@ -1,6 +1,35 @@
-import { defineConfig } from "vite";
+import { defineConfig, build } from "vite";
 import { resolve } from "path";
 import fs from "fs";
+
+function buildContentScript() {
+  return {
+    name: "build-content-script",
+    async closeBundle() {
+      await build({
+        configFile: false,
+        build: {
+          emptyOutDir: false,
+          outDir: resolve(__dirname, "dist"),
+          rollupOptions: {
+            input: resolve(__dirname, "src/content/index.ts"),
+            output: {
+              format: "iife",
+              name: "PrivaagentContent",
+              entryFileNames: "src/content/index.js",
+              extend: true,
+            },
+          },
+        },
+        resolve: {
+          alias: {
+            "@": resolve(__dirname, "src"),
+          },
+        },
+      });
+    },
+  };
+}
 
 function copyManifest() {
   return {
@@ -32,15 +61,11 @@ export default defineConfig({
         popup: resolve(__dirname, "popup/index.html"),
         compliance: resolve(__dirname, "report/compliance-dashboard.html"),
         background: resolve(__dirname, "src/background/index.ts"),
-        content: resolve(__dirname, "src/content/index.ts"),
       },
       output: {
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === "background") {
             return "src/background/index.js";
-          }
-          if (chunkInfo.name === "content") {
-            return "src/content/index.js";
           }
           return "assets/[name]-[hash].js";
         },
@@ -54,5 +79,5 @@ export default defineConfig({
       "@": resolve(__dirname, "src"),
     },
   },
-  plugins: [copyManifest()],
+  plugins: [buildContentScript(), copyManifest()],
 });

@@ -64,10 +64,17 @@ const PATTERNS: Array<{
   // 2. Phone: Indian (+91, 0, or bare 9-10 digits starting with 6-9) & International format
   {
     type: "PHONE",
-    regex: /(?:(?:\+91|0)[\s-]?)?[6-9](?:[\s-]?\d){8,9}\b|\+[1-9]\d{0,2}[\s-]?(?:\(?\d{2,4}\)?[\s-]?)?\d{3,4}[\s-]?\d{3,4}\b/g,
-    validate: (m) => {
+    regex: /(?<!\d)(?:(?:\+91|0)[\s-]?)?[6-9](?:[\s-]?\d){8,9}\b|\+[1-9]\d{0,2}[\s-]?(?:\(?\d{2,4}\)?[\s-]?)?\d{3,4}[\s-]?\d{3,4}\b/g,
+    validate: (m, fullText, start) => {
       const digits = m.replace(/\D/g, "");
-      return digits.length >= 9 && digits.length <= 14;
+      if (digits.length < 9 || digits.length > 14) return false;
+      if (fullText && typeof start === "number") {
+        const prefix = fullText.slice(Math.max(0, start - 4), start);
+        if (/\d+[\s-]*$/.test(prefix)) return false;
+        const suffix = fullText.slice(start + m.length, start + m.length + 4);
+        if (/^[\s-]*\d+/.test(suffix)) return false;
+      }
+      return true;
     },
     confidence: 0.95,
   },
