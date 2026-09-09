@@ -458,12 +458,25 @@
 
       /* ─── Action Buttons ─── */
       .action-row {
-        display: flex; gap: 6px;
+        display: flex; gap: 5px;
         padding: 10px 14px; border-top: 1px solid var(--border);
       }
+      .btn-demo {
+        flex: 1.2; display: flex; align-items: center; justify-content: center; gap: 4px;
+        padding: 8px 6px;
+        background: linear-gradient(135deg, rgba(56,189,248,0.15), rgba(99,102,241,0.15));
+        border: 1px solid var(--primary);
+        color: var(--primary); border-radius: var(--radius-sm);
+        font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+        text-shadow: 0 0 6px rgba(56,189,248,0.3);
+      }
+      .btn-demo:hover {
+        background: linear-gradient(135deg, rgba(56,189,248,0.25), rgba(99,102,241,0.25));
+        box-shadow: 0 0 10px rgba(56,189,248,0.35);
+      }
       .btn-portal {
-        flex: 2; display: flex; align-items: center; justify-content: center; gap: 5px;
-        padding: 8px 10px;
+        flex: 1.5; display: flex; align-items: center; justify-content: center; gap: 4px;
+        padding: 8px 6px;
         background: rgba(52,211,153,0.08);
         border: 1px solid rgba(52,211,153,0.2);
         color: var(--success); border-radius: var(--radius-sm);
@@ -696,7 +709,8 @@
 
     <!-- ─── Action Buttons ────────────────────────────────── -->
     <div class="action-row">
-      <button class="btn-portal" id="btn-portal">🛡️ DPDP Compliance Portal</button>
+      <button class="btn-demo" id="btn-demo" title="Open Interactive Customer & Analytics Demonstration Portal">🌐 Live Demo</button>
+      <button class="btn-portal" id="btn-portal">🛡️ DPDP Portal</button>
       <button class="btn-ledger" id="btn-inspect">📜 Ledger</button>
       <button class="btn-clear" id="btn-clear">✕ Clear</button>
     </div>

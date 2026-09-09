@@ -226,6 +226,88 @@
       max-height: 200px;
       overflow-y: auto;
     }
+    /* Cyber Intervention Modal */
+    .cyber-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+    }
+    .cyber-modal-backdrop {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(5, 8, 16, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .cyber-modal-card {
+      position: relative;
+      z-index: 1;
+      width: 460px;
+      max-width: 90vw;
+      background: #0f172a;
+      border: 1px solid #38bdf8;
+      box-shadow: 0 0 30px rgba(56, 189, 248, 0.25);
+      border-radius: 12px;
+      padding: 24px;
+      animation: modal-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .cyber-modal-card.danger {
+      border-color: #ef4444;
+      box-shadow: 0 0 35px rgba(239, 68, 68, 0.35);
+    }
+    .cyber-modal-card.warning {
+      border-color: #f59e0b;
+      box-shadow: 0 0 30px rgba(245, 158, 11, 0.3);
+    }
+    @keyframes modal-in {
+      from { transform: scale(0.92); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .cyber-modal-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .cyber-modal-icon { font-size: 24px; }
+    .cyber-modal-title {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #f8fafc;
+    }
+    .cyber-modal-body {
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .cyber-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .cyber-modal-btn {
+      padding: 8px 18px;
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      border: none;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .cyber-modal-btn:hover {
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+      transform: translateY(-1px);
+    }
   </style>
 </head>
 <body>
@@ -503,7 +585,7 @@ Ready. Select a preset or type a natural language command to execute.
               log.textContent += `[Step ${stepNum}/${parts.length}: "${p.trim()}"]\n`;
               log.textContent += `  ⚠️ Risk Policy Engine: Matched rule FINANCIAL_TRANSACTION\n`;
               log.textContent += `  🛑 PAUSED_CONFIRMATION: Action requires explicit user authorization!\n\n`;
-              alert('Privaagent Multi-Turn Guard: Subtask requires financial confirmation!');
+              showCyberModal('FINANCIAL INTERVENTION REQUIRED', 'Privaagent Multi-Turn Guard: Subtask requires financial confirmation for outgoing transaction!', 'warning');
             } else {
               log.textContent += `[Step ${stepNum}/${parts.length}: "${p.trim()}"]\n`;
               log.textContent += `  ✓ Executed under standard L0 policy.\n\n`;
@@ -540,12 +622,12 @@ Ready. Select a preset or type a natural language command to execute.
           log.textContent += `⚠️ [Risk Policy Engine]: Matched rule FINANCIAL_TRANSACTION\n`;
           log.textContent += `⚠️ [Verdict]: CONFIRM — Action triggers irreversible financial liability\n`;
           log.textContent += `🛑 [User Safeguard]: Execution paused pending explicit user authorization.\n`;
-          alert('Privaagent Policy Guard: Payment of $5,000 detected. Explicit user authorization required!');
+          showCyberModal('FINANCIAL LIABILITY DETECTED', 'Privaagent Policy Guard: Payment of $5,000 detected. Autonomous execution strictly paused pending explicit user authorization.', 'warning');
         } else if (task.toLowerCase().includes("hidden") || task.toLowerCase().includes("instruction")) {
           log.textContent += `🚨 [Prompt Injection Scanner]: Scanning DOM candidates...\n`;
           log.textContent += `🚨 [CRITICAL]: Matched rule IGNORE_PREVIOUS_INSTRUCTIONS in concealed element #malicious-injection-1 (display:none)\n`;
           log.textContent += `🛑 [Verdict]: BLOCK — Adversarial attack strictly neutralized. 0 actions executed.\n`;
-          alert('Privaagent Security Shield: Malicious prompt injection detected and BLOCKED!');
+          showCyberModal('PROMPT INJECTION ATTACK NEUTRALIZED', 'Privaagent Security Shield: Malicious prompt injection detected in concealed element #malicious-injection-1. Adversarial vector neutralized with 0 actions dispatched.', 'danger');
         } else if (task.toLowerCase().includes("dpdp") || task.toLowerCase().includes("synthetic") || task.toLowerCase().includes("compliance")) {
           log.textContent += `🛡️ [Enterprise Privacy Engine]: Initiating DPDP Act 2023 & GDPR Art. 25 Audit Certification...\n`;
           log.textContent += `  ✓ Real Citizen Data Found: Aadhaar (9876 5432 1098), PAN (ABCDE1234F), Phone (+91 98765 43210)\n`;
@@ -561,6 +643,37 @@ Ready. Select a preset or type a natural language command to execute.
         }
       }, 200);
     }
+
+    function showCyberModal(title, msg, type = 'warning') {
+      const modal = document.getElementById('cyber-modal');
+      const titleEl = document.getElementById('cyber-modal-title');
+      const bodyEl = document.getElementById('cyber-modal-body');
+      const card = modal.querySelector('.cyber-modal-card');
+      
+      titleEl.textContent = title;
+      bodyEl.textContent = msg;
+      card.className = `cyber-modal-card ${type}`;
+      modal.style.display = 'flex';
+    }
+
+    function closeCyberModal() {
+      document.getElementById('cyber-modal').style.display = 'none';
+    }
   </script>
+
+  <!-- Cyber Intervention Modal HTML -->
+  <div id="cyber-modal" class="cyber-modal">
+    <div class="cyber-modal-backdrop" onclick="closeCyberModal()"></div>
+    <div class="cyber-modal-card">
+      <div class="cyber-modal-header">
+        <span class="cyber-modal-icon">🛡️</span>
+        <span class="cyber-modal-title" id="cyber-modal-title">SECURITY INTERVENTION</span>
+      </div>
+      <div class="cyber-modal-body" id="cyber-modal-body"></div>
+      <div class="cyber-modal-actions">
+        <button class="cyber-modal-btn" onclick="closeCyberModal()">Acknowledge & Protect</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

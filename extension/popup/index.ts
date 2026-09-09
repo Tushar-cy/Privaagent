@@ -47,6 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const lLatencyEl      = document.getElementById("l-latency")      as HTMLSpanElement;
   const lReasonEl       = document.getElementById("l-reason")       as HTMLDivElement;
 
+  const btnDemoEl       = document.getElementById("btn-demo")      as HTMLButtonElement;
   const btnPortalEl     = document.getElementById("btn-portal")    as HTMLButtonElement;
   const btnInspectEl    = document.getElementById("btn-inspect")   as HTMLButtonElement;
   const btnClearEl      = document.getElementById("btn-clear")     as HTMLButtonElement;
@@ -624,6 +625,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ─── Portal / Ledger / Clear ──────────────────────────────────────────────
+  if (btnDemoEl) {
+    btnDemoEl.addEventListener("click", () => {
+      chrome.tabs.create({ url: "http://127.0.0.1:8000/demo/index.html" });
+    });
+  }
+
   if (btnPortalEl) {
     btnPortalEl.addEventListener("click", () => {
       const reportUrl = chrome.runtime.getURL("report/compliance-dashboard.html");
