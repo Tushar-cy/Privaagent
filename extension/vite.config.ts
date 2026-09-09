@@ -2,10 +2,26 @@ import { defineConfig, build } from "vite";
 import { resolve } from "path";
 import fs from "fs";
 
-function buildContentScript() {
+function extensionPostBuildPlugin() {
   return {
-    name: "build-content-script",
+    name: "extension-post-build",
     async closeBundle() {
+      // 1. Copy manifest.json to dist
+      const manifestSrc = resolve(__dirname, "manifest.json");
+      const manifestDest = resolve(__dirname, "dist/manifest.json");
+      fs.copyFileSync(manifestSrc, manifestDest);
+
+      // 2. Copy report directory to dist
+      const reportDirSrc = resolve(__dirname, "report");
+      const reportDirDest = resolve(__dirname, "dist/report");
+      if (fs.existsSync(reportDirSrc)) {
+        if (!fs.existsSync(reportDirDest)) {
+          fs.mkdirSync(reportDirDest, { recursive: true });
+        }
+        fs.cpSync(reportDirSrc, reportDirDest, { recursive: true });
+      }
+
+      // 3. Build content script IIFE bundle
       await build({
         configFile: false,
         build: {
@@ -28,41 +44,22 @@ function buildContentScript() {
         },
       });
 
-      // Mirror dist to root privaagent-extension for foolproof Chrome "Load unpacked"
+      // 4. Mirror complete finalized dist to root privaagent-extension
       try {
         const rootUnpacked = resolve(__dirname, "../privaagent-extension");
         if (!fs.existsSync(rootUnpacked)) {
           fs.mkdirSync(rootUnpacked, { recursive: true });
         }
         fs.cpSync(resolve(__dirname, "dist"), rootUnpacked, { recursive: true });
-      } catch {
-        // non-blocking
-      }
-    },
-  };
-}
-
-function copyManifest() {
-  return {
-    name: "copy-manifest",
-    closeBundle() {
-      const manifestSrc = resolve(__dirname, "manifest.json");
-      const manifestDest = resolve(__dirname, "dist/manifest.json");
-      fs.copyFileSync(manifestSrc, manifestDest);
-
-      const reportDirSrc = resolve(__dirname, "report");
-      const reportDirDest = resolve(__dirname, "dist/report");
-      if (fs.existsSync(reportDirSrc)) {
-        if (!fs.existsSync(reportDirDest)) {
-          fs.mkdirSync(reportDirDest, { recursive: true });
-        }
-        fs.cpSync(reportDirSrc, reportDirDest, { recursive: true });
+      } catch (err) {
+        console.warn("[Vite Post-Build] Mirror to privaagent-extension warning:", err);
       }
     },
   };
 }
 
 export default defineConfig({
+  base: "./",
   build: {
     outDir: "dist",
     emptyOutDir: true,
@@ -89,5 +86,5 @@ export default defineConfig({
       "@": resolve(__dirname, "src"),
     },
   },
-  plugins: [buildContentScript(), copyManifest()],
+  plugins: [extensionPostBuildPlugin()],
 });

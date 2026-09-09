@@ -59,15 +59,15 @@ if defined CHROME_EXE (
     echo.
     echo ==================================================================
     echo  SUCCESS! Launching browser with Privaagent extension pre-loaded.
-    echo  Extension Path: %ROOT%\extension\dist
+    echo  Extension Path: %ROOT%\privaagent-extension
     echo  Demo Portal:    http://127.0.0.1:8000/demo/index.html
     echo ==================================================================
-    start "" "!CHROME_EXE!" --load-extension="%ROOT%\extension\dist" "http://127.0.0.1:8000/demo/index.html"
+    start "" "!CHROME_EXE!" --load-extension="%ROOT%\privaagent-extension" "http://127.0.0.1:8000/demo/index.html"
 ) else (
     echo [WARNING] Could not automatically find Chrome or Edge.
     echo Please manually open your browser to: chrome://extensions/
     echo Enable Developer Mode, click 'Load unpacked', and select:
-    echo %ROOT%\extension\dist
+    echo %ROOT%\privaagent-extension
     echo Then visit: http://127.0.0.1:8000/demo/index.html
 )
 

@@ -67,6 +67,10 @@ extension_path = ROOT_DIR / "extension"
 if extension_path.exists():
     app.mount("/extension", StaticFiles(directory=str(extension_path)), name="extension")
 
+privaagent_ext_path = ROOT_DIR / "privaagent-extension"
+if privaagent_ext_path.exists():
+    app.mount("/privaagent-extension", StaticFiles(directory=str(privaagent_ext_path)), name="privaagent-extension")
+
 
 if __name__ == "__main__":
     import uvicorn

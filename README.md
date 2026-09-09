@@ -34,11 +34,10 @@ If you are an **SIH Judge**, **Evaluator**, or **First-Time Tester**, you don't 
 | 🧪 **Verify All 12 Test Suites** | Run `powershell -ExecutionPolicy Bypass -File .\run-all-tests.ps1` in terminal. Validates 100% pass rate. | **60 seconds** |
 | 📊 **View SIH Scoring & Defense** | See [SIH Benchmark Scorecard](#-official-sih26171-benchmark-scorecard) & [Two-Layer Architecture](docs/TWO_LAYER_ARCHITECTURE.md). | **2 minutes** |
 
-> [!CAUTION]
-> ### 🛑 Avoid the Most Common Beginner Mistake:
-> When clicking **"Load unpacked"** in `chrome://extensions/`:
-> * ✅ **CORRECT:** Select the **`privaagent-extension`** folder (located right in the root of this repo) or `extension/dist`.
-> * ❌ **DO NOT SELECT:** The top-level `Privaagent` repository root folder. Chrome will report *"Manifest file is missing or unreadable"* because `manifest.json` is packaged inside the extension directory!
+> [!TIP]
+> ### 🛡️ Foolproof Folder Selection in `chrome://extensions/`:
+> * 🌟 **Recommended:** Select the **`privaagent-extension`** folder (or simply double-click [`start-privaagent.bat`](start-privaagent.bat) to auto-boot server and auto-load the extension).
+> * 🌟 **Zero-Error Fallback:** We have included a root `manifest.json` pointing directly to the extension bundle, so even if you accidentally select the top-level **`Privaagent`** repository folder, Chrome will load smoothly without any *"Manifest file is missing or unreadable"* error!
 
 ---
 

@@ -62,7 +62,7 @@ foreach ($c in $candidates) {
     if (Test-Path $c) { $browserExe = $c; break }
 }
 
-$extPath = Join-Path $ROOT "extension\dist"
+$extPath = Join-Path $ROOT "privaagent-extension"
 $demoUrl = "http://127.0.0.1:8000/demo/index.html"
 
 if ($browserExe) {

@@ -211,13 +211,13 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
       url: window.location.href,
       title: document.title,
     });
-    return true;
+    return false;
   }
 
   if (message?.type === "TOGGLE_OVERLAYS") {
     setShieldEnabled(Boolean(message.visible));
     sendResponse({ ok: true, visible: message.visible });
-    return true;
+    return false;
   }
 
   if (message?.type === "SET_REDACTION_MODE") {
@@ -225,7 +225,7 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
     overlayManager.setMode(mode);
     chrome.storage?.local?.set({ privaagent_redaction_mode: mode });
     sendResponse({ ok: true, mode });
-    return true;
+    return false;
   }
 
   if (message?.type === "EXECUTE_ACTION") {
@@ -249,13 +249,13 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
 
   if (message?.type === "GET_COMPLIANCE_REPORT") {
     sendResponse(PrivacyAuditVault.getInstance().generateComplianceReport());
-    return true;
+    return false;
   }
 
   if (message?.type === "CLEAR_AUDIT_VAULT") {
     PrivacyAuditVault.getInstance().clear();
     sendResponse({ ok: true });
-    return true;
+    return false;
   }
 
   return false;

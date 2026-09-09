@@ -1,0 +1,35 @@
+﻿{
+  "manifest_version": 3,
+  "name": "Privaagent - Adaptive Minimum-Disclosure Agent",
+  "version": "0.1.0",
+  "description": "On-device visual perception and minimum-disclosure privacy preservation for browser agents (SIH26171).",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "privaagent-extension/src/background/index.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["privaagent-extension/src/content/index.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "privaagent-extension/popup/index.html",
+    "default_title": "Privaagent"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["privaagent-extension/report/*", "privaagent-extension/assets/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

@@ -138,5 +138,5 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
   }
 
-  return true;
+  return false;
 });
