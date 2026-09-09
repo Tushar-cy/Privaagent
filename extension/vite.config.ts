@@ -50,14 +50,13 @@ function copyManifest() {
       const manifestDest = resolve(__dirname, "dist/manifest.json");
       fs.copyFileSync(manifestSrc, manifestDest);
 
-      const reportDir = resolve(__dirname, "dist/report");
-      if (!fs.existsSync(reportDir)) {
-        fs.mkdirSync(reportDir, { recursive: true });
-      }
-      const reportSrc = resolve(__dirname, "report/compliance-dashboard.html");
-      const reportDest = resolve(__dirname, "dist/report/compliance-dashboard.html");
-      if (fs.existsSync(reportSrc)) {
-        fs.copyFileSync(reportSrc, reportDest);
+      const reportDirSrc = resolve(__dirname, "report");
+      const reportDirDest = resolve(__dirname, "dist/report");
+      if (fs.existsSync(reportDirSrc)) {
+        if (!fs.existsSync(reportDirDest)) {
+          fs.mkdirSync(reportDirDest, { recursive: true });
+        }
+        fs.cpSync(reportDirSrc, reportDirDest, { recursive: true });
       }
     },
   };

@@ -23,6 +23,43 @@
 
 ---
 
+## ⚡ New Here? 60-Second Quickstart (Zero Confusion)
+
+If you are an **SIH Judge**, **Evaluator**, or **First-Time Tester**, you don't need to configure complex environments. Follow the path that matches your goal:
+
+| Goal | Recommended Action | Time Required |
+|:---|:---|:---:|
+| 🚀 **Run the Full Live Demo** | Double-click [`start-privaagent.bat`](start-privaagent.bat) (or run `.\start-privaagent.ps1` in PowerShell). Boots the backend and launches Chrome with the extension pre-loaded! | **10 seconds** |
+| 🧩 **Install into Existing Chrome** | Open `chrome://extensions` &rarr; Developer Mode **ON** &rarr; **Load unpacked** &rarr; Select the [`privaagent-extension`](privaagent-extension/) folder. | **15 seconds** |
+| 🧪 **Verify All 12 Test Suites** | Run `powershell -ExecutionPolicy Bypass -File .\run-all-tests.ps1` in terminal. Validates 100% pass rate. | **60 seconds** |
+| 📊 **View SIH Scoring & Defense** | See [SIH Benchmark Scorecard](#-official-sih26171-benchmark-scorecard) & [Two-Layer Architecture](docs/TWO_LAYER_ARCHITECTURE.md). | **2 minutes** |
+
+> [!CAUTION]
+> ### 🛑 Avoid the Most Common Beginner Mistake:
+> When clicking **"Load unpacked"** in `chrome://extensions/`:
+> * ✅ **CORRECT:** Select the **`privaagent-extension`** folder (located right in the root of this repo) or `extension/dist`.
+> * ❌ **DO NOT SELECT:** The top-level `Privaagent` repository root folder. Chrome will report *"Manifest file is missing or unreadable"* because `manifest.json` is packaged inside the extension directory!
+
+---
+
+### 📁 Project Directory Map (Where Everything Lives)
+
+```
+Privaagent/
+├── 🧩 privaagent-extension/    # ⭐ PRE-BUILT UNPACKED EXTENSION (Select THIS in chrome://extensions)
+├── ⚡ start-privaagent.bat     # ⭐ 1-CLICK LAUNCHER (Auto-boots server + opens Chrome with extension)
+├── ⚡ start-privaagent.ps1     # 1-Click Launcher for PowerShell
+├── 🧪 run-all-tests.ps1        # Automated Test Runner (Executes all 12 test suites & benchmarks)
+├── 🌐 demo/                    # Interactive Demonstration Web Portal (HTML/CSS/JS with test presets)
+├── 🖥️ server/                  # FastAPI Python Backend (Defense-in-depth, VLM client, schemas)
+├── 📦 extension/               # Chrome MV3 Extension Source Code (TypeScript, WebGPU/WASM, Vite)
+├── 📊 benchmark/               # Official SIH26171 5-Metric Benchmark dataset (265 test vectors)
+├── 📜 tests/                   # 12 Integration, Perception, Privacy & Contract Test Suites
+└── 📖 docs/                    # Architecture deep-dives, DPDP Act compliance guides & PPT resources
+```
+
+---
+
 ## 📖 Executive Overview: The "85% Rule"
 
 Frontier autonomous web agents suffer from a critical architectural flaw: they capture full desktop or viewport screenshots and continuously transmit unredacted citizen PAN cards, Aadhaar IDs, banking secrets, and personal photos to remote cloud APIs on every action loop.
