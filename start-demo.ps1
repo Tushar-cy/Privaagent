@@ -52,7 +52,7 @@ Write-Host "==================================================================" 
 Write-Host "To test with the Chrome Extension:" -ForegroundColor Gray
 Write-Host "  1. Open Chrome -> navigate to chrome://extensions" -ForegroundColor Gray
 Write-Host "  2. Enable 'Developer mode' (top right toggle)" -ForegroundColor Gray
-Write-Host "  3. Click 'Load unpacked' -> select '$ROOT\extension\dist\'" -ForegroundColor Gray
+Write-Host "  3. Click 'Load unpacked' -> select '$ROOT\privaagent-extension\'" -ForegroundColor Gray
 Write-Host "  4. Open the extension popup or click on the demo page!" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Press Ctrl+C to stop the server." -ForegroundColor DarkGray
