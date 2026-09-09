@@ -38,6 +38,19 @@ export function resolveElementByTargetId(targetId: string): Element | null {
     return byId;
   }
 
+  // Fallback: search across open Shadow DOM roots in Web Components
+  const shadowHosts = document.querySelectorAll("*");
+  for (let i = 0; i < shadowHosts.length; i++) {
+    const root = shadowHosts[i].shadowRoot;
+    if (root) {
+      const el = root.querySelector(`[data-privaagent-id="${targetId}"]`) || root.getElementById(targetId);
+      if (el) {
+        elementRegistry.set(targetId, el);
+        return el;
+      }
+    }
+  }
+
   return null;
 }
 
@@ -71,6 +84,28 @@ function generateStableTargetId(el: Element, index: number): string {
   const role = el.getAttribute("role") || "";
   const prefix = role ? `${tagName}_${role}` : tagName;
   return `${prefix}_${index}`;
+}
+
+/**
+ * Returns true if an element is a text-bearing leaf node:
+ * has non-empty text content and no child elements (or only inline text).
+ * Used to safely include div/section elements used as text containers in
+ * modern web apps (AI chat bubbles, card descriptions, etc.) without
+ * capturing complex layout containers.
+ */
+function isTextLeaf(el: Element): boolean {
+  const text = el.textContent?.trim() || "";
+  if (text.length === 0) return false;
+  // No child element nodes — pure text leaf
+  if (el.children.length === 0) return true;
+  // Allow elements whose only children are purely inline/formatting elements
+  // (strong, em, b, i, code, mark, sup, sub, br, span-only)
+  const inlineTags = new Set(["strong", "em", "b", "i", "u", "s", "code", "mark",
+                               "sup", "sub", "br", "span", "abbr", "small", "time"]);
+  for (let i = 0; i < el.children.length; i++) {
+    if (!inlineTags.has(el.children[i].tagName.toLowerCase())) return false;
+  }
+  return true;
 }
 
 /**
@@ -119,14 +154,41 @@ function isCandidateElement(el: Element): boolean {
     tagName === "td" ||
     tagName === "th"
   ) {
-    // Only capture if it contains non-empty direct or child text and no complex interactive children
-    const text = el.textContent?.trim() || "";
-    if (text.length > 0 && el.children.length === 0) {
-      return true;
-    }
+    return isTextLeaf(el);
+  }
+
+  // DIV as text container: Modern web apps (AI chats, card UIs, React/Vue apps)
+  // heavily use <div> for text content. We include div ONLY when it is a text
+  // leaf node, to avoid capturing complex layout containers.
+  if (tagName === "div" || tagName === "section" || tagName === "article") {
+    return isTextLeaf(el);
   }
 
   return false;
+}
+
+/**
+ * Recursively collects candidate elements across light DOM and open Shadow DOM trees.
+ * Penetrates Web Components, Lit, Stencil, Polymer, and custom enterprise elements.
+ */
+function collectAllNodesWithShadow(root: Document | ShadowRoot | Element): Element[] {
+  const nodes: Element[] = [];
+  const selector =
+    "button, a, input, textarea, select, canvas, h1, h2, h3, h4, h5, h6, p, span, label, li, td, th, div, section, article, [role]";
+
+  try {
+    const list = root.querySelectorAll(selector);
+    for (let i = 0; i < list.length; i++) {
+      const el = list[i];
+      nodes.push(el);
+      // Recursively traverse open shadow roots
+      if (el.shadowRoot) {
+        nodes.push(...collectAllNodesWithShadow(el.shadowRoot));
+      }
+    }
+  } catch (_) {}
+
+  return nodes;
 }
 
 /**
@@ -138,9 +200,8 @@ export function extractPageState(): ExtractionResult {
   elementRegistry.clear();
 
   const elements: PageElement[] = [];
-  const allNodes = document.querySelectorAll(
-    "button, a, input, textarea, select, canvas, h1, h2, h3, h4, h5, h6, p, span, label, li, td, th, [role]"
-  );
+  // Penetrates both light DOM and Shadow DOM trees
+  const allNodes = collectAllNodesWithShadow(document);
 
   let sequenceIndex = 0;
 
@@ -198,7 +259,8 @@ export function extractPageState(): ExtractionResult {
       sensitive: el instanceof HTMLInputElement && el.type === "password",
       task_relevance: tagName === "canvas" ? 0.0 : 0.5,
       sources,
-      interactable: tagName !== "p" && tagName !== "span" && !/^h[1-6]$/.test(tagName),
+      interactable: tagName !== "p" && tagName !== "span" && !/^h[1-6]$/.test(tagName)
+                    && tagName !== "div" && tagName !== "section" && tagName !== "article",
     };
 
     elements.push(pageElement);

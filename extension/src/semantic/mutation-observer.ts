@@ -8,7 +8,7 @@ type PageStateUpdateCallback = (pageState: PageState, durationMs: number) => voi
 
 let observer: MutationObserver | null = null;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-const DEBOUNCE_DELAY_MS = 50;
+const DEBOUNCE_DELAY_MS = 150; // Raised from 50ms to reduce CPU thrash on heavy pages
 
 /**
  * Initializes the DOM MutationObserver to detect dynamic page state changes.
@@ -19,15 +19,28 @@ export function startObservingDOM(onUpdate: PageStateUpdateCallback): void {
   }
 
   observer = new MutationObserver((mutations) => {
-    // Filter out internal Privaagent mutations (e.g. redaction overlays)
+    // Filter out internal Privaagent mutations to prevent self-triggering re-extraction loops.
+    // We write data-privaagent-id attributes on every element we scan — if we don't exclude
+    // these writes, every extraction triggers another extraction infinitely.
     const hasExternalMutations = mutations.some((mutation) => {
       const target = mutation.target as HTMLElement;
+
+      // Exclude our own overlay container mutations
       if (
         target.id?.startsWith("privaagent-") ||
         target.className?.includes?.("privaagent-")
       ) {
         return false;
       }
+
+      // Exclude our own data-privaagent-id attribute writes (Bug 7 fix)
+      if (
+        mutation.type === "attributes" &&
+        mutation.attributeName === "data-privaagent-id"
+      ) {
+        return false;
+      }
+
       return true;
     });
 
@@ -48,7 +61,8 @@ export function startObservingDOM(onUpdate: PageStateUpdateCallback): void {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["class", "style", "disabled", "hidden", "aria-hidden", "value"],
+      // Tightened filter: do NOT observe data-privaagent-id (our own writes)
+      attributeFilter: ["class", "style", "disabled", "hidden", "aria-hidden", "value", "src", "href"],
       characterData: true,
     });
   }

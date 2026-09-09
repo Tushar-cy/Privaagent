@@ -25,7 +25,9 @@ def test_health_check():
     assert "Privaagent" in api_data["service"]
 
 
-def test_resolve_action_valid_disclosure():
+def test_resolve_action_valid_disclosure(monkeypatch):
+    from app.api import routes
+    monkeypatch.setattr(routes.vlm_client, "provider", "mock")
     valid_payload = {
         "level": "L1",
         "reason": "Escalation to L1 due to complex visual reasoning required",

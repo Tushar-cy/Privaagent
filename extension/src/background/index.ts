@@ -8,19 +8,24 @@ const BADGE_COLORS: Record<string, string> = {
   L2: "#8b5cf6",      // Violet (Sanitized Visual Crop ROI)
   L3: "#ec4899",      // Pink (Masked Full Screen)
   CONFIRM: "#f97316", // Orange (User Confirmation Pause)
-  BLOCKED: "#ef4444", // Crimson (Security Policy Block)
+  BLOCKED: "#6b7280", // Grey (Shield OFF or blocked)
+  OFF: "#6b7280",     // Grey (Shield disabled by user)
 };
 
 chrome.runtime.onInstalled.addListener((details) => {
   console.log("[Privaagent Service Worker] Installed successfully:", details.reason);
   if (chrome.action?.setBadgeBackgroundColor) {
     chrome.action.setBadgeBackgroundColor({ color: "#10b981" });
-    chrome.action.setBadgeText({ text: "0B" });
+    chrome.action.setBadgeText({ text: "ON" });
   }
+  // Initialize shield state as enabled
+  chrome.storage.local.set({ privaagent_shield_enabled: true });
 });
 
 chrome.runtime.onStartup.addListener(() => {
   console.log("[Privaagent Service Worker] Browser startup - Sentry active");
+  // Re-apply badge color on startup
+  chrome.action?.setBadgeBackgroundColor?.({ color: "#10b981" });
 });
 
 // Listener for messages from content scripts, popup, and validation engines
@@ -34,7 +39,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     case "CAPTURE_TAB": {
-      // Capture visible tab using chrome.tabs API in MV3 service worker
       const targetWindowId = sender.tab?.windowId ?? chrome.windows?.WINDOW_ID_CURRENT;
       if (chrome.tabs?.captureVisibleTab) {
         chrome.tabs.captureVisibleTab(
@@ -50,23 +54,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
           }
         );
-        return true; // Keep message channel open for async response
+        return true;
       } else {
-        sendResponse({
-          success: false,
-          error: "chrome.tabs.captureVisibleTab API unavailable in current environment",
-        });
+        sendResponse({ success: false, error: "chrome.tabs.captureVisibleTab API unavailable" });
       }
       break;
     }
 
     case "UPDATE_BADGE": {
       const level = message.level || "L0";
-      const customText = message.text || (level === "L0" ? "0B" : level);
+      const customText = message.text || (level === "L0" ? "ON" : level);
       const color = BADGE_COLORS[level] || BADGE_COLORS.L0;
 
       if (chrome.action?.setBadgeText) {
-        chrome.action.setBadgeText({ text: customText });
+        chrome.action.setBadgeText({ text: String(customText).slice(0, 4) });
         chrome.action.setBadgeBackgroundColor({ color });
       }
       sendResponse({ success: true, badge: customText, color });
@@ -81,12 +82,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
     }
 
+    // Shield ON/OFF state — persisted via chrome.storage.local
+    case "SET_SHIELD_STATE": {
+      const enabled = Boolean(message.enabled);
+      chrome.storage.local.set({ privaagent_shield_enabled: enabled }, () => {
+        if (chrome.action?.setBadgeText) {
+          chrome.action.setBadgeText({ text: enabled ? "ON" : "OFF" });
+          chrome.action.setBadgeBackgroundColor({
+            color: enabled ? "#10b981" : "#6b7280",
+          });
+        }
+        sendResponse({ success: true, enabled });
+      });
+      return true;
+    }
+
+    case "GET_SHIELD_STATE": {
+      chrome.storage.local.get(["privaagent_shield_enabled"], (result) => {
+        const enabled = result.privaagent_shield_enabled !== false; // default true
+        sendResponse({ success: true, enabled });
+      });
+      return true;
+    }
+
     case "GET_AUDIT_LEDGER": {
       if (chrome.storage?.local) {
         chrome.storage.local.get(["privaagent_audit_ledger"], (result) => {
           sendResponse({ success: true, ledger: result.privaagent_audit_ledger || [] });
         });
-        return true; // Async response
+        return true;
       }
       sendResponse({ success: false, ledger: [] });
       break;
@@ -97,11 +121,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         chrome.storage.local.get(["privaagent_audit_ledger"], (result) => {
           const ledger = result.privaagent_audit_ledger || [];
           ledger.push(message.transaction);
-          chrome.storage.local.set({ privaagent_audit_ledger: ledger }, () => {
-            sendResponse({ success: true, count: ledger.length });
+          // Keep ledger to last 500 entries to avoid storage overflow
+          const trimmed = ledger.slice(-500);
+          chrome.storage.local.set({ privaagent_audit_ledger: trimmed }, () => {
+            sendResponse({ success: true, count: trimmed.length });
           });
         });
-        return true; // Async response
+        return true;
       }
       sendResponse({ success: false });
       break;

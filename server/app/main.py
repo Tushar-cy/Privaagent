@@ -1,12 +1,30 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.api.routes import router as api_router
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup: validate Ollama availability if using remote VLM provider."""
+    if settings.VLM_PROVIDER != "mock":
+        from app.vlm.ollama_check import check_ollama_availability
+        await check_ollama_availability(settings.VLM_API_BASE_URL, settings.VLM_MODEL_ID)
+    else:
+        import logging
+        logging.getLogger("uvicorn.error").warning(
+            "[Privaagent] VLM_PROVIDER=mock — running with heuristic mock responses. "
+            "Set VLM_PROVIDER=remote and start Ollama for real intelligence."
+        )
+    yield
+
+
 app = FastAPI(
     title="Privaagent VLM Fallback API",
     description="Backend service for Adaptive Minimum-Disclosure Browser Agent (SIH26171)",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # Configure CORS for Chrome extension origins & local dev
@@ -22,7 +40,11 @@ app.add_middleware(
 
 @app.get("/health")
 async def root_health():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "vlm_provider": settings.VLM_PROVIDER,
+        "vlm_model": settings.VLM_MODEL_ID,
+    }
 
 
 # Mount API routes

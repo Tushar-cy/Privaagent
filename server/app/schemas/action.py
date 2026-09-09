@@ -24,3 +24,5 @@ class Action(BaseModel):
     delta: Optional[ScrollDelta] = Field(default=None, description="Pixel delta for scroll")
     url: Optional[str] = Field(default=None, description="Destination URL for navigate")
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    model_used: Optional[str] = Field(default=None, description="Actual model identifier used for inference")
+    execution_backend: Optional[str] = Field(default=None, description="Actual execution engine or provider")

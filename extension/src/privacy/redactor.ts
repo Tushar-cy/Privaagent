@@ -49,14 +49,30 @@ export const sessionTokens = new SessionTokenMap();
 
 /**
  * Computes exact sub-string bounding box within a DOM node using Range API.
+ * When exactText is provided, searches for the exact substring in the node's
+ * text content to avoid index drift from leading/trailing whitespace or indentation.
  */
 export function getSubStringBoundingBox(
   element: Element,
   startChar: number,
-  endChar: number
+  endChar: number,
+  exactText?: string
 ): BoundingBox | null {
   try {
     const doc = element.ownerDocument || document;
+    const fullText = element.textContent || "";
+
+    // If exactText is provided, resolve the true start/end offsets directly from full untrimmed text
+    let trueStart = startChar;
+    let trueEnd = endChar;
+    if (exactText && exactText.length > 0) {
+      const foundIdx = fullText.indexOf(exactText);
+      if (foundIdx !== -1) {
+        trueStart = foundIdx;
+        trueEnd = foundIdx + exactText.length;
+      }
+    }
+
     const whatToShow = typeof NodeFilter !== "undefined" ? NodeFilter.SHOW_TEXT : 4;
     const walker = doc.createTreeWalker(element, whatToShow, null);
 
@@ -72,14 +88,14 @@ export function getSubStringBoundingBox(
       const textLen = currentNode.textContent?.length || 0;
       const nextOffset = currentOffset + textLen;
 
-      if (!startNode && startChar >= currentOffset && startChar <= nextOffset) {
+      if (!startNode && trueStart >= currentOffset && trueStart <= nextOffset) {
         startNode = currentNode;
-        startNodeOffset = startChar - currentOffset;
+        startNodeOffset = trueStart - currentOffset;
       }
 
-      if (endChar >= currentOffset && endChar <= nextOffset) {
+      if (trueEnd >= currentOffset && trueEnd <= nextOffset) {
         endNode = currentNode;
-        endNodeOffset = endChar - currentOffset;
+        endNodeOffset = trueEnd - currentOffset;
         break;
       }
 
@@ -146,7 +162,7 @@ export function redactElementText(
     // Compute pixel-exact box if element is provided
     let bbox: BoundingBox = [0, 0, 0, 0];
     if (element) {
-      const calculatedBox = getSubStringBoundingBox(element, d.span[0], d.span[1]);
+      const calculatedBox = getSubStringBoundingBox(element, d.span[0], d.span[1], d.text);
       if (calculatedBox) {
         bbox = calculatedBox;
       }

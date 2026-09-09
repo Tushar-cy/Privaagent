@@ -28,11 +28,15 @@ function locateLiveElement(targetId: string, doc: Document = document): Element 
   const byId = doc.getElementById(targetId);
   if (byId) return byId;
 
-  // Strategy 2: data-target-id attribute
+  // Strategy 2: data-privaagent-id attribute (written by dom-extractor on every scanned element)
+  const byPrivaId = doc.querySelector(`[data-privaagent-id="${targetId}"]`);
+  if (byPrivaId) return byPrivaId;
+
+  // Strategy 3: data-target-id attribute (legacy fallback)
   const byAttr = doc.querySelector(`[data-target-id="${targetId}"]`);
   if (byAttr) return byAttr;
 
-  // Strategy 3: Derived chart bar or visual sub-element lookup
+  // Strategy 4: Derived chart bar or visual sub-element lookup
   // E.g., if target_id is "revenue-chart_bar_4", the canvas is "revenue-chart"
   if (targetId.includes("_bar_")) {
     const parentId = targetId.split("_bar_")[0];

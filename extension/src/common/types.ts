@@ -67,6 +67,8 @@ export const ActionSchema = z.object({
   delta: ScrollDeltaSchema.optional(),
   url: z.string().optional(),
   confidence: z.number().min(0).max(1).default(1.0),
+  model_used: z.string().optional(),
+  execution_backend: z.string().optional(),
 });
 export type Action = z.infer<typeof ActionSchema>;
 

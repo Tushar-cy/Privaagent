@@ -27,13 +27,16 @@ Write-Host "Packaged distributable extension: privaagent-extension.zip" -Foregro
 Write-Host ""
 Write-Host "[2/3] Starting Privaagent Minimum-Disclosure Core Server..." -ForegroundColor Yellow
 $PythonExe = "$ROOT\server\venv\Scripts\python.exe"
-
 if (-not (Test-Path $PythonExe)) {
-    Write-Host "Virtual environment not found! Please run setup first." -ForegroundColor Red
-    exit 1
+    $PythonExe = (Get-Command python -ErrorAction SilentlyContinue).Source
+    if (-not $PythonExe) {
+        Write-Host "Python not found! Please install Python or run setup first." -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "Using system Python: $PythonExe" -ForegroundColor Gray
 }
 
-$ServerProcess = Start-Process -FilePath $PythonExe -ArgumentList "-m uvicorn app.main:app --host 127.0.0.1 --port 8000" -PassThru -NoNewWindow
+$ServerProcess = Start-Process -FilePath $PythonExe -ArgumentList "-m uvicorn app.main:app --host 127.0.0.1 --port 8000" -WorkingDirectory "$ROOT\server" -PassThru -NoNewWindow
 Start-Sleep -Seconds 2
 
 # 4. Open Demo in Browser

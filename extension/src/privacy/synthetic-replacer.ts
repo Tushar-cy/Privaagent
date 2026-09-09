@@ -190,6 +190,36 @@ export function generateSyntheticIFSC(): string {
   return `SBIN0${branch.toString().slice(0, 6)}`;
 }
 
+export function generateSyntheticGSTIN(): string {
+  const pan = generateSyntheticPAN();
+  return `27${pan}1Z5`;
+}
+
+export function generateSyntheticDL(): string {
+  const num = Math.floor(1000000 + Math.random() * 9000000);
+  return `DL-1420180${num.toString().slice(0, 7)}`;
+}
+
+export function generateSyntheticBankAccount(): string {
+  const num = Math.floor(10000000000 + Math.random() * 90000000000);
+  return num.toString();
+}
+
+export function generateSyntheticDOB(): string {
+  const d = Math.floor(1 + Math.random() * 28).toString().padStart(2, "0");
+  const m = Math.floor(1 + Math.random() * 12).toString().padStart(2, "0");
+  const y = Math.floor(1975 + Math.random() * 30);
+  return `${d}/${m}/${y}`;
+}
+
+export function generateSyntheticRC(): string {
+  const states = ["MH", "DL", "KA", "TN", "UP", "HR"];
+  const st = states[Math.floor(Math.random() * states.length)];
+  const rto = Math.floor(1 + Math.random() * 99).toString().padStart(2, "0");
+  const num = Math.floor(1000 + Math.random() * 9000);
+  return `${st}-${rto}-AB-${num}`;
+}
+
 // ==========================================
 // 5. Unified Synthetic Surrogate Engine
 // ==========================================
@@ -213,8 +243,19 @@ export function generateSyntheticSurrogate(entityType: SensitiveEntityType | str
       return generateSyntheticPhone();
     case "UPI_ID":
       return generateSyntheticUPI();
+    case "IFSC":
     case "IFSC_CODE":
       return generateSyntheticIFSC();
+    case "GSTIN":
+      return generateSyntheticGSTIN();
+    case "DRIVING_LICENSE":
+      return generateSyntheticDL();
+    case "BANK_ACCOUNT":
+      return generateSyntheticBankAccount();
+    case "DOB":
+      return generateSyntheticDOB();
+    case "VEHICLE_RC":
+      return generateSyntheticRC();
     case "SECRET_KEY":
       return "sk_test_synthetic00000000000000000000";
     case "JWT_TOKEN":
