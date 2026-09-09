@@ -168,16 +168,32 @@ cd extension
 npm install
 npm run build
 ```
-* The production build is output to `extension/dist/`.
+* The production build is output to `extension/dist/` and automatically mirrored to `privaagent-extension/` in the project root.
 * A pre-packaged zip archive is also created at `privaagent-extension.zip`.
 
 ---
 
-### Step 3: Load the Extension in Chrome
-1. Open Chrome and navigate to `chrome://extensions/`.
-2. Enable **Developer mode** (toggle in the top-right corner).
-3. Click **Load unpacked** and select the `extension/dist/` directory.
-4. Pin the **Privaagent** shield icon to your toolbar.
+### ⚡ Option A: 1-Click Automated Launch (Recommended)
+Simply double-click `start-privaagent.bat` (or run `./start-privaagent.ps1` in PowerShell):
+```bat
+start-privaagent.bat
+```
+* Automatically verifies the extension build
+* Starts the FastAPI backend service
+* Launches Chrome with Privaagent pre-loaded to `http://127.0.0.1:8000/demo/index.html`
+
+---
+
+### 🧩 Option B: Manual Extension Loading in Chrome
+1. Open Google Chrome (or Edge/Brave) and navigate to `chrome://extensions/`.
+2. Enable **Developer mode** (toggle switch in the top-right corner).
+3. Click the **Load unpacked** button.
+4. **CRITICAL FOLDER SELECTION**:
+   > [!IMPORTANT]
+   > In the folder selection dialog, select the **`privaagent-extension`** folder (or navigate into `extension/dist/`).  
+   > ❌ **Do NOT select the root `Privaagent` repository folder** — Chrome will show *"Manifest file is missing or unreadable"* because `manifest.json` is located inside the unpacked extension directory!
+5. Click **Select Folder**.
+6. Pin the **Privaagent** shield icon to your browser toolbar.
 
 ---
 

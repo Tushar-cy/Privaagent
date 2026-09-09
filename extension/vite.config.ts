@@ -27,6 +27,17 @@ function buildContentScript() {
           },
         },
       });
+
+      // Mirror dist to root privaagent-extension for foolproof Chrome "Load unpacked"
+      try {
+        const rootUnpacked = resolve(__dirname, "../privaagent-extension");
+        if (!fs.existsSync(rootUnpacked)) {
+          fs.mkdirSync(rootUnpacked, { recursive: true });
+        }
+        fs.cpSync(resolve(__dirname, "dist"), rootUnpacked, { recursive: true });
+      } catch {
+        // non-blocking
+      }
     },
   };
 }

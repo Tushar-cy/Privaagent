@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privaagent — Privacy Command Center</title>
+    <style>
+      :root {
+        --bg-main: #07090f;
+        --bg-card: #0e1320;
+        --bg-card-hover: #141c2e;
+        --bg-glass: rgba(14, 19, 32, 0.85);
+        --border: #1e2d4a;
+        --border-glow: rgba(56, 189, 248, 0.18);
+        --primary: #38bdf8;
+        --primary-dim: rgba(56, 189, 248, 0.12);
+        --primary-glow: rgba(56, 189, 248, 0.35);
+        --success: #34d399;
+        --success-dim: rgba(52, 211, 153, 0.12);
+        --warning: #fbbf24;
+        --danger: #f87171;
+        --danger-dim: rgba(248, 113, 113, 0.12);
+        --secret: #a855f7;
+        --secret-dim: rgba(168, 85, 247, 0.15);
+        --text: #f1f5f9;
+        --text-muted: #64748b;
+        --text-dim: #94a3b8;
+        --radius: 10px;
+        --radius-sm: 6px;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        width: 420px;
+        min-height: 580px;
+        font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+        background: var(--bg-main);
+        color: var(--text);
+        user-select: none;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+
+      /* ─── Scanning pulse animation ─── */
+      @keyframes pulse-ring {
+        0%   { box-shadow: 0 0 0 0 var(--primary-glow); }
+        70%  { box-shadow: 0 0 0 8px transparent; }
+        100% { box-shadow: 0 0 0 0 transparent; }
+      }
+      @keyframes scan-slide {
+        0%   { left: -100%; }
+        100% { left: 200%; }
+      }
+      @keyframes fade-in-up {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes threat-in {
+        from { opacity: 0; transform: translateX(-8px); }
+        to   { opacity: 1; transform: translateX(0); }
+      }
+      @keyframes blink-dot {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.3; }
+      }
+
+      /* ─── Header ─── */
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px 12px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(180deg, #0d1525 0%, var(--bg-main) 100%);
+        position: relative;
+        overflow: hidden;
+      }
+      .header::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent 0%, var(--primary-dim) 50%, transparent 100%);
+        animation: scan-slide 4s ease-in-out infinite;
+        pointer-events: none;
+        opacity: 0;
+      }
+      .header.scanning::after { opacity: 1; }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .logo {
+        width: 32px; height: 32px;
+        background: linear-gradient(135deg, #0ea5e9, #6366f1);
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 17px;
+        box-shadow: 0 0 0 0 var(--primary-glow);
+        transition: box-shadow 0.3s;
+        flex-shrink: 0;
+      }
+      .logo.pulsing { animation: pulse-ring 2s ease-out infinite; }
+
+      .brand-text { display: flex; flex-direction: column; }
+      .brand-name {
+        font-size: 15px; font-weight: 800;
+        background: linear-gradient(90deg, #38bdf8, #a78bfa);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        letter-spacing: -0.4px; line-height: 1;
+      }
+      .brand-sub {
+        font-size: 9px; color: var(--text-muted);
+        font-weight: 500; letter-spacing: 0.5px;
+        margin-top: 2px; text-transform: uppercase;
+      }
+
+      /* ─── Power Toggle ─── */
+      .power-row {
+        display: flex; align-items: center; gap: 8px;
+      }
+      .shield-status {
+        font-size: 10px; font-weight: 700;
+        padding: 3px 8px; border-radius: 20px;
+        display: flex; align-items: center; gap: 4px;
+        transition: all 0.3s;
+      }
+      .shield-status.on  { background: var(--success-dim); color: var(--success); border: 1px solid rgba(52,211,153,0.3); }
+      .shield-status.off { background: rgba(100,116,139,0.15); color: var(--text-muted); border: 1px solid var(--border); }
+      .status-dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: var(--success);
+        animation: blink-dot 2s ease-in-out infinite;
+      }
+      .status-dot.off { background: var(--text-muted); animation: none; }
+
+      /* Toggle Switch */
+      .toggle-wrap { display: flex; align-items: center; }
+      .toggle-switch {
+        position: relative; width: 44px; height: 24px;
+        cursor: pointer;
+      }
+      .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+      .toggle-track {
+        position: absolute; inset: 0;
+        background: #1e2d4a;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        transition: all 0.3s;
+      }
+      .toggle-switch input:checked ~ .toggle-track {
+        background: linear-gradient(135deg, #0ea5e9, #6366f1);
+        border-color: #38bdf8;
+        box-shadow: 0 0 8px rgba(56,189,248,0.5);
+      }
+      .toggle-thumb {
+        position: absolute; top: 2px; left: 2px;
+        width: 18px; height: 18px;
+        background: #64748b;
+        border-radius: 50%;
+        transition: all 0.3s;
+        z-index: 1;
+      }
+      .toggle-switch input:checked ~ .toggle-thumb {
+        left: 22px; background: #fff;
+      }
+
+      /* ─── Tab Info Bar ─── */
+      .tab-bar {
+        display: flex; align-items: center; gap: 6px;
+        padding: 7px 16px;
+        background: #0a0e1a;
+        border-bottom: 1px solid var(--border);
+        font-size: 11px; color: var(--text-dim);
+        overflow: hidden;
+      }
+      .tab-bar .favicon { width: 12px; height: 12px; opacity: 0.7; }
+      .tab-url {
+        flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        color: var(--text-muted); font-size: 10.5px;
+      }
+      .dpdp-badge {
+        font-size: 9px; font-weight: 700;
+        background: rgba(52,211,153,0.1); color: var(--success);
+        border: 1px solid rgba(52,211,153,0.2); border-radius: 4px;
+        padding: 1px 5px; white-space: nowrap; flex-shrink: 0;
+      }
+
+      /* ─── Metrics Grid ─── */
+      .metrics {
+        display: grid; grid-template-columns: repeat(4,1fr);
+        gap: 1px; background: var(--border);
+        border-top: none; border-bottom: 1px solid var(--border);
+      }
+      .metric {
+        background: var(--bg-main);
+        padding: 10px 8px; text-align: center;
+        position: relative; overflow: hidden;
+      }
+      .metric::before {
+        content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+        background: transparent; transition: background 0.3s;
+      }
+      .metric.active-pii::before { background: linear-gradient(90deg, var(--success), #0ea5e9); }
+      .metric.active-secrets::before { background: var(--secret); }
+      .metric.active-latency::before { background: var(--primary); }
+      .metric.active-level::before { background: var(--warning); }
+
+      .metric-label {
+        font-size: 9px; font-weight: 700;
+        color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px;
+        margin-bottom: 5px;
+      }
+      .metric-val {
+        font-size: 18px; font-weight: 800; line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .metric-val.green  { color: var(--success); }
+      .metric-val.red    { color: var(--danger); }
+      .metric-val.purple { color: var(--secret); }
+      .metric-val.blue   { color: var(--primary); }
+      .metric-val.amber  { color: var(--warning); }
+      .metric-sub {
+        font-size: 9px; color: var(--text-muted);
+        margin-top: 2px;
+      }
+
+      /* ─── Live Threat Feed ─── */
+      .section { padding: 10px 14px; }
+      .section-header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 7px;
+      }
+      .section-title {
+        font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
+        color: var(--text-muted); text-transform: uppercase;
+        display: flex; align-items: center; gap: 5px;
+      }
+      .live-dot {
+        width: 5px; height: 5px; border-radius: 50%;
+        background: var(--danger);
+        animation: blink-dot 1.5s ease-in-out infinite;
+      }
+      .feed-count {
+        font-size: 10px; color: var(--text-muted); font-weight: 600;
+      }
+
+      .threat-feed {
+        display: flex; flex-direction: column; gap: 3px;
+        max-height: 130px; overflow-y: auto;
+        scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+      }
+      .threat-feed::-webkit-scrollbar { width: 3px; }
+      .threat-feed::-webkit-scrollbar-track { background: transparent; }
+      .threat-feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+      .threat-item {
+        display: flex; align-items: center; gap: 7px;
+        padding: 5px 8px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        font-size: 11px;
+        animation: threat-in 0.3s ease both;
+        transition: background 0.2s;
+      }
+      .threat-item:hover { background: var(--bg-card); }
+      .threat-badge {
+        font-size: 9px; font-weight: 700; padding: 1px 5px;
+        border-radius: 3px; white-space: nowrap; flex-shrink: 0; letter-spacing: 0.3px;
+      }
+      .badge-email   { background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.25); }
+      .badge-phone   { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.25); }
+      .badge-secret  { background: var(--secret-dim); color: #a855f7; border: 1px solid rgba(168,85,247,0.3); }
+      .badge-aadhaar { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); }
+      .badge-pan     { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.25); }
+      .badge-card    { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
+      .badge-person  { background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.25); }
+      .badge-gstin   { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+      .badge-dl      { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+      .badge-bank    { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+      .badge-dob     { background: rgba(236, 72, 153, 0.15); color: #ec4899; border: 1px solid rgba(236, 72, 153, 0.3); }
+      .badge-rc      { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.3); }
+      .badge-default { background: rgba(100,116,139,0.15); color: var(--text-muted); border: 1px solid var(--border); }
+
+      /* ─── SIH Benchmark Card ─── */
+      .benchmark-card {
+        background: #091220;
+        border: 1px solid #10b981;
+        border-radius: var(--radius);
+        padding: 12px;
+        margin: 0 14px 10px;
+        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2);
+        animation: fade-in-up 0.25s ease both;
+      }
+      .benchmark-header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+      }
+      .benchmark-score {
+        font-size: 20px; font-weight: 800; color: var(--success);
+      }
+      .bench-grid {
+        display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; font-size: 10.5px;
+      }
+      .bench-item {
+        background: var(--bg-card); padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border);
+      }
+      .bench-item .bk { color: var(--text-muted); font-size: 9.5px; }
+      .bench-item .bv { font-weight: 700; color: var(--text); margin-top: 2px; }
+
+      .threat-value {
+        flex: 1; font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+        font-size: 11px; color: var(--text-dim);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .threat-masked { color: var(--danger); font-weight: 600; }
+
+      .feed-empty {
+        text-align: center; padding: 16px;
+        font-size: 11px; color: var(--text-muted);
+        display: flex; flex-direction: column; align-items: center; gap: 4px;
+      }
+      .feed-empty .icon { font-size: 22px; opacity: 0.4; }
+
+      /* ─── Divider ─── */
+      .divider { height: 1px; background: var(--border); margin: 0 14px; }
+
+      /* ─── Mission Control ─── */
+      .mission-box {
+        padding: 10px 14px;
+        background: var(--bg-main);
+      }
+      .mission-header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 8px;
+      }
+      .mission-title {
+        font-size: 10px; font-weight: 700;
+        letter-spacing: 0.8px; text-transform: uppercase;
+        color: var(--text-muted);
+        display: flex; align-items: center; gap: 5px;
+      }
+      .mission-local-badge {
+        font-size: 9px; font-weight: 700;
+        background: rgba(52,211,153,0.1); color: var(--success);
+        padding: 1px 5px; border-radius: 3px;
+      }
+
+      .input-row {
+        display: flex; gap: 6px; margin-bottom: 7px;
+      }
+      .task-input {
+        flex: 1; padding: 9px 11px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        color: var(--text); font-size: 12px;
+        outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      .task-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px var(--border-glow);
+      }
+      .task-input::placeholder { color: var(--text-muted); }
+
+      .btn-run {
+        display: flex; align-items: center; gap: 5px;
+        padding: 9px 14px;
+        background: linear-gradient(135deg, #0ea5e9, #6366f1);
+        color: #fff; border: none; border-radius: var(--radius-sm);
+        font-size: 12px; font-weight: 700; cursor: pointer;
+        transition: all 0.2s; white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(14,165,233,0.3);
+      }
+      .btn-run:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(14,165,233,0.4); }
+      .btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+      /* Chips */
+      .chips {
+        display: flex; flex-wrap: wrap; gap: 4px;
+        margin-bottom: 7px;
+      }
+      .chip {
+        font-size: 10px; padding: 3px 8px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        color: var(--text-dim); cursor: pointer;
+        transition: all 0.2s; white-space: nowrap;
+      }
+      .chip:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-dim); }
+
+      /* Controls Row */
+      .controls-row {
+        display: flex; align-items: center; justify-content: space-between;
+        font-size: 11px; color: var(--text-muted);
+      }
+      .select-pill {
+        background: var(--bg-card);
+        color: var(--primary);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-size: 10px; padding: 3px 6px;
+        outline: none; cursor: pointer;
+      }
+
+      /* ─── Toast / Error Banner ─── */
+      .toast {
+        display: none; margin: 0 14px 8px;
+        padding: 8px 12px;
+        border-radius: var(--radius-sm);
+        font-size: 11px; font-weight: 600;
+        animation: fade-in-up 0.2s ease both;
+        line-height: 1.4;
+      }
+      .toast.error  { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(248,113,113,0.25); }
+      .toast.success { background: var(--success-dim); color: var(--success); border: 1px solid rgba(52,211,153,0.25); }
+      .toast.warning { background: rgba(251,191,36,0.1); color: var(--warning); border: 1px solid rgba(251,191,36,0.25); }
+      .toast.show { display: block; }
+
+      /* ─── Transaction Ledger ─── */
+      .ledger-box {
+        display: none; margin: 0 14px 8px;
+        padding: 10px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        animation: fade-in-up 0.25s ease both;
+      }
+      .ledger-box.show { display: block; }
+      .ledger-top {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 8px; padding-bottom: 7px;
+        border-bottom: 1px solid var(--border);
+      }
+      .ledger-head { font-size: 10px; font-weight: 700; color: var(--primary); letter-spacing: 0.5px; text-transform: uppercase; }
+      .level-pill {
+        font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 4px;
+      }
+      .level-l0 { background: rgba(52,211,153,0.15); color: var(--success); }
+      .level-l1 { background: rgba(251,191,36,0.12); color: var(--warning); }
+      .level-l2 { background: rgba(168,85,247,0.15); color: var(--secret); }
+      .level-l3 { background: rgba(248,113,113,0.12); color: var(--danger); }
+
+      .ledger-row {
+        display: flex; justify-content: space-between;
+        font-size: 11px; margin-bottom: 3px;
+      }
+      .ledger-row .k { color: var(--text-muted); }
+      .ledger-row .v { font-weight: 600; color: var(--text); max-width: 200px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .ledger-reason {
+        margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border);
+        font-size: 10px; color: var(--text-muted); line-height: 1.5;
+        word-break: break-all; white-space: pre-wrap;
+      }
+
+      /* ─── Action Buttons ─── */
+      .action-row {
+        display: flex; gap: 6px;
+        padding: 10px 14px; border-top: 1px solid var(--border);
+      }
+      .btn-portal {
+        flex: 2; display: flex; align-items: center; justify-content: center; gap: 5px;
+        padding: 8px 10px;
+        background: rgba(52,211,153,0.08);
+        border: 1px solid rgba(52,211,153,0.2);
+        color: var(--success); border-radius: var(--radius-sm);
+        font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+      }
+      .btn-portal:hover { background: rgba(52,211,153,0.15); border-color: var(--success); }
+
+      .btn-ledger {
+        flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+        padding: 8px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        color: var(--text-dim); border-radius: var(--radius-sm);
+        font-size: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+      }
+      .btn-ledger:hover { border-color: var(--primary); color: var(--primary); }
+
+      .btn-clear {
+        padding: 8px 10px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        color: var(--text-muted); border-radius: var(--radius-sm);
+        font-size: 10px; cursor: pointer; transition: all 0.2s;
+      }
+      .btn-clear:hover { border-color: var(--danger); color: var(--danger); }
+
+      /* ─── Footer ─── */
+      .footer {
+        padding: 8px 16px;
+        border-top: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        background: #07090f;
+      }
+      .footer-left { font-size: 9.5px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.3px; }
+      .footer-right { font-size: 9px; color: var(--text-muted); }
+      .score { color: var(--success); font-weight: 700; }
+    </style>
+    <script type="module" crossorigin src="/assets/popup-YGI_T4Jp.js"></script>
+  </head>
+  <body>
+
+    <!-- ─── Header ─────────────────────────────────────── -->
+    <div class="header" id="header">
+      <div class="brand">
+        <div class="logo" id="logo">🛡️</div>
+        <div class="brand-text">
+          <div class="brand-name">Privaagent</div>
+          <div class="brand-sub">SIH26171 • Privacy Command Center</div>
+        </div>
+      </div>
+      <div class="power-row">
+        <div class="shield-status on" id="shield-status">
+          <span class="status-dot" id="status-dot"></span>
+          <span id="status-label">ACTIVE</span>
+        </div>
+        <label class="toggle-switch" title="Enable / Disable Privacy Shield">
+          <input type="checkbox" id="toggle-shield" checked />
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+    </div>
+
+    <!-- ─── Tab Bar ─────────────────────────────────────── -->
+    <div class="tab-bar">
+      <span>🌐</span>
+      <span class="tab-url" id="tab-url">Inspecting active tab...</span>
+      <span class="dpdp-badge">DPDP Act 2023</span>
+    </div>
+
+    <!-- ─── Metrics Grid ──────────────────────────────────── -->
+    <div class="metrics">
+      <div class="metric active-latency">
+        <div class="metric-label">Scan Speed</div>
+        <div class="metric-val blue" id="m-latency">—</div>
+        <div class="metric-sub">ms (≤50ms)</div>
+      </div>
+      <div class="metric active-pii">
+        <div class="metric-label">PII Masked</div>
+        <div class="metric-val green" id="m-pii">0</div>
+        <div class="metric-sub">entities</div>
+      </div>
+      <div class="metric active-secrets">
+        <div class="metric-label">Secrets</div>
+        <div class="metric-val purple" id="m-secrets">0</div>
+        <div class="metric-sub">keys / tokens</div>
+      </div>
+      <div class="metric active-level">
+        <div class="metric-label">Net Saved</div>
+        <div class="metric-val amber" id="m-savings">100%</div>
+        <div class="metric-sub">bandwidth</div>
+      </div>
+    </div>
+
+    <!-- ─── Live Threat Feed ──────────────────────────────── -->
+    <div class="section" id="feed-section">
+      <div class="section-header">
+        <div class="section-title">
+          <span class="live-dot"></span>
+          Live PII Threat Feed
+        </div>
+        <span class="feed-count" id="feed-count">0 detections</span>
+      </div>
+      <div class="threat-feed" id="threat-feed">
+        <div class="feed-empty">
+          <span class="icon">✅</span>
+          <span>No PII detected on this page</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ─── Mission Control ───────────────────────────────── -->
+    <div class="mission-box">
+      <div class="mission-header">
+        <div class="mission-title">
+          ⚡ Mission Control
+        </div>
+        <span class="mission-local-badge">85% On-Device</span>
+      </div>
+
+      <div class="input-row">
+        <input class="task-input" type="text" id="task-input" placeholder="e.g. Open Rahul&#39;s invoice or Click Q4 bar" autocomplete="off" />
+        <button class="btn-run" id="btn-run">▶ Run</button>
+      </div>
+
+      <div class="chips">
+        <span class="chip" data-cmd="Open Rahul's invoice">⚡ 1. Local Processing (Invoice)</span>
+        <span class="chip" data-cmd="Click the bar representing Q4">🧠 2. Sanitized VLM (Q4 Bar)</span>
+        <span class="chip" data-cmd="Simulate Unsafe Leak">🚫 3. Privacy Block Demo</span>
+      </div>
+
+      <div class="controls-row">
+        <div style="display:flex; align-items:center; gap:4px;">
+          <span style="font-size:10px; color:var(--text-muted);">Mode:</span>
+          <select class="select-pill" id="sel-mode" title="Redaction Technology">
+            <option value="BLUR" selected>🛡️ Tactical Blur</option>
+            <option value="GHOST">👻 Ghost Shield (DOM)</option>
+            <option value="SYNTHETIC">🍯 Synthetic Honeypot</option>
+          </select>
+        </div>
+        <div style="display:flex; align-items:center; gap:4px;">
+          <span style="font-size:10px; color:var(--text-muted);">Max:</span>
+          <select class="select-pill" id="sel-ceiling" title="Policy Ceiling">
+            <option value="L0">L0 — Strict Local</option>
+            <option value="L1">L1 — Semantics</option>
+            <option value="L2" selected>L2 — Visual ROI</option>
+            <option value="L3">L3 — Full Fallback</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ─── SIH Live Benchmark Trigger ─── -->
+      <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border);">
+        <button class="btn-benchmark" id="btn-benchmark" style="width: 100%; padding: 8px 10px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(56, 189, 248, 0.18)); border: 1px solid #10b981; color: #34d399; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+          ⚡ Run Live SIH Benchmark Suite (Jury Proof)
+        </button>
+      </div>
+    </div>
+
+    <!-- ─── SIH Live Benchmark Results Card ───────────────── -->
+    <div class="benchmark-card" id="benchmark-card" style="display: none;">
+      <div class="benchmark-header">
+        <div>
+          <div style="font-size: 10px; font-weight: 800; color: #10b981; letter-spacing: 0.5px; text-transform: uppercase;">
+            SIH GRAND FINALE JURY EVALUATION
+          </div>
+          <div style="font-size: 9px; color: var(--text-muted);" id="bench-timestamp">Passed 20 Automated Tests</div>
+        </div>
+        <div class="benchmark-score" id="bench-score">99.4/100</div>
+      </div>
+      <div class="bench-grid">
+        <div class="bench-item">
+          <div class="bk">PERCEPTION LATENCY</div>
+          <div class="bv" id="b-latency" style="color:var(--success);">0.8 ms (&lt;50ms)</div>
+        </div>
+        <div class="bench-item">
+          <div class="bk">PII PRECISION & RECALL</div>
+          <div class="bv" id="b-precision" style="color:var(--success);">100% / 100%</div>
+        </div>
+        <div class="bench-item">
+          <div class="bk">NETWORK LEAKAGE</div>
+          <div class="bv" id="b-leaks" style="color:var(--success);">0 Bytes (Zero-Leak)</div>
+        </div>
+        <div class="bench-item">
+          <div class="bk">LEDGER CRYPTO CHAIN</div>
+          <div class="bv" id="b-merkle" style="color:var(--primary);">SHA-256 Verified</div>
+        </div>
+      </div>
+      <div style="margin-top: 8px; display: flex; gap: 6px;">
+        <button id="btn-export-bench" style="flex:1; background: rgba(56, 189, 248, 0.15); border: 1px solid var(--primary); color: var(--primary); padding: 5px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; cursor: pointer;">
+          📥 Download Jury Report (JSON)
+        </button>
+        <button id="btn-close-bench" style="background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); padding: 5px 8px; border-radius: 4px; font-size: 10px; cursor: pointer;">
+          ✕ Close
+        </button>
+      </div>
+    </div>
+
+    <!-- ─── Toast / Error Banner ──────────────────────────── -->
+    <div class="toast" id="toast"></div>
+
+    <!-- ─── Two-Layer Execution Telemetry Inspector ──────── -->
+    <div class="ledger-box" id="ledger-box">
+      <div class="ledger-top">
+        <div class="ledger-head" id="ledger-head">Architecture Path</div>
+        <span class="level-pill level-l0" id="ledger-level">🟢 LOCAL</span>
+      </div>
+
+      <div class="ledger-row"><span class="k">Active Model</span><span class="v" id="l-model" style="font-weight:700;">PrivaAgent Local Intent Engine</span></div>
+      <div class="ledger-row"><span class="k">Execution Backend</span><span class="v" id="l-backend">Browser WASM / DOM (0 Network)</span></div>
+      
+      <div class="ledger-row"><span class="k">Action & Target</span><span class="v"><span id="l-action">—</span> → <span id="l-target">—</span></span></div>
+
+      <!-- Real Latency Breakdown -->
+      <div class="ledger-row"><span class="k">Local Inference</span><span class="v" id="l-local-lat">0.0 ms</span></div>
+      <div class="ledger-row"><span class="k">Sanitization Time</span><span class="v" id="l-san-lat">0.0 ms</span></div>
+      <div class="ledger-row"><span class="k">VLM Latency</span><span class="v" id="l-vlm-lat">0.0 ms (Bypassed)</span></div>
+      <div class="ledger-row"><span class="k">Total E2E Latency</span><span class="v" id="l-latency" style="color:var(--success); font-weight:700;">0.0 ms</span></div>
+
+      <!-- Real Privacy & Network Proof -->
+      <div class="ledger-row"><span class="k">Sanitized Placeholders</span><span class="v" id="l-entities" style="color:var(--primary);">None (100% Local)</span></div>
+      <div class="ledger-row"><span class="k">External Request Made</span><span class="v" id="l-ext-req" style="color:var(--success); font-weight:700;">NO (0 Requests)</span></div>
+      <div class="ledger-row"><span class="k">Outbound Payload</span><span class="v" id="l-bytes">0 B (100% Saved)</span></div>
+      <div class="ledger-row"><span class="k">Pre-Flight Privacy Audit</span><span class="v" id="l-privacy-guard" style="color:var(--success); font-weight:700;">VERIFIED (Zero Leak)</span></div>
+
+      <div class="ledger-reason" id="l-reason"></div>
+    </div>
+
+    <!-- ─── Action Buttons ────────────────────────────────── -->
+    <div class="action-row">
+      <button class="btn-portal" id="btn-portal">🛡️ DPDP Compliance Portal</button>
+      <button class="btn-ledger" id="btn-inspect">📜 Ledger</button>
+      <button class="btn-clear" id="btn-clear">✕ Clear</button>
+    </div>
+
+    <!-- ─── Footer ────────────────────────────────────────── -->
+    <div class="footer">
+      <div class="footer-left">SIH26171 • Adaptive Minimum-Disclosure Architecture</div>
+      <div class="footer-right">DPDP 2023 • <span class="score">L0-First</span></div>
+    </div>
+
+  </body>
+</html>
