@@ -31,3 +31,6 @@ Thumbs.db
 # Antigravity & AI logs / scratch
 scratch/
 *.log
+
+# Tesseract WASM language data (downloaded at runtime, not committed)
+*.traineddata
