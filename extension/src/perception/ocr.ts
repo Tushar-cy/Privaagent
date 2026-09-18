@@ -63,21 +63,14 @@ export async function runFallbackOCR(
     // Obtain the pixel data as a data URL from the offscreen canvas
     const imageDataUrl = crop.toDataURL("image/png");
 
-    // Skip OCR if there are no pixels (JSDOM / headless test environment)
+    // If there are no real pixels (JSDOM / headless without @napi-rs/canvas backing),
+    // return empty spans and log a diagnostic — do NOT fabricate text.
+    // The benchmark harness uses @napi-rs/canvas so this guard should not fire there.
     if (!imageDataUrl || imageDataUrl === "data:," || imageDataUrl.length < 100) {
-      const [cropX, cropY, cropW, cropH] = crop.boundingBox;
-      const numSlots = Math.max(2, Math.min(6, Math.round(cropW / 90)));
-      const slotW = Math.round(cropW / numSlots);
-      for (let i = 0; i < numSlots; i++) {
-        const text = (_targetId.toLowerCase().includes("chart") || _targetId.toLowerCase().includes("revenue"))
-          ? `Q${i + 1}`
-          : `Col ${i + 1}`;
-        spans.push({
-          text,
-          bbox: [cropX + i * slotW + 5, cropY + cropH - 22, slotW - 10, 18],
-          confidence: 0.90,
-        });
-      }
+      console.warn(
+        `[OCR] Empty/stub data URL for "${_targetId}" — no real canvas pixels available. ` +
+        `Returning 0 spans. If running the benchmark, ensure @napi-rs/canvas is backing JSDOM.`
+      );
       return { spans, inferenceTimeMs: performance.now() - start };
     }
 

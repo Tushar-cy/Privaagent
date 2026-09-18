@@ -15,7 +15,7 @@ The jury consists of **ISRO scientists (NRSC, SAC, VSSC)**, cybersecurity audito
 1. **Sovereignty & Zero-Trust**: Space missions and defense intranets forbid transmitting raw operational screens or telemetry to foreign cloud APIs (OpenAI/Anthropic). Proving that **85% of tasks execute entirely on-device with 0 bytes transmitted** hits their exact mission requirements.
 2. **Mathematical & Algorithmic Rigor**: Judges reject black-box hype. Pointing out mathematical proofs (**Verhoeff dihedral groups for Aadhaar**, **Luhn polynomial for cards**, **Shannon entropy for secrets**, **FIPS 180-4 SHA-256 hash chains**) establishes deep scientific credibility.
 3. **Dynamic Perception vs Hardcoded Cheats**: Demonstrating **real pixel-level projection profiling ($Y = 0.2126R + 0.7152G + 0.0722B$)** and **chrominance skin-tone spaces ($Cb/Cr$)** proves the system works on arbitrary novel pages, not just static mockups.
-4. **Reproducible Quantitative Benchmarks**: Presenting the **99.41 / 100.00 score** across **265 labeled items** with real memory profiling (< 3ms DOM latency, < 100MB RAM) satisfies the exact rubric.
+4. **Reproducible Self-Evaluated Benchmark**: Presenting **77.97 / 100.00** across **265 labeled items** with real memory profiling (< 6ms DOM latency, < 150MB RAM) demonstrates methodological integrity — a reproducible harness is stronger than an unverifiable claimed score.
 
 ---
 
@@ -49,16 +49,16 @@ The jury consists of **ISRO scientists (NRSC, SAC, VSSC)**, cybersecurity audito
   * **85% Rule**: Over 85% of browser interactions (navigation, clicking buttons, selecting dropdowns, reading tables) do not need heavy cloud reasoning. They can be parsed, validated, and solved **100% on-device**.
   * **15% Fallback**: When visual ambiguity or novel spatial layouts occur (e.g. graphical `<canvas>` charts), the agent escalates up a calibrated **Minimum Disclosure Ladder** transmitting only sanitized visual ROI crops.
 * **Architecture Diagram**:
-  ```
-  [User Intent] ──► [On-Device Parser] ──► [Semantic DOM + A11y]
-                           │
-             ┌─────────────┴─────────────┐
-             ▼                           ▼
-     [Local Fast-Path]          [Requires Visual Context]
-     • 0 Bytes Transmitted      • Florence-2 / Dynamic Pixel CV
-     • 0.23 ms Latency          • Privacy Filter (Face Blur + PII Mask)
-     • 100% On-Device           • Minimum Disclosure Ladder (L1 -> L2 Crop)
-  ```
+   ```
+   [User Intent] ──► [On-Device Parser] ──► [Semantic DOM + A11y]
+                            │
+              ┌─────────────┴─────────────┐
+              ▼                           ▼
+      [Local Fast-Path]          [Requires Visual Context]
+      • 0 Bytes Transmitted      • Classical Pixel CV + Tesseract OCR
+      • < 1ms Latency            • Privacy Filter (Face Blur + PII Mask)
+      • 100% On-Device           • Minimum Disclosure Ladder (L1 -> L2 Crop)
+   ```
 
 ---
 
@@ -118,16 +118,17 @@ The jury consists of **ISRO scientists (NRSC, SAC, VSSC)**, cybersecurity audito
 
 ---
 
-### Slide 9: Official SIH26171 Benchmark Scorecard
+### Slide 9: Internal Self-Evaluation Scorecard
 * **Empirical Verification Table (Evaluated on 265 Labeled Test Cases)**:
-  | SIH26171 Metric | Weight | Measured Output | Benchmark Score |
+  > *Note to presenter: This is our internal reproducible harness — not an official SIH score. Emphasize that a self-aware, reproducible benchmark is a stronger credibility signal than an unverifiable claimed number.*
+  | SIH26171 Metric | Weight | Measured Output | Score |
   | :--- | :---: | :---: | :---: |
-  | **1. Visual Context Accuracy** | **25%** | 5 / 5 Visual Elements Identified (Chart columns + Face) | **100.00%** (25.00 / 25) |
-  | **2. PII Detection Accuracy (F1)** | **20%** | 265 Labeled Items &bull; TP: 220, FP: 0, FN: 0, TN: 45 &bull; **100% F1** | **100.00%** (20.00 / 20) |
-  | **3. Redaction Precision & Quality** | **20%** | **0 Raw Leaks**; 100% Non-PII Context Retention | **100.00%** (20.00 / 20) |
-  | **4. Client Resource Utilization** | **20%** | Avg DOM Latency **2.08 ms** (< 50ms); Heap **118.79 MB** (< 150MB) | **97.04%** (19.41 / 20) |
-  | **5. End-to-End Task Latency** | **15%** | Local Fast Path **0.32 ms** (< 15ms target); **10 / 10** Tasks Passed | **100.00%** (15.00 / 15) |
-  | **COMPOSITE SIH26171 SCORE** | **100%** | **Official SIH26171 Automated Benchmark Evaluation** | **99.41 / 100.00** |
+  | **1. Visual Context Accuracy** | **25%** | 4 bar regions detected by pixel CV · 1 face via chrominance · OCR reads value text ($12k–$28k), not Q-labels (12px font limitation) | **20.00%** (5.00 / 25) |
+  | **2. PII Detection Accuracy (F1)** | **20%** | 265 labeled items · TP: 220, FP: 0, FN: 0, TN: 45 · **100% F1** | **100.00%** (20.00 / 20) |
+  | **3. Redaction Precision & Quality** | **20%** | **0 raw leaks**; 100% non-PII context retention | **100.00%** (20.00 / 20) |
+  | **4. Client Resource Utilization** | **20%** | Avg DOM latency **5.39 ms** (< 50ms); Heap **132.57 MB** (< 150MB) | **95.84%** (19.17 / 20) |
+  | **5. End-to-End Task Latency** | **15%** | Local fast-path **0.64 ms** (< 15ms target); **9 / 10** tasks passed | **92.00%** (13.80 / 15) |
+  | **COMPOSITE SCORE** | **100%** | Internal self-evaluation · reproducible with `npx tsx benchmark/scripts/run-benchmark.mjs` | **77.97 / 100.00** |
 
 ---
 
@@ -148,7 +149,7 @@ The jury consists of **ISRO scientists (NRSC, SAC, VSSC)**, cybersecurity audito
 
 ### Slide 11: Production Horizon — The Remaining 90%
 * **Clear Vision from Prototype (v0.1) to Production Enterprise**:
-  * **Phase 1 (CURRENT v0.1 — 10% Foundation)**: Core architecture, 85% Rule, WebGPU/WASM Florence-2, dynamic CV Analyzer, Tesseract OCR, L0-L3 ladder, 99.41/100 benchmark.
+  * **Phase 1 (CURRENT v0.1 — 10% Foundation)**: Core architecture, 85% Rule, classical CV Analyzer, Tesseract OCR, L0-L3 ladder. Self-evaluated composite: **77.97/100** (reproducible).
   * **Phase 2 (On-Device Small-VLM)**: Deploying quantized INT4 vision-language models (e.g. SmolVLM 256M / MobileVLM) directly into the browser via WebGPU shader compute pipelines, eliminating cloud dependency entirely.
   * **Phase 3 (Hardware Enclave / TEE)**: Confidential Computing attestation (Intel SGX / AMD SEV) guaranteeing tamper-proof audit vaults for space telemetry and defense logs.
   * **Phase 4 (Cross-Tab Orchestration)**: Multi-window session synchronization across OAuth popups, payments, and background tabs.
@@ -209,7 +210,7 @@ Cite these specific papers and standards during your presentation to demonstrate
 
 ### Q4: "Does your extension slow down the user's browser or drain laptop battery?"
 > **Knockout Answer**:
-> *"No. Our entire on-device perception pipeline is measured and constrained: DOM extraction takes only **2.08 ms** (against a 50 ms budget), and our chrominance skin-tone face detector runs in **< 0.5 ms** on pixel buffers without heavy GPU compute. In our benchmark, total heap memory was measured at **118.79 MB**, well below our 150 MB ceiling."*
+> *"No. Our entire on-device perception pipeline is measured and constrained: DOM extraction takes only **5.39 ms** (against a 50 ms budget), and our chrominance skin-tone face detector runs in **< 0.5 ms** on pixel buffers without heavy GPU compute. In our benchmark, total heap memory was measured at **132.57 MB**, well below our 150 MB ceiling."*
 
 ---
 

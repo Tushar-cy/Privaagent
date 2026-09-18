@@ -31,7 +31,8 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
 2. **Execution**:
    - Parser identifies `requiresVision: true`.
    - Element cropper captures isolated `<canvas>` pixel crop (no full desktop/browser capture).
-   - On-device **Florence-2 ONNX** and **Tesseract OCR** detect 4 quarterly bar bounding boxes (`Q1`, `Q2`, `Q3`, `Q4`).
+   - On-device **classical CV** (`cv-analyzer.ts`) analyzes luminance contrast to detect 4 bar column regions.
+   - **Tesseract OCR** attempts to read value text from the chart (recognizes `$12k`–`$28k` labels; Q1–Q4 axis labels are below reliable OCR threshold at 12px font size — this is a known limitation documented in the README).
    - Escalates to **L2 Sanitized Visual Crop ROI**: only the cropped canvas coordinates and masked tokens leave the browser boundary (saving > 99.9% network bandwidth vs. full-screen captures).
    - Open-weight fallback VLM maps to candidate `revenue-chart_bar_4`.
 3. **What Judges See**:
@@ -106,13 +107,15 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
 
 ---
 
-## 📊 Evaluation Score Summary
+## 📊 Internal Self-Evaluation Scorecard
 
-| SIH26171 Metric | Weight | Measured Result | Benchmark Score |
+> Scores produced by internal harness — reproducible with `cd extension && npx tsx ../benchmark/scripts/run-benchmark.mjs`. Not an official SIH score.
+
+| SIH26171 Metric | Weight | Measured Result | Score |
 | :--- | :---: | :---: | :---: |
-| **Visual Context Accuracy** | 25% | 5 / 5 Visual Elements Identified | **100.00%** |
-| **PII Detection Accuracy (F1)** | 20% | 100% Precision, 100% Recall (22/22 PII correctly identified) | **100.00%** |
-| **Redaction Precision & Quality** | 20% | 0 Raw Leaks Across All Outbound Payloads | **100.00%** |
-| **Client Resource Utilization** | 20% | Average DOM Latency 1.787 ms (< 50ms constraint), Wasm Models cached | **99.29%** |
-| **End-to-End Task Latency** | 15% | Local Fast Path 0.229 ms (< 15ms target), 10/10 Benchmark Tasks | **100.00%** |
-| **COMPOSITE SIH26171 SCORE** | **100%** | **Official SIH26171 Benchmark Evaluation** | **99.86 / 100.00** |
+| **Visual Context Accuracy** | 25% | 1/5 elements matched · CV detected 4 bars (generic labels); Tesseract read value text (`$12k`–`$28k`), not Q-labels (12px font — OCR limitation) · 1 face via chrominance | **20.00%** |
+| **PII Detection Accuracy (F1)** | 20% | 265 labeled snippets · 220 TP, 0 FP, 0 FN, 45 TN · **100% F1** | **100.00%** |
+| **Redaction Precision & Quality** | 20% | 0 raw leaks across all outbound payloads; 100% context retention | **100.00%** |
+| **Client Resource Utilization** | 20% | Avg DOM latency **5.39 ms** (< 50 ms); Heap **132.57 MB** (< 150 MB budget) | **95.84%** |
+| **End-to-End Task Latency** | 15% | Local fast-path **0.64 ms** (< 15 ms target); **9/10** tasks passed | **92.00%** |
+| **COMPOSITE SCORE** | **100%** | Internal self-evaluation · canvas-backed real pixel rendering | **77.97 / 100.00** |
