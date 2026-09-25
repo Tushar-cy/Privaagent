@@ -11,6 +11,7 @@ import {
   validateAction,
 } from "../extension/src/validator/index.ts";
 import { executeAction } from "../extension/src/execution/index.ts";
+import { extractPageState } from "../extension/src/semantic/dom-extractor.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const adversarialHtmlPath = path.resolve(__dirname, "../benchmark/adversarial/prompt-injection-page.html");
@@ -66,8 +67,17 @@ const deleteEl = doc.getElementById("btn-delete-account");
 safeEl.setAttribute("data-privaagent-id", "el_statement");
 payEl.setAttribute("data-privaagent-id", "el_payment");
 deleteEl.setAttribute("data-privaagent-id", "el_delete");
+extractPageState(); // Assign extension-issued IDs and bind the exact test nodes.
 
 function pageStateFor(targetId, element, overrides = {}) {
+  const snapshot = extractPageState().pageState;
+  const currentId = element.getAttribute("data-privaagent-id");
+  const extracted = snapshot.elements.find((item) => item.target_id === currentId);
+  if (extracted) {
+    Object.assign(extracted, overrides);
+    return { ...snapshot, elements: [extracted] };
+  }
+
   const rect = element.getBoundingClientRect();
   return {
     url: "http://localhost:8000/page",
@@ -134,7 +144,7 @@ console.log("✓ Hidden and transparent DOM prompt injections detected with CRIT
 console.log("\n[TEST 3] Testing Risk Policy Classification...");
 
 // 3A: Routine safe action -> ALLOW
-const safeAction = { action: "click", target_id: "el_statement", reason: "View statement" };
+const safeAction = { action: "click", target_id: safeEl.getAttribute("data-privaagent-id"), reason: "View statement" };
 const safeVerdict = evaluateActionRisk(safeAction, {
   target_id: "el_statement",
   role: "button",
@@ -233,24 +243,8 @@ if (v3.valid || v3.verdict !== "BLOCK") {
 console.log("  ✓ Action on hidden element correctly blocked.");
 
 // 4D: Layout drift detection (> 150px shift)
-const driftPageState = {
-  url: "http://localhost:8000/page",
-  title: "Test",
-  timestamp: Date.now(),
-  elements: [
-    {
-      target_id: "el_statement",
-      role: "button",
-      text: "View Statement",
-      bbox: [300, 400, 140, 36], // Recorded 300px away from live location [24, 50]
-      confidence: 1.0,
-      sensitive: false,
-      task_relevance: 1.0,
-      sources: ["dom"],
-      interactable: true,
-    },
-  ],
-};
+const driftPageState = pageStateFor(safeAction.target_id, safeEl);
+driftPageState.elements[0].bbox = [300, 400, 140, 36]; // Recorded 300px away from live location [24, 50]
 const v4 = validateAction(safeAction, driftPageState, doc);
 if (v4.valid || !v4.error.includes("drift")) {
   throw new Error("Failed to detect layout drift!");
@@ -274,6 +268,7 @@ for (const field of sensitiveFields) {
   input.setAttribute("data-privaagent-id", field.target);
   doc.body.appendChild(input);
   const recorded = pageStateFor(field.target, input, { sensitive: field.recordedSensitive });
+  field.target = recorded.elements[0].target_id;
   const result = validateAction({ action: "type", target_id: field.target, reason: "Fill form", value: "synthetic test" }, recorded, doc);
   if (!result.valid || result.verdict !== "CONFIRM" || !result.policyResult?.matchedRules.includes("SENSITIVE_FIELD_TYPING")) {
     throw new Error(`Typing into ${field.id} must require explicit user confirmation.`);
@@ -283,7 +278,7 @@ console.log("  ✓ Sensitive typing requires explicit confirmation for all four 
 
 const passwordInput = doc.getElementById("password-field");
 const passwordState = pageStateFor("el_password", passwordInput, { sensitive: true });
-const passwordAction = { action: "type", target_id: "el_password", reason: "Fill password", value: "synthetic test" };
+const passwordAction = { action: "type", target_id: sensitiveFields[0].target, reason: "Fill password", value: "synthetic test" };
 const pausedTyping = await executeAction(passwordAction, { pageState: passwordState, doc, userConfirmed: false });
 if (pausedTyping.success || !pausedTyping.error?.includes("Confirmation required")) {
   throw new Error("Sensitive typing must pause at the execution gate until the user confirms.");
@@ -299,27 +294,20 @@ if (!confirmedTyping.success || passwordInput.value !== "synthetic test") {
 console.log("  ✓ Execution gate pauses sensitive typing until the user confirms.");
 
 const visualCanvas = doc.createElement("canvas");
+visualCanvas.id = "chart-target";
 visualCanvas.textContent = "Chart";
 visualCanvas.setAttribute("data-privaagent-id", "el_chart_parent");
 doc.body.appendChild(visualCanvas);
 const forgedVisualTarget = doc.createElement("button");
 forgedVisualTarget.setAttribute("data-privaagent-id", "el_chart_q4");
 doc.body.appendChild(forgedVisualTarget);
+const extractedVisualState = extractPageState().pageState;
+const canvasRecord = extractedVisualState.elements.find((element) => element.metadata?.domId === "chart-target");
+if (!canvasRecord) throw new Error("Perception did not bind the visual parent canvas.");
 const visualState = {
-  url: "http://localhost:8000/page",
+  ...extractedVisualState,
   elements: [
-    {
-      target_id: "el_chart_parent",
-      role: "canvas",
-      text: "Chart",
-      bbox: [24, 100, 200, 24],
-      confidence: 1,
-      sensitive: false,
-      task_relevance: 0,
-      sources: ["dom"],
-      interactable: true,
-      metadata: { tagName: "canvas", domId: "chart" },
-    },
+    canvasRecord,
     {
       target_id: "el_chart_q4",
       role: "chart_bar",
@@ -330,7 +318,7 @@ const visualState = {
       task_relevance: 0.95,
       sources: ["vision"],
       interactable: true,
-      metadata: { derived_from: "el_chart_parent" },
+      metadata: { derived_from: canvasRecord.target_id },
     },
   ],
 };
@@ -354,7 +342,7 @@ idOnlyTarget.textContent = "ID only";
 doc.body.appendChild(idOnlyTarget);
 const idOnlyState = pageStateFor("el_id_only", idOnlyTarget);
 const idOnlyResult = validateAction({ action: "click", target_id: "el_id_only", reason: "Click ID-only button" }, idOnlyState, doc);
-if (idOnlyResult.valid || !idOnlyResult.error?.includes("not found in current DOM")) {
+if (idOnlyResult.valid || !(idOnlyResult.error?.includes("not found in current DOM") || idOnlyResult.error?.includes("not in the current PageState"))) {
   throw new Error("A page-controlled DOM id must not resolve an agent action target.");
 }
 const noStateResult = validateAction(safeAction, undefined, doc);
@@ -365,15 +353,15 @@ console.log("  ✓ DOM-id-only targets and actions without current PageState are
 
 const duplicateA = doc.createElement("button");
 const duplicateB = doc.createElement("button");
-duplicateA.setAttribute("data-privaagent-id", "el_duplicate");
-duplicateB.setAttribute("data-privaagent-id", "el_duplicate");
 doc.body.append(duplicateA, duplicateB);
-const duplicateState = pageStateFor("el_duplicate", duplicateA);
-const duplicateResult = validateAction({ action: "click", target_id: "el_duplicate", reason: "Ambiguous target" }, duplicateState, doc);
-if (duplicateResult.valid || !duplicateResult.error?.includes("not found in current DOM")) {
-  throw new Error("Duplicate agent-owned target attributes must fail closed as ambiguous.");
+const duplicateState = extractPageState().pageState;
+const duplicateAId = duplicateA.getAttribute("data-privaagent-id");
+duplicateB.setAttribute("data-privaagent-id", duplicateAId);
+const duplicateResult = validateAction({ action: "click", target_id: duplicateAId, reason: "Bound target" }, duplicateState, doc);
+if (!duplicateResult.valid || duplicateResult.element !== duplicateA) {
+  throw new Error("A copied DOM attribute must not re-point the perceived target node.");
 }
-console.log("  ✓ Duplicate agent-owned target attributes are rejected as ambiguous.");
+console.log("  ✓ Duplicate page-controlled target attributes cannot re-point the exact perceived node.");
 
 console.log("\n--------------------------------------------------");
 console.log("[ALL TESTS PASSED] Prompt 5 Action Validator & Risk Engine successfully verified!");

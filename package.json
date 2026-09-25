@@ -8,6 +8,7 @@
     "test": "node tests/test_redteam_security.mjs",
     "test:all": "powershell -ExecutionPolicy Bypass -File ./run-all-tests.ps1",
     "test:redteam": "node tests/test_redteam_security.mjs",
+    "test:security-regressions": "node extension/node_modules/tsx/dist/cli.mjs tests/test_security_regressions.mjs",
     "test:synthetic": "node tests/test_synthetic_replacer_and_audit_vault.mjs",
     "test:dom": "node extension/node_modules/tsx/dist/cli.mjs tests/test_dom_perception.mjs",
     "test:privacy": "node extension/node_modules/tsx/dist/cli.mjs tests/test_privacy_engine.mjs",

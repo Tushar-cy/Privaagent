@@ -13,6 +13,63 @@ export interface DisclosurePlanningOptions {
   sanitizedScreenshotManifest?: VisualRedactionManifest;
   resolveLiveElement?: (targetId: string) => Element | null;
   forceLevel?: DisclosureLevel;
+  taskKeywords?: string[];
+  targetRoleHint?: string;
+}
+
+const L1_MAX_CANDIDATES = 8;
+const L1_FALLBACK_ACTION_CANDIDATES = 3;
+const TASK_STOPWORDS = new Set([
+  "a", "an", "the", "in", "on", "at", "to", "for", "of", "and", "or", "is", "it",
+  "please", "can", "you", "me", "my", "this", "that", "into", "from", "with", "by", "as",
+  "open", "click", "tap", "press", "view", "show", "expand", "select", "choose", "pick",
+  "type", "enter", "input", "write", "fill", "scroll", "navigate", "goto", "visit",
+]);
+
+function words(value: string): string[] {
+  return value.toLowerCase().match(/[a-z0-9]+/g) || [];
+}
+
+function selectL1Candidates(
+  task: string,
+  pageState: PageState,
+  options: DisclosurePlanningOptions
+): PageState {
+  const keywords = [...new Set((options.taskKeywords?.length ? options.taskKeywords : words(task))
+    .map((word) => word.toLowerCase())
+    .filter((word) => word.length > 1 && !TASK_STOPWORDS.has(word)))];
+
+  const ranked = pageState.elements.map((element, index) => {
+    const metadata = element.metadata as Record<string, unknown> | undefined;
+    const searchable = new Set(words([
+      element.text || "",
+      element.role || "",
+      String(metadata?.accessibleName || ""),
+      String(metadata?.tagName || ""),
+    ].join(" ")));
+    const lexicalMatches = keywords.filter((keyword) => searchable.has(keyword)).length;
+    const roleMatch = Boolean(options.targetRoleHint &&
+      element.role.toLowerCase() === options.targetRoleHint.toLowerCase());
+    const score = lexicalMatches * 4 + (roleMatch ? 2 : 0) +
+      Math.max(0, Math.min(1, element.task_relevance || 0)) * 0.5 +
+      Math.max(0, Math.min(1, element.confidence || 0)) * 0.1;
+    return { element, index, score, lexicalMatches, roleMatch };
+  });
+
+  const matched = ranked
+    .filter((candidate) => candidate.lexicalMatches > 0 || candidate.roleMatch)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, L1_MAX_CANDIDATES);
+
+  // If the task has no useful words (for example, "continue" on a generic
+  // page), send at most a few actionable candidates rather than the full DOM.
+  const selected = matched.length > 0 ? matched : ranked
+    .filter(({ element }) => element.interactable ||
+      ["button", "link", "checkbox", "menuitem", "tab", "textbox"].includes(element.role.toLowerCase()))
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, L1_FALLBACK_ACTION_CANDIDATES);
+
+  return { ...pageState, elements: selected.map(({ element }) => element) };
 }
 
 /**
@@ -115,8 +172,9 @@ export function planDisclosure(
 
   // L1: Structured Semantic Context
   // Solvable via text/form/table reasoning; only tokenized, anonymized metadata leaves device.
+  const relevantPageState = selectL1Candidates(task, pageState, options);
   const { disclosedElements, totalRedactedTokens } = maskPageStateForDisclosure(
-    pageState,
+    relevantPageState,
     options.resolveLiveElement
   );
 

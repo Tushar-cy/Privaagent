@@ -78,6 +78,23 @@ def test_resolve_action_rejects_wrong_token():
     assert "Unauthorized" in response.json()["detail"]
 
 
+def test_resolve_action_rejects_l0_remote_disclosure():
+    """L0 is local-only and must not invoke the backend VLM resolver."""
+    response = client.post(
+        "/api/resolve-action",
+        json={
+            "level": "L0",
+            "reason": "Local-only policy regression",
+            "task": "",
+            "elements": [],
+            "redacted_token_count": 0,
+        },
+        headers=AUTH_HEADERS,
+    )
+    assert response.status_code == 422, response.text
+    assert "L0 disclosures must never reach" in response.json()["detail"]
+
+
 def test_resolve_action_valid_disclosure(monkeypatch):
     from app.api import routes
     monkeypatch.setattr(routes.vlm_client, "provider", "mock")

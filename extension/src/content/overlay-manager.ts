@@ -8,7 +8,7 @@
 
 import { PageElement, PageState } from "../common/types";
 import { getSubStringBoundingBox } from "../privacy/redactor";
-import { resolveElementByTargetId } from "../semantic/dom-extractor";
+import { resolvePerceivedElement } from "../semantic/dom-extractor";
 import { SensitiveDetection } from "../privacy/sensitivity";
 import { BoundingBox } from "../common/types";
 import { generateSyntheticSurrogate } from "../privacy/synthetic-replacer";
@@ -269,7 +269,7 @@ export class OverlayManager {
     const [elemLeft, elemTop, elemWidth, elemHeight] = el.bbox;
     if (elemWidth <= 0 || elemHeight <= 0) return entries;
 
-    const domEl = resolveElementByTargetId(el.target_id);
+    const domEl = resolvePerceivedElement(el);
 
     // GHOST mode temporarily applies a masking class to the live element.
     if (this.mode === "GHOST" && domEl) {

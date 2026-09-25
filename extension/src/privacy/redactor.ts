@@ -62,14 +62,28 @@ export function getSubStringBoundingBox(
     const doc = element.ownerDocument || document;
     const fullText = element.textContent || "";
 
-    // If exactText is provided, resolve the true start/end offsets directly from full untrimmed text
+    // Preserve the detector's span when it already identifies this occurrence.
+    // Searching from the start of the node for exactText alone is incorrect for
+    // repeated values (for example, two identical names in one text node).
     let trueStart = startChar;
     let trueEnd = endChar;
-    if (exactText && exactText.length > 0) {
-      const foundIdx = fullText.indexOf(exactText);
-      if (foundIdx !== -1) {
-        trueStart = foundIdx;
-        trueEnd = foundIdx + exactText.length;
+    if (exactText && exactText.length > 0 && fullText.slice(startChar, endChar) !== exactText) {
+      let nearestIndex = -1;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      let searchFrom = 0;
+      while (searchFrom <= fullText.length - exactText.length) {
+        const foundIdx = fullText.indexOf(exactText, searchFrom);
+        if (foundIdx === -1) break;
+        const distance = Math.abs(foundIdx - startChar);
+        if (distance < nearestDistance) {
+          nearestIndex = foundIdx;
+          nearestDistance = distance;
+        }
+        searchFrom = foundIdx + 1;
+      }
+      if (nearestIndex !== -1) {
+        trueStart = nearestIndex;
+        trueEnd = nearestIndex + exactText.length;
       }
     }
 

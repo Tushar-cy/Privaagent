@@ -271,7 +271,32 @@ export async function captureAndSanitizeTab(
   }
 
   // Time budget: detect visual sensitivity with 150ms timeout
-  let sensitiveBoxes: BoundingBox[] = pageState.elements.filter((e: any) => e.sensitive).map((e: any) => e.bbox);
+  // GENERIC entries are produced by the previous visual pass. Drop them before
+  // analyzing this screenshot so a former face/photo classification cannot
+  // stick to a changed page merely because the PageState object was reused.
+  let sensitiveBoxes: BoundingBox[] = [];
+  for (const el of pageState.elements as any[]) {
+    const metadata = el.metadata || {};
+    const detections = Array.isArray(metadata.sensitive_detections)
+      ? metadata.sensitive_detections
+      : [];
+    const semanticDetections = detections.filter((detection: any) => detection?.type !== "GENERIC");
+    const unconditionalSensitive = metadata.isPassword === true || el.role === "password";
+    const hadVisualOnlyClassification = detections.length > 0 &&
+      semanticDetections.length === 0 && !unconditionalSensitive;
+    if (hadVisualOnlyClassification) {
+      delete metadata.sensitive_detections;
+      el.sensitive = false;
+    } else if (detections.length > semanticDetections.length) {
+      metadata.sensitive_detections = semanticDetections;
+    }
+
+    // Preserve semantic detections and unconditional sensitive controls such
+    // as password inputs, but do not carry forward visual-only flags.
+    if (el.sensitive && !hadVisualOnlyClassification && el.bbox) {
+      sensitiveBoxes.push(el.bbox);
+    }
+  }
   
   try {
     const start = performance.now();
@@ -291,6 +316,9 @@ export async function captureAndSanitizeTab(
           // Format for overlay manager to pick up
           el.metadata = el.metadata || {};
           el.metadata.sensitive_detections = el.metadata.sensitive_detections || [];
+          el.metadata.sensitive_detections = el.metadata.sensitive_detections.filter(
+            (detection: any) => detection?.type !== "GENERIC"
+          );
           el.metadata.sensitive_detections.push({
             type: "GENERIC", // overlay manager computes generic label
             span: [0, 0],

@@ -5,7 +5,7 @@ import { PageState, PageElement } from "../common/types";
 import { detectFacesInCrop } from "./face-detector";
 import { analyzeCanvasPixels } from "./cv-analyzer";
 import { PixelCrop } from "./browser-state";
-import { resolveElementByTargetId } from "../semantic/dom-extractor";
+import { resolvePerceivedElement } from "../semantic/dom-extractor";
 
 export interface VisualSensitivityResult {
   kind: "photo-region" | "chart" | "image" | "unknown";
@@ -13,9 +13,6 @@ export interface VisualSensitivityResult {
   source: string;
   reason?: string;
 }
-
-const VISUAL_CACHE = new Map<string, VisualSensitivityResult>();
-
 
 async function loadImage(dataUrl: string): Promise<ImageBitmap> {
   const base64Match = dataUrl.match(/^data:image\/[a-z]+;base64,(.+)$/);
@@ -60,7 +57,7 @@ export async function detectVisualSensitivity(
       keywordRegex.test(el.text || "") ||
       keywordRegex.test(el.target_id || "");
 
-    const domEl = resolveElementByTargetId(el.target_id);
+    const domEl = resolvePerceivedElement(el);
     if (domEl) {
       const ariaLabel = domEl.getAttribute("aria-label") || "";
       const alt = domEl.getAttribute("alt") || "";
@@ -98,12 +95,6 @@ export async function detectVisualSensitivity(
   }
 
   for (const el of topCandidates) {
-    const cacheKey = `${el.target_id}_${el.bbox!.join(",")}`;
-    if (VISUAL_CACHE.has(cacheKey)) {
-      results.set(el.target_id, VISUAL_CACHE.get(cacheKey)!);
-      continue;
-    }
-
     const [bx, by, bw, bh] = el.bbox!;
     const hasSemanticMatch = (el.metadata as any)._hasSemanticMatch;
 
@@ -113,7 +104,6 @@ export async function detectVisualSensitivity(
         ? { kind: "image", source: "semantic-label", reason: "visual:semantic-photo" }
         : { kind: "unknown", source: "no-pixels" };
       results.set(el.target_id, res);
-      VISUAL_CACHE.set(cacheKey, res);
       continue;
     }
 
@@ -182,7 +172,6 @@ export async function detectVisualSensitivity(
           reason: "visual:skin-tone-region",
         };
         results.set(el.target_id, res);
-        VISUAL_CACHE.set(cacheKey, res);
         continue;
       }
 
@@ -199,7 +188,6 @@ export async function detectVisualSensitivity(
           reason: "visual:chart",
         };
         results.set(el.target_id, res);
-        VISUAL_CACHE.set(cacheKey, res);
         continue;
       }
 
@@ -211,7 +199,6 @@ export async function detectVisualSensitivity(
           reason: "visual:semantic-photo",
         };
         results.set(el.target_id, res);
-        VISUAL_CACHE.set(cacheKey, res);
         continue;
       }
 
@@ -220,13 +207,11 @@ export async function detectVisualSensitivity(
         source: "pixels-analyzed-clean",
       };
       results.set(el.target_id, res);
-      VISUAL_CACHE.set(cacheKey, res);
     } catch (_) {
       const res: VisualSensitivityResult = hasSemanticMatch
         ? { kind: "image", source: "semantic-label", reason: "visual:semantic-photo" }
         : { kind: "unknown", source: "crop-failed" };
       results.set(el.target_id, res);
-      VISUAL_CACHE.set(cacheKey, res);
     }
   }
 

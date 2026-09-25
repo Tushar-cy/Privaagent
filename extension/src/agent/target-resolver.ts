@@ -125,7 +125,40 @@ export async function resolveTaskAction(
     Boolean(localResult.action) &&
     localResult.confidence >= 0.75 &&
     !parsedTask.requiresVision &&
-    !options.forceEscalationLevel;
+    (!options.forceEscalationLevel || options.forceEscalationLevel === "L0");
+
+  // L0 is a hard zero-network policy, not an escalation request. If the local
+  // solver cannot resolve the task without vision, stop here instead of falling
+  // through to the remote fallback with an L0 disclosure.
+  if (options.forceEscalationLevel === "L0" && !isLocalSufficient) {
+    const totalLatencyMs = Number((performance.now() - overallStartTime).toFixed(2));
+    const disclosure: Disclosure = {
+      level: "L0",
+      reason: "Forced L0 cannot be resolved safely by the local solver. Remote disclosure is prohibited.",
+      task: "",
+      elements: [],
+      redacted_token_count: 0,
+    };
+    return {
+      action: { action: parsedTask.actionType, target_id: "none", reason: disclosure.reason, confidence: 0 },
+      processingPath: "BLOCKED",
+      modelUsed: "PrivaAgent L0 Local-Only Gate",
+      executionBackend: "Local policy gate (zero network)",
+      localLatencyMs,
+      sanitizationLatencyMs: 0,
+      vlmLatencyMs: 0,
+      totalLatencyMs,
+      latencyMs: totalLatencyMs,
+      isLocal: true,
+      disclosure,
+      parsedTask,
+      networkBytesSent: 0,
+      detectedEntities: [],
+      privacyVerificationPassed: true,
+      externalRequestMade: false,
+      blockReason: disclosure.reason,
+    };
+  }
 
   if (isLocalSufficient && localResult.action) {
     const totalLatencyMs = Number((performance.now() - overallStartTime).toFixed(2));
@@ -230,6 +263,8 @@ export async function resolveTaskAction(
     sanitizedScreenshotManifest: screenshotManifest,
     resolveLiveElement: options.resolveLiveElement,
     forceLevel: options.forceEscalationLevel,
+    taskKeywords: parsedTask.keywords,
+    targetRoleHint: parsedTask.targetRoleHint,
   });
 
   // Collect all detected sanitized placeholders

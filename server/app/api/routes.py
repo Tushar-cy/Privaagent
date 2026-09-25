@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi import status as http_status
 import logging
 from app.config import settings
-from app.schemas.disclosure import Disclosure
+from app.schemas.disclosure import Disclosure, DisclosureLevel
 from app.schemas.action import Action
 from app.security.sanitizer_check import verify_disclosure_sanitization
 from app.vlm.client import VLMClient
@@ -89,6 +89,14 @@ async def resolve_action(disclosure: Disclosure):
     Performs defense-in-depth sanitization checks, invokes open-weight VLM,
     and returns a structured Action referencing a valid target_id.
     """
+    # L0 means local-only. Reject it at the trust boundary even if a caller
+    # constructs a valid, empty L0 payload directly.
+    if disclosure.level == DisclosureLevel.L0:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="L0 disclosures must never reach the remote resolver.",
+        )
+
     # 1. Structural validation
     if not disclosure.elements and disclosure.level != "L0":
         raise HTTPException(

@@ -84,6 +84,11 @@ jobs:
           cd extension
           npx tsx ../tests/test_validator.mjs
 
+      - name: Extension Test - Security Regression Boundaries
+        run: |
+          cd extension
+          npx tsx ../tests/test_security_regressions.mjs
+
       - name: Extension Test - UI and Overlays
         run: |
           cd extension

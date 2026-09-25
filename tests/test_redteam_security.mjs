@@ -447,63 +447,41 @@ await runAsyncTest("20. Action cannot execute without passing validator (bypass 
   assert.ok(execResult.error?.includes("strictly BLOCKED by security validator"), "Must report validator rejection");
 });
 
-runTest("21. Target element structural tag swap is detected and BLOCKED (bait-and-switch)", () => {
+runTest("21. Replacing a perceived target with a same-ID node is BLOCKED", () => {
   const dom = new JSDOM(`<!DOCTYPE html><html><body>
-    <input id="target-1" data-privaagent-id="el_1" type="text">
+    <button id="target-1">Submit</button>
   </body></html>`);
   dom.window.Element.prototype.getBoundingClientRect = () => ({ left: 10, top: 10, width: 100, height: 30, right: 110, bottom: 40 });
   global.document = dom.window.document;
   global.window = dom.window;
+  const recordedState = extractPageState().pageState;
+  const recorded = recordedState.elements.find((element) => element.metadata?.domId === "target-1");
+  assert.ok(recorded, "Button must be included in the perception snapshot");
+  const replacement = dom.window.document.createElement("input");
+  replacement.type = "text";
+  replacement.setAttribute("data-privaagent-id", recorded.target_id);
+  dom.window.document.getElementById("target-1").replaceWith(replacement);
 
-  const recordedState = {
-    url: "https://test.com",
-    elements: [
-      {
-        target_id: "el_1",
-        role: "button",
-        text: "Submit",
-        bbox: [10, 10, 100, 30],
-        confidence: 1.0,
-        sensitive: false,
-        task_relevance: 1.0,
-        sources: ["dom"],
-        metadata: { tagName: "button" },
-      },
-    ],
-  };
-
-  const action = { action: "click", target_id: "el_1", reason: "Click submit" };
+  const action = { action: "click", target_id: recorded.target_id, reason: "Click submit" };
   const valResult = validateAction(action, recordedState, dom.window.document);
-  assert.strictEqual(valResult.valid, false, "Structural tag modification must be blocked");
-  assert.ok(valResult.error?.includes("element tag changed from <button> to <input>"), "Must report tag change error");
+  assert.strictEqual(valResult.valid, false, "Replacing a perceived node must be blocked");
+  assert.ok(valResult.error?.includes("not found in current DOM"), "Replacement with a copied DOM attribute must not be authorized");
 });
 
 runTest("22. Target element text mutation is detected and BLOCKED (semantic drift)", () => {
   const dom = new JSDOM(`<!DOCTYPE html><html><body>
-    <button id="target-1" data-privaagent-id="el_1">Transfer $50,000</button>
+    <button id="target-1">Cancel Order</button>
   </body></html>`);
   dom.window.Element.prototype.getBoundingClientRect = () => ({ left: 10, top: 10, width: 100, height: 30, right: 110, bottom: 40 });
   global.document = dom.window.document;
   global.window = dom.window;
 
-  const recordedState = {
-    url: "https://test.com",
-    elements: [
-      {
-        target_id: "el_1",
-        role: "button",
-        text: "Cancel Order",
-        bbox: [10, 10, 100, 30],
-        confidence: 1.0,
-        sensitive: false,
-        task_relevance: 1.0,
-        sources: ["dom"],
-        metadata: { tagName: "button" },
-      },
-    ],
-  };
+  const recordedState = extractPageState().pageState;
+  const recorded = recordedState.elements.find((element) => element.metadata?.domId === "target-1");
+  assert.ok(recorded, "Button must be included in the perception snapshot");
+  dom.window.document.getElementById("target-1").textContent = "Transfer $50,000";
 
-  const action = { action: "click", target_id: "el_1", reason: "Cancel" };
+  const action = { action: "click", target_id: recorded.target_id, reason: "Cancel" };
   const valResult = validateAction(action, recordedState, dom.window.document);
   assert.strictEqual(valResult.valid, false, "Semantic text modification must be blocked");
   assert.ok(valResult.error?.includes("element text changed"), "Must report semantic drift");
@@ -520,14 +498,17 @@ runTest("23. Stale / detached target element is strictly BLOCKED", () => {
 
 runTest("24. Target element hidden via display:none is strictly BLOCKED", () => {
   const dom = new JSDOM(`<!DOCTYPE html><html><body>
-    <button id="hidden-btn" data-privaagent-id="el_hidden" style="display: none;">Hidden</button>
+    <button id="hidden-btn">Hidden</button>
   </body></html>`);
   dom.window.Element.prototype.getBoundingClientRect = () => ({ left: 10, top: 10, width: 100, height: 30, right: 110, bottom: 40 });
   global.document = dom.window.document;
   global.window = dom.window;
 
-  const action = { action: "click", target_id: "el_hidden", reason: "Click hidden" };
-  const currentState = { url: "https://test.com", elements: [{ target_id: "el_hidden", role: "button", text: "Hidden", bbox: [0, 0, 10, 10], confidence: 1, sensitive: false, task_relevance: 1, sources: ["dom"], interactable: true, metadata: { tagName: "button" } }] };
+  const currentState = extractPageState().pageState;
+  const recorded = currentState.elements.find((element) => element.metadata?.domId === "hidden-btn");
+  assert.ok(recorded, "Button must be visible during perception");
+  dom.window.document.getElementById("hidden-btn").style.display = "none";
+  const action = { action: "click", target_id: recorded.target_id, reason: "Click hidden" };
   const valResult = validateAction(action, currentState, dom.window.document);
   assert.strictEqual(valResult.valid, false, "Hidden element must fail validation");
   assert.ok(valResult.error?.includes("hidden from view"), "Must report visibility failure");

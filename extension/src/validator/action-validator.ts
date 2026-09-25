@@ -5,6 +5,7 @@ import { Action, PageElement, PageState } from "../common/types";
 import { inspectElementForHiddenInjection } from "./prompt-injection";
 import { evaluateActionRisk, PolicyEvaluationResult, PolicyVerdict } from "./risk-policy";
 import { getPerformanceProfiler } from "../common/profiler";
+import { resolvePerceivedElement } from "../semantic/dom-extractor";
 
 export interface ValidationResult {
   valid: boolean;
@@ -21,27 +22,8 @@ export interface ValidatorOptions {
   allowedDriftPx?: number; // Maximum allowed pixel shift before requiring replan
 }
 
-function findElementByAgentId(targetId: string, doc: Document): Element | null {
-  const roots: Array<Document | ShadowRoot> = [doc];
-  let match: Element | null = null;
-  while (roots.length > 0) {
-    const root = roots.pop()!;
-    for (const element of Array.from(root.querySelectorAll("[data-privaagent-id]"))) {
-      if (element.getAttribute("data-privaagent-id") === targetId) {
-        if (match) return null;
-        match = element;
-      }
-    }
-    for (const host of Array.from(root.querySelectorAll("*"))) {
-      if (host.shadowRoot) roots.push(host.shadowRoot);
-    }
-  }
-  return match;
-}
-
 /**
  * Resolves only opaque IDs that were assigned during perception. Derived visual
- * targets resolve to their recorded canvas/DOM parent, never to a page DOM ID.
  */
 export function locateLiveElement(
   targetId: string,
@@ -49,11 +31,15 @@ export function locateLiveElement(
   pageState?: PageState
 ): Element | null {
   const recordedTarget = pageState?.elements.find((element) => element.target_id === targetId);
+  if (!recordedTarget) return null;
   const derivedFrom = recordedTarget?.metadata?.derived_from;
   if (typeof derivedFrom === "string") {
-    return findElementByAgentId(derivedFrom, doc);
+    const recordedParent = pageState?.elements.find((element) => element.target_id === derivedFrom);
+    const boundParent = recordedParent && resolvePerceivedElement(recordedParent);
+    return boundParent?.ownerDocument === doc ? boundParent : null;
   }
-  return findElementByAgentId(targetId, doc);
+  const boundElement = resolvePerceivedElement(recordedTarget);
+  return boundElement?.ownerDocument === doc ? boundElement : null;
 }
 
 function isSensitiveLiveTarget(element: Element, recorded?: PageElement): boolean {

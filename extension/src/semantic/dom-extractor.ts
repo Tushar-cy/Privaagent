@@ -7,6 +7,10 @@ import { getPerformanceProfiler } from "../common/profiler";
 
 // Map to resolve target_id back to live DOM elements in O(1) time
 const elementRegistry = new Map<string, Element>();
+// Bind each snapshot record to the exact node that produced it. Unlike the
+// target-id registry, these WeakMap entries survive later perception passes,
+// so stale PageStates cannot silently rebind a reused sequence ID.
+const perceivedNodeBindings = new WeakMap<PageElement, Element>();
 
 export interface ExtractionResult {
   pageState: PageState;
@@ -18,29 +22,21 @@ export interface ExtractionResult {
  * Resolves a target_id back to the live DOM Element.
  */
 export function resolveElementByTargetId(targetId: string): Element | null {
-  // Check in-memory registry first
+  // Authorization comes from the extension-owned node binding created during
+  // perception. Never re-resolve a target by searching page-controlled DOM
+  // attributes: a page can copy or move those attributes to another element.
   const cached = elementRegistry.get(targetId);
   if (cached && cached.isConnected) {
     return cached;
   }
-
-  // Fallback to exact agent-owned attributes (without interpolating untrusted IDs
-  // into CSS selectors and without consulting page-controlled DOM IDs).
-  const roots: Array<Document | ShadowRoot> = [document];
-  while (roots.length > 0) {
-    const root = roots.pop()!;
-    for (const element of Array.from(root.querySelectorAll("[data-privaagent-id]"))) {
-      if (element.getAttribute("data-privaagent-id") === targetId) {
-        elementRegistry.set(targetId, element);
-        return element;
-      }
-    }
-    for (const host of Array.from(root.querySelectorAll("*"))) {
-      if (host.shadowRoot) roots.push(host.shadowRoot);
-    }
-  }
-
+  if (cached) elementRegistry.delete(targetId);
   return null;
+}
+
+/** Resolves the exact DOM node that produced a PageElement snapshot record. */
+export function resolvePerceivedElement(element: PageElement): Element | null {
+  const node = perceivedNodeBindings.get(element);
+  return node?.isConnected ? node : null;
 }
 
 /**
@@ -265,6 +261,7 @@ export function extractPageState(): ExtractionResult {
       },
     };
 
+    perceivedNodeBindings.set(pageElement, el);
     elements.push(pageElement);
   }
 
