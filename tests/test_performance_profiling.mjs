@@ -175,32 +175,31 @@ console.log(`  ✓ Action validation profiled: avg=${validatorStats.avgMs}ms`);
 const canvasEl = doc.getElementById("revenue-chart");
 if (canvasEl) {
   await processVisualRegion("revenue-chart", canvasEl, pageState);
-  const visionStats = profiler.getStageStats("florence_vision");
+  const visionStats = profiler.getStageStats("visual_inference");
   const ocrStats = profiler.getStageStats("tesseract_ocr");
   const faceStats = profiler.getStageStats("face_detection");
   const fusionStats = profiler.getStageStats("evidence_fusion");
 
-  console.log(`  ✓ Florence-2 Vision profiled: ${visionStats?.avgMs}ms`);
+  console.log(`  ✓ Visual inference profiled: ${visionStats?.avgMs}ms`);
   console.log(`  ✓ Tesseract OCR profiled: ${ocrStats?.avgMs}ms`);
   console.log(`  ✓ Face Detection profiled: ${faceStats?.avgMs}ms`);
   console.log(`  ✓ Evidence Fusion profiled: ${fusionStats?.avgMs}ms`);
 }
 
 // ----------------------------------------------------
-// TEST 6: SIH SLA Constraint Compliance Check
+// TEST 6: Runtime and Memory Limit Check
 // ----------------------------------------------------
-console.log("\n[TEST 6] Evaluating SIH26171 SLA Compliance...");
+console.log("\n[TEST 6] Checking runtime and memory limits...");
 const sla = profiler.checkSLA(doc);
 console.log(`  - DOM Extraction SLA (< 50ms): ${sla.domLatencyOk ? "PASS" : "FAIL"}`);
 console.log(`  - Local Solver SLA (< 15ms): ${sla.localSolverOk ? "PASS" : "FAIL"}`);
 console.log(`  - Memory Footprint SLA (< 150MB): ${sla.memoryFootprintOk ? "PASS" : "FAIL"}`);
-console.log(`  - Zero Raw PII Leakage: ${sla.zeroLeakageOk ? "PASS" : "FAIL"}`);
-console.log(`  - Overall SLA Compliance: ${sla.compliant ? "COMPLIANT" : "NON-COMPLIANT"}`);
+console.log(`  - Runtime and Memory Limits: ${sla.compliant ? "WITHIN LIMITS" : "LIMIT EXCEEDED"}`);
 
 if (!sla.compliant) {
   throw new Error(`SLA check failed with violations: ${sla.violations.join("; ")}`);
 }
-console.log("  ✓ All SIH26171 performance and resource SLAs verified.");
+console.log("  ✓ Runtime and memory checks passed.");
 
 // ----------------------------------------------------
 // TEST 7: Full Performance Telemetry Report Generation
@@ -218,4 +217,4 @@ if (!report.sessionId || Object.keys(report.stages).length < 4) {
 console.log("  ✓ Full telemetry report generated successfully.");
 
 console.log("\n--------------------------------------------------");
-console.log("[ALL TESTS PASSED] Real Performance Profiling Engine fully operational!");
+console.log("[ALL TESTS PASSED] Runtime profiling checks passed.");

@@ -3,7 +3,7 @@
 **SIH26171 — On-device Visual Perception for Light-weight Browser Agents**
 
 ## 1. System Overview
-Privaagent is an adaptive, minimum-disclosure browser agent with an **L0-first architecture**: it attempts tasks locally and escalates through a strictly enforced disclosure ladder only when the task requires remote visual reasoning. It does not claim a universal on-device task or evaluation percentage; measured results are reported separately as internal benchmark results.
+Privaagent is a browser-agent prototype with an **L0-first design**: it tries local resolution first and prepares a remote disclosure when local resolution is insufficient. It does not claim a universal on-device task or evaluation percentage; measured results are reported separately as internal benchmark results.
 
 ```
 +-------------------------------------------------------------------------+
@@ -23,13 +23,13 @@ Privaagent is an adaptive, minimum-disclosure browser agent with an **L0-first a
 |        │             [ Local Action ] ──► [ Browser Execution ]         |
 |        │                        │                                       |
 |        ▼                   NO   ▼                                       |
-|  [ Minimum Disclosure Planner ] (L0 ──► L1 ──► L2 ──► L3)              |
+|  [ Disclosure Planner ] (L0 ──► L1 ──► L2 ──► L3)                    |
 |        │                                                                |
 |        ▼                                                                |
-|  [ Local Privacy Engine ] ──► (Regex + Shannon Entropy + BERT-NER)      |
+|  [ Local Privacy Checks ] ──► (Patterns + Entropy + heuristic NER)     |
 |        │                  ──► Live Visual Redaction Overlay             |
 +────────┼────────────────────────────────────────────────────────────────+
-         │ HTTPS (Sanitized Context Only: Tokens / Masked Pixels)
+         │ HTTPS (Filtered Context: Tokens / Redacted Pixels)
          ▼
 +────────────────────────────────────────────────────────────────---------+
 |                      REMOTE UNTRUSTED SERVER                            |
@@ -59,7 +59,7 @@ Privaagent is an adaptive, minimum-disclosure browser agent with an **L0-first a
 | `extension/src/content/` | DOM walking, `MutationObserver` wiring, content-script entry point |
 | `extension/src/semantic/` | DOM extraction, page-state serialisation, A11y-tree traversal |
 | `extension/src/privacy/` | PII detection (regex + NER), redaction, synthetic surrogate generation, audit vault |
-| `extension/src/perception/` | Visual perception pipeline — classical CV (luminance/contrast) + Tesseract.js OCR are the active paths; the Florence-2 integration is a documented no-op in this environment (see README Known Limitations) |
+| `extension/src/perception/` | Visual perception pipeline — classical CV (luminance/contrast) + Tesseract.js OCR are the default paths; the Florence-2 route is experimental (see Known Limitations) |
 | `extension/src/agent/` | Task parsing, local solver, two-layer resolver (local → sanitised VLM fallback), disclosure planner |
 | `extension/src/disclosure/` | Minimum-disclosure ladder (L0–L3), placeholder tokenisation, outgoing payload auditing |
 | `extension/src/validator/` | Pre-execution action validation, prompt-injection scanner, risk policy engine |

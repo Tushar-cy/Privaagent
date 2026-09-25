@@ -1,5 +1,5 @@
 // Privaagent Synthetic Replacer & Audit Vault Test Suite
-// Verifies Differential Privacy synthetic surrogates (Verhoeff, CBDT, Luhn),
+// Verifies synthetic example replacements (Verhoeff, PAN-shaped, and Luhn values),
 // cryptographic hash chaining, tamper detection, and audit summary export.
 
 import assert from "node:assert";
@@ -71,8 +71,8 @@ assert.ok(/^\d{4}-\d{4}-\d{4}-\d{4}$/.test(formattedCard), "Formatted card match
 console.log(`✓ Luhn Validation verified: ${fakeCard} (valid), ${corruptedCard} (rejected)`);
 console.log(`✓ Formatted synthetic test card: ${formattedCard}\n`);
 
-// [TEST 4] Testing Differential Privacy Obfuscation vs Redaction
-console.log("[TEST 4] Testing Differential Privacy Obfuscation vs Redaction...");
+// [TEST 4] Testing Synthetic Example Replacement vs Redaction
+console.log("[TEST 4] Testing Synthetic Example Replacement vs Redaction...");
 const testDoc = "Citizen Rahul Sharma Aadhaar 987654321098 PAN ABCDE1234F";
 const detections = [
   { type: "AADHAAR", span: [29, 41] },
@@ -170,6 +170,6 @@ console.log(`  - Unredacted leaks detected: ${summary.unredactedLeaksDetected}`)
 console.log(`  - Verification Digest: ${summary.verificationHash}`);
 
 console.log("\n--------------------------------------------------");
-console.log("[ALL TESTS PASSED] Synthetic Replacer & Audit Vault Suite Fully Verified!");
+console.log("[ALL TESTS PASSED] Synthetic replacement and audit checks passed.");
 console.log("==================================================\n");
 process.exit(0);

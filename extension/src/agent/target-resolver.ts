@@ -1,7 +1,7 @@
 // Target Resolver: Two-Layer Privacy-First AI Architecture Orchestrator
 //
 // LAYER 1: On-Device Local Processing (Zero Network, WASM/DOM Semantic Engine)
-//   - Solves text/semantic tasks directly in-browser in < 2ms without network calls.
+//   - Tries clear text/semantic tasks directly in-browser without a network call.
 //   - Conditions when insufficient: requiresVision=true, low confidence (<0.75), canvas/charts.
 //
 // LAYER 2: Sanitized VLM Fallback Pipeline
@@ -272,7 +272,7 @@ export async function resolveTaskAction(
       },
       processingPath: "BLOCKED",
       modelUsed: "PrivaAgent Privacy Guard (On-Device Sentry)",
-      executionBackend: "On-Device Security Kernel (Blocked Outbound Request)",
+      executionBackend: "Local privacy check (request blocked)",
       localLatencyMs,
       sanitizationLatencyMs,
       vlmLatencyMs: 0,
@@ -310,7 +310,7 @@ export async function resolveTaskAction(
       action: { action: "click", target_id: "none", reason: blockReason, confidence: 0 },
       processingPath: "BLOCKED",
       modelUsed: "PrivaAgent Outbound Policy Gate",
-      executionBackend: "On-Device Security Kernel (Request Not Sent)",
+      executionBackend: "Local privacy check (request not sent)",
       localLatencyMs,
       sanitizationLatencyMs,
       vlmLatencyMs: 0,

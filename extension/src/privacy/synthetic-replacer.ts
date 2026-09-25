@@ -1,7 +1,7 @@
-// Privaagent Differential Privacy & Synthetic Surrogate Generator
-// Generates format-preserving, mathematically valid synthetic surrogates for citizen PII.
-// Complies with DPDP Act 2023 & GDPR Article 25 by ensuring real personal data never leaves
-// the local sandbox, while downstream web forms receive structurally valid mock inputs.
+// Synthetic Test-Value Generator
+// Replaces detected sensitive spans with generated, format-compatible example values.
+// This utility is for testing and demonstrations; it does not implement differential
+// privacy, provide a privacy guarantee, or establish legal compliance.
 
 export type SensitiveEntityType =
   | "EMAIL"

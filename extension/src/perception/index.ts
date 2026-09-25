@@ -32,7 +32,7 @@ export async function processVisualRegion(
 
   // 2. Run Florence-2 Vision (<OD> + <OCR>)
   const visionRes = await runFlorenceVision(targetId, crop, "<OD>");
-  getPerformanceProfiler().recordStage("florence_vision", visionRes.inferenceTimeMs);
+  getPerformanceProfiler().recordStage("visual_inference", visionRes.inferenceTimeMs);
 
   // 3. Run Fallback / Cross-check OCR
   const ocrRes = await runFallbackOCR(targetId, crop);

@@ -79,10 +79,10 @@ Represents a concrete primitive browser interaction to be executed. Produced eit
 The Minimum Disclosure ladder dictates the minimal amount of information permitted to leave the client device when local solving is not possible.
 
 ### Disclosure Levels:
-- **`L0` (Local Only)**: No data leaves the browser. Zero network transmission. Default for all solvable DOM interactions.
+- **`L0` (Local Only)**: No task disclosure is sent to the backend. Used when the local solver can handle the interaction.
 - **`L1` (Structured Semantic Context)**: Anonymized JSON list of element descriptors. All detected PII spans are replaced with typed placeholder tokens (`[PERSON_1]`, `[EMAIL]`, `[PHONE]`, `[SECRET_KEY]`). No raw pixels.
-- **`L2` (Sanitized Visual Crop)**: Used only when DOM context is insufficient (e.g. `<canvas>` charts). Only the bounding box crop of the target region is transmitted, with faces, PII, and credentials blurred/redacted on an offscreen canvas before transmission.
-- **`L3` (Sanitized Full Screen)**: Absolute last resort. Full page screenshot with all sensitive regions redacted.
+- **`L2` (Sanitized Visual Crop)**: Used when DOM context is insufficient (e.g. `<canvas>` charts). The target crop is transmitted with detected sensitive regions in that crop redacted on an offscreen canvas.
+- **`L3` (Sanitized Full Screen)**: Used when visual context across regions is needed. The viewport screenshot is sent with detected sensitive regions redacted.
 
 For either visual level, `sourceSensitiveBoxCount` records the source regions considered, while `intersectingBoxCount` records how many overlap the transmitted image. The contract requires `redactedBoxCount === intersectingBoxCount === redactedBoxes.length`, and `intersectingBoxCount` cannot exceed the source count. An L2 crop may therefore report fewer redacted regions than the full source count when unrelated sensitive regions lie outside the crop.
 

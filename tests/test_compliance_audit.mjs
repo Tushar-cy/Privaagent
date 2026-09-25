@@ -93,7 +93,7 @@ if (records.length !== 4) {
 }
 console.log(`✓ Recorded 4 transactions with unique IDs, timestamps, and payload hashes.`);
 
-// 3. DPDP Act 2023 Formal Compliance Report Verification
+// 3. Privacy Audit Summary Verification
 console.log("\n[TEST 3] Generating Privacy Audit Summary...");
 const report = vault.generatePrivacyAuditSummary();
 

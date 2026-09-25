@@ -6,7 +6,7 @@ import { SensitiveDetection } from "../privacy/sensitivity";
 
 /**
  * Transforms an array of PageElements into a sanitized DisclosedElement array
- * where all sensitive text spans are converted to anonymized tokens.
+ * where detected sensitive text spans are converted to placeholder tokens.
  */
 export function maskPageStateForDisclosure(
   pageState: PageState,

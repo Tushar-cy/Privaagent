@@ -1,360 +1,113 @@
-# 🛡️ Privaagent
+# Privaagent
 
-> **Adaptive Minimum-Disclosure Browser Agent with On-Device Visual Perception**  
-> *Developed for Smart India Hackathon 2026 — Problem Statement SIH26171 (Department of Space / ISRO)*  
-> *Track: Smart Automation • Category: Software*
+Privaagent is a browser-agent prototype built for Smart India Hackathon problem SIH26171. A Chrome extension tries to resolve browser tasks locally first. When a task needs remote reasoning, it prepares a disclosure at one of four levels and checks it before sending it to a configurable backend.
 
-[![Chrome MV3](https://img.shields.io/badge/Chrome_Extension-MV3-blue.svg)](https://developer.chrome.com/docs/extensions/mv3/)
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI_0.115-green.svg)](https://fastapi.tiangolo.com/)
-[![WebGPU & WASM](https://img.shields.io/badge/Vision-WebGPU_%2B_WASM-orange.svg)](#-local-vision--perception-engine)
-[![DPDP-aligned design](https://img.shields.io/badge/Design-DPDP--aligned-purple.svg)](#-compliance--standards)
+This project uses local-first processing and data-minimization ideas associated with privacy engineering. It has not been assessed or certified for compliance with the DPDP Act or GDPR.
 
----
+## What we built
 
-## 📌 Important Prototype Notice (v0.1.0 — 10% Baseline)
+- **Chrome extension:** TypeScript and Vite code for page perception, task resolution, privacy checks, and action validation.
+- **Optional backend:** A FastAPI service that validates incoming disclosures and sends permitted requests to a configured vision-language model (VLM).
+- **Disclosure levels:** The extension selects a level based on the task and its configured ceiling.
+- **Local safeguards:** Supported PII patterns are masked or tokenized; visual requests include a redaction manifest. The extension and backend both check the visual contract.
+- **Action checks:** The extension resolves opaque target IDs against the current page, checks the live element and risk policy, and asks for approval before actions classified as `CONFIRM`.
+- **Synthetic replacements:** A utility generates format-compatible example values for testing. It does not implement differential privacy and is not a formal anonymization method.
 
-> [!NOTE]
-> **This repository represents Phase 1: Prototype Foundation.**  
-> It establishes the core client-first architectural blueprint: on-device semantic perception, deterministic PII/secret detection, dynamic pixel-level Computer Vision, minimum disclosure ladder escalation (L0 &rarr; L3), and defense-in-depth server rejection.
+## How it works
 
----
+1. The extension extracts candidate elements from the page's DOM and accessibility information.
+2. It tries the local solver. A successful `L0` action does not send a task request to the backend.
+3. If local resolution is insufficient, the disclosure planner prepares the lowest supported level for the task:
 
-## ⚡ New Here? 60-Second Quickstart (Zero Confusion)
+   | Level | Payload | Typical use |
+   |:---:|---|---|
+   | `L0` | No remote payload | A task resolved locally |
+   | `L1` | Structured, filtered page information | Text or form reasoning |
+   | `L2` | A target crop, screenshot, and redaction manifest | A localized chart or image |
+   | `L3` | A sanitized viewport screenshot and manifest | Visual context across multiple regions |
 
-If you are an **SIH Judge**, **Evaluator**, or **First-Time Tester**, you don't need to configure complex environments. Follow the path that matches your goal:
+4. Before a remote request, the extension checks the disclosure policy, privacy budget, and outgoing payload. The backend applies its own request-size, schema, image, manifest, and sensitive-data checks.
+5. The backend returns a proposed action. The extension checks the target against the current page and evaluates the action risk. `CONFIRM` actions wait for an explicit user approval, then undergo live validation again.
 
-| Goal | Recommended Action | Time Required |
-|:---|:---|:---:|
-| 🚀 **Run the Full Live Demo** | Double-click [`start-privaagent.bat`](start-privaagent.bat) (or run `.\start-privaagent.ps1` in PowerShell). Boots the backend and launches Chrome with the extension pre-loaded! | **10 seconds** |
-| 🧩 **Install into Existing Chrome** | Open `chrome://extensions` &rarr; Developer Mode **ON** &rarr; **Load unpacked** &rarr; Select the [`privaagent-extension`](privaagent-extension/) folder. | **15 seconds** |
-| 🧪 **Verify All 13 Test Suites** | Run `powershell -ExecutionPolicy Bypass -File .\run-all-tests.ps1` in terminal. Validates 100% pass rate across all 13 suites. | **60 seconds** |
-| 📊 **View SIH Scoring & Defense** | See [SIH Benchmark Scorecard](#-internal-self-evaluation-scorecard) & [Two-Layer Architecture](docs/TWO_LAYER_ARCHITECTURE.md). | **2 minutes** |
+The visual detector and sensitive-data detector are heuristic. Passing these checks does not prove that every sensitive value was found or removed; see [Known limitations](docs/KNOWN_LIMITATIONS.md).
 
-> [!TIP]
-> ### 🛡️ Folder Selection in `chrome://extensions/`:
-> * Select the **`privaagent-extension`** folder.
+## What we tested
 
----
+The local master runner currently contains **15 suites**. It covers DOM perception, privacy and PII detection, pixel-based screenshot redaction, action validation, the popup and overlays, multi-turn budgets, backend visual contracts, request-size limits, HTTP authentication, audit records, and the internal benchmark harness.
 
-### 📁 Project Directory Map (Where Everything Lives)
-
-```
-Privaagent/
-├── 🧩 privaagent-extension/    # ⭐ PRE-BUILT UNPACKED EXTENSION (Select THIS in chrome://extensions)
-├── ⚡ start-privaagent.bat     # ⭐ 1-CLICK LAUNCHER (Auto-boots server + opens Chrome with extension)
-├── ⚡ start-privaagent.ps1     # 1-Click Launcher for PowerShell
-├── 🧪 run-all-tests.ps1        # Automated Test Runner (Executes all 14 test suites & benchmarks)
-├── 🌐 demo/                    # Interactive Demonstration Web Portal (HTML/CSS/JS with test presets)
-├── 🖥️ server/                  # FastAPI Python Backend (Defense-in-depth, VLM client, schemas)
-├── 📦 extension/               # Chrome MV3 Extension Source Code (TypeScript, WebGPU/WASM, Vite)
-├── 📊 benchmark/               # Internal 5-metric benchmark harness (265 labeled test vectors)
-├── 📜 tests/                   # 13 Integration, Security, Privacy & Contract Test Suites
-└── 📖 docs/                    # Architecture deep-dives, DPDP Act compliance guides & PPT resources
-```
-
----
-
-## 📖 Executive Overview: The "~80% Architecture Target"
-
-Frontier autonomous web agents suffer from a critical architectural flaw: they capture full desktop or viewport screenshots and continuously transmit unredacted citizen PAN cards, Aadhaar IDs, banking secrets, and personal photos to remote cloud APIs on every action loop.
-
-**Privaagent fundamentally eliminates this risk through a core design target:**
-> **As an architecture principle, we target ~80% of everyday browser tasks and evaluation criteria to be resolved entirely inside the local browser sandbox.**
-
-When a user issues a command (e.g. *"Open Rahul's invoice"*), Privaagent inspects the DOM and Accessibility tree on-device. If the local parser can resolve the action, it executes the action locally in **~2.92 ms with 0 bytes transmitted over the network**.
-
-Only when a task requires remote visual intelligence (e.g., reading an arbitrary HTML5 `<canvas>` chart or complex spatial reasoning) does Privaagent escalate up the **Minimum Disclosure Ladder**, transmitting **only sanitized tokens and an isolated visual crop ROI** to an untrusted reasoning VLM.
-
-```
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│                             BROWSER EXTENSION SANDBOX                            │
-│                                                                                  │
-│  [User Task]                                                                     │
-│        │                                                                         │
-│        ▼                                                                         │
-│  ┌───────────────────────────────┐                                               │
-│  │   Intent & Semantic Parser    │ ───► Standard DOM ────► [Local Task Solver]   │
-│  └───────────────────────────────┘                              │                │
-│                 │ (Requires Vision)                             ▼                │
-│                 ▼                                         L0 Action (0 Bytes)    │
-│  ┌───────────────────────────────┐                                               │
-│  │  Local Vision Perception      │                                               │
-│  │  (WebGPU / WASM + Pixel CV)   │                                               │
-│  └──────────────┬────────────────┘                                               │
-│                 ▼                                                                │
-│  ┌───────────────────────────────┐                                               │
-│  │   Local Privacy Filter        │ ──► [BLUR Viewport Overlay]                   │
-│  │   (PAN / Aadhaar / Face / NER)│                                               │
-│  └──────────────┬────────────────┘                                               │
-│                 ▼                                                                │
-│  ┌───────────────────────────────┐                                               │
-│  │   Minimum Disclosure Ladder   │                                               │
-│  │   (L0 / L1 / L2 Crop / L3)    │                                               │
-│  └──────────────┬────────────────┘                                               │
-└─────────────────┼────────────────────────────────────────────────────────────────┘
-                  │ HTTPS / JSON Boundary (Sanitized tokens & crop ROI ONLY)
-                  ▼
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│                           UNTRUSTED REMOTE BACKEND                               │
-│                                                                                  │
-│  ┌───────────────────────────────┐                                               │
-│  │  Defense-in-Depth Sanitizer   │ ──► (Rejects any leaked raw PII with 422)     │
-│  └──────────────┬────────────────┘                                               │
-│                 ▼                                                                │
-│  ┌───────────────────────────────┐                                               │
-│  │  Open-Weight Reasoning VLM    │ ──► Returns Action JSON referencing target_id │
-│  │  (Qwen2-VL / LLaVA / Ollama)  │                                               │
-│  └──────────────┬────────────────┘                                               │
-└─────────────────┼────────────────────────────────────────────────────────────────┘
-                  │ Validated Action Schema
-                  ▼
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│                             PRE-EXECUTION VALIDATOR                              │
-│                                                                                  │
-│  • Live DOM Re-Resolution      • Bounding Box Drift Guard                        │
-│  • Homoglyph Injection Shield  • Risk Policy Engine (ALLOW / CONFIRM / BLOCK)    │
-│                 │                                                                │
-│                 ▼                                                                │
-│         [Safe Action Dispatcher: Click / Type / Scroll / Navigate]               │
-└──────────────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## ⚙️ How It Works (Core Subsystems)
-
-### 1. Local Vision & Perception Engine
-* **WebGPU & WASM Acceleration (`extension/src/perception/vision.ts`)**: Dynamically checks `navigator.gpu` to enable WebGPU hardware acceleration, with automatic fallback to ONNX WASM execution via `@xenova/transformers`.
-* **Dynamic Pixel-Level Computer Vision (`extension/src/perception/cv-analyzer.ts`)**: Analyzes raw canvas `ImageData` using relative luminance estimation ($Y = 0.2126R + 0.7152G + 0.0722B$), horizontal and vertical projection profiling, and connected component clustering. Automatically locates chart columns, bars, and geometric regions on novel pages without hardcoded coordinates.
-* **On-Device OCR (`extension/src/perception/ocr.ts`)**: Integrates Tesseract.js running in WebAssembly to extract text directly from visual canvas regions.
-* **Chrominance Skin-Tone Face Detection (`extension/src/perception/face-detector.ts`)**: Runs color-space chrominance thresholding ($Cb \in [77, 127]$, $Cr \in [133, 173]$) to detect faces and compute facial landmark points (eyes, nose, mouth) in under 0.5 ms.
-
-### 2. Privacy-Preserving Filter & Redaction
-* **BLUR Viewport Overlay (`extension/src/content/overlay-manager.ts`)**: Renders overlays over detected faces and sensitive fields without changing their source text. The separate GHOST mode temporarily adds a masking class to sensitive elements and removes it when that mode ends.
-* **Deterministic Structured PII Detection (`extension/src/privacy/pii-detector.ts`)**:
-  * **Indian Aadhaar**: 12-digit UIDAI validation verified via the **Verhoeff Checksum Algorithm**.
-  * **Indian PAN**: CBDT 10-character alphanumeric structure (`[A-Z]{5}[0-9]{4}[A-Z]`).
-  * **Credit Cards**: 13–19 digit cards validated via the **Luhn Algorithm**.
-  * **Indian Passports & Voter IDs (EPIC)**: Regional alphanumeric patterns.
-  * **UPI VPAs & IFSC Codes**: Banking clearing handles and routing identifiers.
-  * **Emails, Phones (+91), IPv4/IPv6 addresses**.
-* **High-Entropy Secret Detection (`extension/src/privacy/secret-detector.ts`)**: Calculates Shannon Entropy ($H(X) \ge 3.3 \text{ bits/char}$) alongside prefix heuristics to catch OpenAI API keys (`sk-...`), AWS access keys (`AKIA...`), GitHub PATs (`ghp_...`), and Bearer tokens.
-* **Unconditional Password Protection (`extension/src/privacy/sensitivity.ts`)**: Any element with `type="password"` or `role="password"` is unconditionally marked sensitive and redacted.
-* **Differential Privacy Synthetic Surrogates (`extension/src/privacy/synthetic-replacer.ts`)**: Generates synthetically valid surrogates (valid Luhn test cards, valid Verhoeff Aadhaar seeds, valid CBDT PANs) when differential privacy mode is active.
-
-### 3. Minimum Disclosure Ladder
-When local solving is insufficient, Privaagent selects the lowest viable disclosure level:
-* **L0 — Local Fast-Path**: 0 bytes sent. Solved on-device.
-* **L1 — Masked Semantic Metadata**: Sanitized DOM tree and tokenized text (`[PERSON_1]`, `[PAN_1]`). Zero pixels sent.
-* **L2 — Isolated Visual Crop ROI**: Only the specific bounding box crop of the target widget (e.g., `<canvas id="revenue-chart">`) is sent. Surrounding personal data and faces are excluded.
-* **L3 — Sanitized Full-Viewport**: Full-screen capture used only for multi-region spatial tasks, with all sensitive regions blacked out.
-
-### 4. Untrusted VLM Reasoning & Fail-Closed Security
-* **Multi-Modal Payload Formatting (`server/app/vlm/client.py`)**: Standard OpenAI/vLLM/Ollama compatible data URIs (`data:image/png;base64,...`). Supports **Qwen2-VL-7B-Instruct**, **LLaVA-OneVision**, and cloud providers (Groq, OpenAI).
-* **Fail-Closed Hallucination Rejection**: If the VLM suggests a `target_id` not present in the candidate whitelist, the backend raises an explicit `ValueError` and aborts. Silent remapping is strictly prohibited.
-* **Defense-in-Depth Trust Boundary (`server/app/api/middleware.py`)**: The FastAPI backend acts as an independent privacy firewall, rejecting any payload containing unredacted PII patterns with **HTTP 422 Unprocessable Content**.
-
-### 5. Pre-Execution Action Validator & Guardrails
-* **Homoglyph-Normalized Prompt Injection Shield (`extension/src/validator/prompt-injection.ts`)**: Normalizes Cyrillic (`\u0430`, `\u0435`, `\u0441`, `\u0440`) and Greek lookalike characters before pattern scanning, defeating adversarial font and unicode evasion attacks.
-* **Layout Drift & Detachment Checks (`extension/src/validator/action-validator.ts`)**: Verifies that the targeted element is still attached to the DOM and has not drifted beyond safety thresholds before clicking.
-* **Risk Policy Engine**: Classifies actions into `ALLOW` (benign navigation), `CONFIRM` (financial transactions `"Pay Now"`, destructive deletions `"Delete Account"`), or `BLOCK` (prohibited `.exe` downloads, `javascript:` URIs).
-
----
-
-## 📊 Internal Self-Evaluation Scorecard
-
-> [!NOTE]
-> This scorecard is produced by our own internal evaluation harness — not an official SIH score. Reproduce it yourself: `cd extension && npx tsx ../benchmark/scripts/run-benchmark.mjs`
-
-Evaluated against the **265-item comprehensive dataset** using real CPU/memory profiling and `@napi-rs/canvas`-backed real pixel rendering (not stubbed pixel buffers):
-
-| Metric | Weight | Measured Result | Score |
-| :--- | :---: | :---: | :---: |
-| **1. Visual Context Accuracy** | **25%** | 1 / 5 visual elements matched · 4 bars detected by CV pixel-contrast; 1 face via chrominance | **20.00%** (Score: 5.00) |
-| **2. PII Detection Precision & Recall** | **20%** | 265 labeled snippets · 100% F1 (precision 1.0, recall 1.0) | **100.00%** (Score: 20.00) |
-| **3. Redaction Precision & Quality** | **20%** | **0 raw leaks** across all outbound payloads; 100% context retention | **100.00%** (Score: 20.00) |
-| **4. Client-Side Resource Utilization** | **20%** | Avg DOM latency **3.06 ms** (< 50 ms); Heap **70.51 MB** (< 150 MB budget) | **97.73%** (Score: 19.55) |
-| **5. End-to-End Task Latency** | **15%** | Local fast-path **2.92 ms** (< 15 ms target); **10 / 10** tasks passed | **100.00%** (Score: 15.00) |
-| **COMPOSITE SCORE** | **100%** | *Reproducible — run the harness yourself* | **79.55 / 100.00** |
-
----
-
-## ⚠️ Known Limitations
-
-> [!NOTE]
-> A submission that documents its own limitations honestly is a stronger signal to a technical panel than one that claims perfection. These are real gaps, not hedges.
-
-1. **Florence-2 neural vision path is non-functional in the current stack.**
-   `vision.ts` calls `@xenova/transformers`'s generic `"image-to-text"` pipeline, which does not implement Florence-2's task-token-conditioned decoding or its `<loc_NNN>` output post-processing. The neural path silently catches exceptions and falls through to the classical CV fast-path. `VISION_MODE="lightweight"` (classical CV + Tesseract OCR) is the actual deployed configuration. This is by design for a "lightweight browser agent" — 232 MB model downloads with 30–90s cold starts contradict the problem statement's constraints.
-
-2. **Benchmark is self-evaluated, not third-party verified.**
-   The evaluation harness in `benchmark/scripts/run-benchmark.mjs` is an internal tool. Visual Context Accuracy (Metric 1) now uses real `@napi-rs/canvas` pixel rendering so `cv-analyzer.ts` genuinely exercises luminance-contrast detection — but the dataset and rubric are ours. Run it yourself to reproduce.
-
-3. **NER is heuristic, not neural.**
-   `ner-detector.ts` uses capitalized-sequence matching with a general stopword set and a curated single-token ORG lookup (ISRO, DRDO, Google, etc.). External evaluation on Wikipedia pages: **Precision 100%, Recall 70%, F1 82.4%** (up from 75% before adding Path D). Residual misses: single-token acronyms not in the lookup list, and names only present in very short text fragments where no multi-word sequence exists.
-
-4. **Tesseract.js cold-start applies on first extension load.**
-   First-use downloads Tesseract WASM language data (~4 MB, cached after first load) and initializes the worker. Expect 2–5s on first activation. Subsequent calls reuse the singleton worker.
-
-5. **Server VLM (L2/L3 path) requires a locally running Ollama or vLLM instance.**
-   No cloud API keys are bundled. The L0/L1 local fast-path works fully offline. The L2/L3 escalation path is a localhost dependency — see [Step 4: Launch the Backend](#step-4-launch-the-fastapi-backend-server).
-
----
-
-## 🚀 How to Run & Use Everything
-
-### Prerequisites
-* **Node.js**: v20+ or v24+
-* **Python**: 3.10+ or 3.12+
-* **Browser**: Chrome MV3 supported; Firefox support not yet validated.
-
----
-
-### Step 1: Clone the Repository
-```bash
-git clone https://github.com/Tushar-cy/Privaagent.git
-cd Privaagent
-```
-
----
-
-### Step 2: Build the Chrome MV3 Extension
-```bash
-cd extension
-npm install
-npm run build
-```
-* The production build is output to `extension/dist/` and automatically mirrored to `privaagent-extension/` in the project root.
-* A pre-packaged zip archive is also created at `privaagent-extension.zip`.
-
----
-
-### ⚡ Option A: 1-Click Automated Launch (Recommended)
-Simply double-click `start-privaagent.bat` (or run `./start-privaagent.ps1` in PowerShell):
-```bat
-start-privaagent.bat
-```
-* Automatically verifies the extension build
-* Starts the FastAPI backend service
-* Launches Chrome with Privaagent pre-loaded to `http://127.0.0.1:8000/demo/index.html`
-
-> [!TIP]
-> **Authentication Modes**
-> 
-> By default, the `.env` uses `SESSION_TOKEN=change-this-for-local-evaluation`. This places the backend in **DEMO MODE**. In Demo Mode, backend authentication is intentionally bypassed to allow a seamless one-click demonstration for SIH judges. A warning is logged on the server.
-> 
-> For a hardened production deployment, switch to **ENFORCED MODE**:
-> 1. Open `chrome://extensions/`, find Privaagent, and click **Service worker → Inspect**.
-> 2. In that extension DevTools console, run `chrome.storage.local.get("privaagent_session_token", ({ privaagent_session_token }) => console.log(privaagent_session_token))`.
-> 3. Set that exact generated value as `SESSION_TOKEN` in `server/.env` and restart the backend. The token is stored in extension storage, not webpage Local Storage.
-> 4. Set `ALLOWED_EXTENSION_ID` to the exact 32-character ID shown for this extension in `chrome://extensions/`. Leaving it empty permits requests from any Chrome extension origin.
-> 
-> Do not expose the backend to untrusted networks while the demo sentinel is active or `ALLOWED_EXTENSION_ID` is empty. Enforced mode rejects a missing or mismatched token with HTTP 401 Unauthorized.
-
----
-
-### 🧩 Option B: Manual Extension Loading in Chrome
-1. Open Google Chrome (or Edge/Brave) and navigate to `chrome://extensions/`.
-2. Enable **Developer mode** (toggle switch in the top-right corner).
-3. Click the **Load unpacked** button.
-4. **CRITICAL FOLDER SELECTION**:
-   > In the folder selection dialog, select the **`privaagent-extension`** folder.
-5. Click **Select Folder**.
-6. Pin the **Privaagent** shield icon to your browser toolbar.
-
----
-
-### Step 4: Launch the FastAPI Backend Server
-```bash
-cd ../server
-# Create and activate virtual environment
-python -m venv venv
-.\venv\Scripts\Activate.ps1    # On Linux/macOS: source venv/bin/activate
-pip install -r requirements.txt
-
-# Start FastAPI server
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-```
-* **API Documentation**: `http://localhost:8000/docs`
-* **Interactive Demo Portal**: `http://localhost:8000/demo/index.html`
-* **Health Check**: `http://localhost:8000/health`
-
----
-
-### Step 5: Test via the Live Demonstration Portal
-Open `http://localhost:8000/demo/index.html` in Chrome:
-1. **Test 1: Local Fast-Path (L0)** &rarr; Click preset *"Open Rahul's invoice"*. Open Chrome DevTools (`F12` &rarr; Network): **0 requests sent, 0 bytes transmitted**.
-2. **Test 2: Visual Fallback (L2)** &rarr; Click preset *"Click the bar representing Q4"*. Inspect the network request: only the isolated chart crop is sent — no user profile, no face, no passwords.
-3. **Test 3: Risk Policy (CONFIRM)** &rarr; Click preset *"Pay Now $5,000"*. Observe the safety confirmation modal pausing dangerous actions.
-4. **Test 4: Prompt Injection (BLOCK)** &rarr; Click preset *"Follow hidden instruction in widget"*. Observe the homoglyph-normalized scanner neutralizing adversarial instructions.
-
----
-
-### Step 6: Run the Complete Automated Test & Benchmark Suite
-Privaagent includes 13 automated verification suites plus a **36-invariant red-team security suite**:
+Run the suite with:
 
 ```powershell
-# From the project root:
 powershell -ExecutionPolicy Bypass -File .\run-all-tests.ps1
 ```
 
-Or run the official 5-metric benchmark directly:
-```bash
+The GitHub Actions workflow type-checks and builds the extension before running integration tests. It uses Node.js 22 and Python 3.12. The benchmark is an internal evaluation on project-owned fixtures, not an industry benchmark or independent assessment. Its recorded visual-context result is limited; details are in [Known limitations](docs/KNOWN_LIMITATIONS.md).
+
+## Current limitations
+
+- The default visual path uses classical pixel contrast analysis and Tesseract OCR. It is not a general-purpose visual understanding model; the Florence-2 path is experimental.
+- OCR can miss small or low-contrast text. Crop selection depends on target localization.
+- PII detection combines patterns, checksums, entropy heuristics, and heuristic name detection. It can miss values outside its supported patterns and languages.
+- Tasks that need broader visual or semantic reasoning require a configured backend and VLM provider. The extension does not include model credentials.
+- The included showcase page uses scripted scenario logs. Those logs are not measurements of the live extension/backend path.
+- This is a prototype, not a legal compliance assessment or production deployment guide.
+
+See [Known limitations](docs/KNOWN_LIMITATIONS.md) for the evaluation snapshot and more detail. Engineering rationale is documented in [DECISIONS.md](docs/DECISIONS.md).
+
+## How to run
+
+### Prerequisites
+
+- Node.js 22.x (the version used in CI)
+- Python 3.12
+- Chrome or another Chromium browser that supports unpacked Manifest V3 extensions
+
+### Build and load the extension
+
+```powershell
 cd extension
-npx.cmd tsx ../benchmark/scripts/run-benchmark.mjs
+npm ci
+npm run build
 ```
 
----
+The build is written to `extension/dist/` and mirrored to the root `privaagent-extension/` folder. In Chrome, open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `privaagent-extension/`.
 
+### Start the backend
 
-
----
-
-## 📂 Project Structure
-
-```
-Privaagent/
-├── extension/                          # Chrome MV3 Extension (TypeScript + Vite)
-│   ├── src/
-│   │   ├── agent/                      # Target resolver, local solver, task parser
-│   │   ├── background/                 # Service worker message routing & state
-│   │   ├── content/                    # Content scripts injected into web pages
-│   │   ├── disclosure/                 # Minimum disclosure ladder planner (L0-L3)
-│   │   ├── execution/                  # Synthetic click, keyboard, scroll dispatchers
-│   │   ├── perception/                 # WebGPU/WASM vision, CV analyzer, OCR, face detector
-│   │   ├── privacy/                    # PII, secret, NER detectors, redactor, audit vault
-│   │   ├── semantic/                   # DOM tree extractor & accessibility fusion
-│   │   ├── ui/                         # Floating HUD and viewport privacy overlays
-│   │   └── validator/                  # Action validator & homoglyph prompt injection shield
-│   ├── popup/                          # Mission control popup UI
-│   └── dist/                           # Compiled production extension build
-├── server/                             # FastAPI Reasoning & Defense-in-Depth Backend
-│   ├── app/
-│   │   ├── api/                        # Routes & defense-in-depth sanitization middleware
-│   │   ├── schemas/                    # Pydantic v2 data contracts (Page, Action, Disclosure)
-│   │   └── vlm/                        # VLM client (Ollama, vLLM, Groq, OpenAI), prompt builders
-├── benchmark/                          # Internal 5-metric benchmark harness
-│   ├── pii/                            # 265 ground-truth labeled snippets dataset
-│   ├── pages/                          # Evaluation web page fixtures
-│   ├── tasks/                          # 10 standardized evaluation benchmark tasks
-│   └── scripts/                        # run-benchmark.mjs & dataset generator
-├── demo/                               # Interactive Live Demonstration Portal
-│   └── index.html                      # Customer profile, canvas chart, adversarial lab
-├── tests/                              # 13 Automated Verification Suites (.mjs & pytest)
-├── run-all-tests.ps1                   # Unified test runner script
-├── privaagent-extension.zip            # Distributable extension archive
-└── README.md                           # Documentation & specifications
+```powershell
+cd ..\server
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m pip install pytest pytest-asyncio httpx httpx2
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
----
+The sample `.env` uses a demo sentinel and leaves `ALLOWED_EXTENSION_ID` empty. This is for local evaluation only: keep the service bound to loopback and do not expose it to an untrusted network. For a deployment, configure a unique session token, the exact extension ID, appropriate origins, and a trusted VLM endpoint.
 
+The included `start-privaagent.bat` / `start-privaagent.ps1` launch the service and open the showcase page. **The showcase task logs are scripted.** Use the automated suites above to verify code paths; do not treat a displayed demo log as a live network or model result.
 
+### Run the internal benchmark by itself
 
----
+```powershell
+cd extension
+npx.cmd tsx ..\benchmark\scripts\run-benchmark.mjs
+```
 
-## 👨‍💻 Author & Acknowledgements
+## Project map
 
-* **Developed by**: Tushar ([@Tushar-cy](https://github.com/Tushar-cy))
-* **Initiative**: Smart India Hackathon 2026
-* **Problem Statement**: SIH26171 — *On-device Visual Perception for Light-weight Browser Agents*
-* **Nodal Agency**: Department of Space / Indian Space Research Organisation (ISRO)
+```text
+extension/                Chrome extension source (TypeScript)
+privaagent-extension/     Built unpacked extension for local loading
+server/                   FastAPI API, schemas, and VLM client
+demo/                     Scripted showcase page and sample scenarios
+tests/                    Extension, backend, security, and integration tests
+benchmark/                Internal fixtures and evaluation harness
+docs/DECISIONS.md         Engineering decisions and trade-offs
+docs/KNOWN_LIMITATIONS.md Evaluation limits and known gaps
+```
+
+## Project
+
+Developed by Tushar ([@Tushar-cy](https://github.com/Tushar-cy)) for Smart India Hackathon 2026, problem SIH26171, Department of Space / ISRO.

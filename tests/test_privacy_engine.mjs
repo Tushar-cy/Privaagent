@@ -15,7 +15,7 @@ import { planDisclosure } from "../extension/src/disclosure/disclosure-planner.t
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 console.log("==================================================");
-console.log("   PRIVAAGENT LOCAL PRIVACY ENGINE BENCHMARK      ");
+console.log("   PRIVAAGENT LOCAL PRIVACY ENGINE TESTS           ");
 console.log("==================================================");
 
 // ----------------------------------------------------
@@ -281,5 +281,5 @@ if (precision < 0.95 || recall < 0.9) {
   throw new Error(`Privacy benchmark failed target thresholds! Precision: ${precision}, Recall: ${recall}`);
 }
 
-console.log("\n[ALL TESTS PASSED] Prompt 2 Local Privacy Engine completely verified!");
+console.log("\n[ALL TESTS PASSED] Local privacy checks passed.");
 process.exit(0);

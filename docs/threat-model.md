@@ -3,20 +3,21 @@
 ## 1. Threat Landscape
 In an autonomous or semi-autonomous browser agent, threats originate from two distinct vectors:
 1. **Adversarial Web Content**: Untrusted websites embedding hidden prompt injection, misleading labels, or off-screen malicious triggers.
-2. **Untrusted Remote Reasoning Engine**: The server-side VLM is treated as an untrusted third-party component that must never receive unredacted sensitive user context and whose output actions must never be trusted without local verification.
+2. **Untrusted Remote Reasoning Engine**: The server-side VLM may receive filtered context when remote reasoning is needed. Its output is untrusted and must pass local validation before execution.
 
 ## 2. Security Boundaries & Invariants
 
-### Invariant 1: Zero Unsanitized Data Across Network
-- No raw PII (Aadhaar, PAN, emails, phone numbers, auth tokens, passwords, faces) may ever cross the trust boundary into the remote server.
-- The Minimum Disclosure Ladder enforces `L0` (Local Only) as the default. If `L1` or `L2` is needed, all spans must be replaced by stable session tokens (`[PERSON_1]`, `[SECRET_KEY]`), and any visual crop must be redacted on an off-screen canvas prior to transmission.
+### Goal 1: Minimize and check outbound data
+- `L0` sends no task request. For `L1`–`L3`, the client filters supported text patterns and redacts detected sensitive image regions before dispatch.
+- The client checks the prepared disclosure before sending; the backend repeats schema, sensitive-text, image, size, and visual-manifest checks.
+- These checks reduce risk but are not proof that every sensitive value or image region was detected.
 
 ### Invariant 2: No Free-Form Script Execution
 - Remote models are strictly restricted to structured Action schemas (`click`, `type`, `scroll`, `select`, `navigate`).
 - Arbitrary JavaScript evaluation (`eval()`, `chrome.tabs.executeScript` with raw code strings) is strictly banned in the architecture.
 
-### Invariant 3: Comprehensive Prompt Injection & Pre-Execution Validation
-- **Global Pre-Flight Scan**: Before any action is decided (locally or via remote VLM), the orchestration engine maps over *all* disclosed candidate elements in the page state and runs prompt injection detection globally. If a concealed instruction or injection attack is found anywhere in the candidate set, the task is immediately blocked.
+### Goal 3: Check candidate content and validate actions
+- **Candidate scan**: The resolver scans candidate elements for concealed prompt-injection patterns. This scanner is heuristic and does not cover every possible attack.
 - After an action is resolved, the **Local Action Validator** must still:
   - Re-resolve `target_id` against the current, live DOM snapshot.
   - Verify the element is visible, non-zero-sized, and not obscured by overlay attacks.

@@ -1,7 +1,7 @@
 // Screenshot Capture & Visual Redaction Pipeline (MV3 Compliant)
 // Captures viewport screenshots via background service worker, then applies
-// on-device irreversible pixel blackouts/redactions over all sensitive bounding boxes
-// BEFORE visual payloads leave the device.
+// on-device pixel blackouts over detected sensitive bounding boxes before a
+// visual payload is dispatched.
 
 import { BoundingBox, VisualRedactionManifest } from "../common/types";
 
@@ -13,8 +13,8 @@ export interface TabCaptureResult {
 
 /**
  * Structured result of a sanitization pass.
- * The manifest is a formal proof that all sensitive bounding boxes were evaluated
- * and blackout-burned onto the canvas BEFORE any network dispatch.
+ * The manifest summarizes the detected boxes considered during this redaction
+ * pass. It is checked by the client and backend, but is not proof of detection completeness.
  */
 export interface SanitizeResult {
   /** Empty string on fail-closed; non-empty base64 PNG otherwise. */
@@ -81,7 +81,7 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
  * cryptographic privacy badges onto the canvas pixels.
  *
  * If cropBox is provided (L2), only the cropped ROI is retained and returned.
- * If cropBox is omitted (L3), the entire viewport is returned with all sensitive areas masked.
+ * If cropBox is omitted (L3), the entire viewport is returned with detected sensitive areas masked.
  *
  * Returns a `SanitizeResult` containing the sanitized PNG data URL AND a
  * `VisualRedactionManifest` that formally records which boxes were evaluated and burned.
@@ -210,7 +210,7 @@ export async function sanitizeScreenshot(
 
       ctx.drawImage(img, 0, 0);
 
-      // Mask all sensitive bounding boxes across the viewport scaled to device pixels
+      // Mask all detected sensitive boxes across the viewport, scaled to device pixels
       for (const box of sensitiveBoxes) {
         const [bx, by, bw, bh] = box;
         const sbx = Math.round(bx * scaleX);
@@ -249,17 +249,17 @@ export async function sanitizeScreenshot(
 }
 
 /**
- * High-level orchestration: captures the current tab and sanitizes all sensitive areas.
+ * High-level orchestration: captures the current tab and sanitizes detected sensitive areas.
  */
 import { detectVisualSensitivity } from "../perception/visual-sensitivity";
 
 /**
  * High-level orchestration: captures the current tab, runs visual detection,
- * merges sensitive regions, and sanitizes all sensitive areas.
+ * merges detected sensitive regions and sanitizes their pixels.
  *
- * Returns a `CaptureAndSanitizeResult` containing both the sanitized screenshot
- * and the formal `VisualRedactionManifest` (Strict Visual Contract). Callers MUST
- * attach the manifest to any outbound L2/L3 disclosure payload.
+ * Returns the screenshot and its `VisualRedactionManifest`. Callers must attach
+ * the manifest to any outbound L2/L3 disclosure payload; backend validation
+ * checks the manifest contract independently.
  */
 export async function captureAndSanitizeTab(
   pageState: any,
@@ -318,4 +318,3 @@ export async function captureAndSanitizeTab(
     manifest: sanitizeResult.manifest,
   };
 }
-

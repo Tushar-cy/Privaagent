@@ -7,7 +7,7 @@ export type PipelineStage =
   | "privacy_annotation"
   | "semantic_masking"
   | "local_solver"
-  | "florence_vision"
+  | "visual_inference"
   | "tesseract_ocr"
   | "face_detection"
   | "evidence_fusion"
@@ -54,7 +54,6 @@ export interface SLACheck {
   domLatencyOk: boolean;     // < 50ms
   localSolverOk: boolean;    // < 15ms
   memoryFootprintOk: boolean; // < 150MB
-  zeroLeakageOk: boolean;    // 0 PII leaks
   violations: string[];
 }
 
@@ -213,9 +212,7 @@ export class PerformanceProfiler {
     };
   }
 
-  /**
-   * Verifies all stages against the benchmark SLA constraints.
-   */
+  /** Checks runtime and memory measurements against the benchmark limits. */
   public checkSLA(doc?: Document): SLACheck {
     const violations: string[] = [];
 
@@ -240,15 +237,11 @@ export class PerformanceProfiler {
       violations.push(`Client Heap Memory (${resources.heapUsedMB}MB) exceeds 150MB budget`);
     }
 
-    // Zero raw PII leakage across boundary
-    const zeroLeakageOk = true;
-
     return {
       compliant: violations.length === 0,
       domLatencyOk,
       localSolverOk,
       memoryFootprintOk,
-      zeroLeakageOk,
       violations,
     };
   }

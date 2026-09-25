@@ -94,7 +94,7 @@ jobs:
           cd extension
           npx tsx ../tests/test_multiturn_agent.mjs
 
-      - name: Extension Test - Compliance Audit
+      - name: Extension Test - Privacy Audit
         run: |
           cd extension
           npx tsx ../tests/test_compliance_audit.mjs

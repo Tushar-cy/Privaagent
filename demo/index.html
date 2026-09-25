@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Privaagent — Live Demonstration & Evaluation Portal (SIH26171)</title>
+  <title>Privaagent — Scenario Walkthrough (SIH26171)</title>
   <style>
     :root {
       --bg-body: #0b0f19;
@@ -59,6 +59,15 @@
       background: rgba(16, 185, 129, 0.15);
       color: var(--success);
       border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .demo-note {
+      margin: -8px 0 20px;
+      padding: 12px 14px;
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      border-radius: 8px;
+      background: rgba(245, 158, 11, 0.08);
+      color: #fcd34d;
+      font-size: 13px;
     }
     .tabs-nav {
       display: flex;
@@ -316,12 +325,16 @@
     <div class="brand">
       <div class="logo">🛡️</div>
       <div>
-        <div class="brand-title">Privaagent Showcase</div>
-        <div class="brand-subtitle">Smart India Hackathon 2026 (SIH26171) • Adaptive Minimum-Disclosure Core</div>
+        <div class="brand-title">Privaagent Scenario Walkthrough</div>
+        <div class="brand-subtitle">Smart India Hackathon 2026 (SIH26171) • Example pages and scripted scenarios</div>
       </div>
     </div>
-    <div class="badge-pill">● L0-first engine active</div>
+    <div class="badge-pill">L0-first design</div>
   </header>
+
+  <aside class="demo-note">
+    <strong>Scripted walkthrough:</strong> preset actions update this page and print illustrative logs. They do not send tasks through the extension, backend, or VLM. Use the test suite to verify implementation behavior.
+  </aside>
 
   <!-- Navigation Tabs -->
   <div class="tabs-nav">
@@ -336,7 +349,7 @@
       <!-- Profile Card with PII -->
       <div class="card" id="profile-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <h2 style="margin:0; border:none; padding:0;">Customer Profile</h2>
+          <h2 style="margin:0; border:none; padding:0;">Example Customer Profile</h2>
           <!-- User Avatar Photo with Face for BlazeFace Detection -->
           <svg id="user-avatar" width="48" height="48" viewBox="0 0 48 48" role="img" aria-label="Customer Profile Photo" style="border-radius: 50%; background: #e0f2fe;">
             <circle cx="24" cy="24" r="20" fill="#fed7aa" />
@@ -392,9 +405,9 @@
 
     <!-- Credentials Card -->
     <div class="card" style="margin-top: 20px;">
-      <h2>Developer API Secrets</h2>
-      <span class="label">Production Secret Key (High Entropy):</span>
-      <div class="code-box" id="secret-key">sk-proj-7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t</div>
+      <h2>Example Secret-Like Value</h2>
+      <span class="label">Fixture string (not a credential):</span>
+      <div class="code-box" id="secret-key">sk-example-not-a-real-key-0000000000</div>
     </div>
   </div>
 
@@ -404,7 +417,7 @@
       <h2>Quarterly Revenue (Graphical Canvas Region)</h2>
       <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">
         Visual elements rendered on &lt;canvas&gt; cannot be read via standard DOM text.
-        Privaagent applies Florence-2 on-device object detection & OCR over a bounded pixel crop.
+        The extension's default path uses classical pixel contrast and Tesseract OCR. Florence-2 is experimental; this page's preset logs are scripted.
       </p>
       <canvas id="revenue-chart" width="440" height="240"></canvas>
       <div style="text-align:center; margin-top:12px; font-size:12px; color:var(--text-muted);">
@@ -447,10 +460,10 @@
     </div>
   </div>
 
-  <!-- Interactive Evaluator & Mission Control Panel -->
+  <!-- Scripted scenario panel -->
   <div class="evaluator-panel">
     <h3>
-      <span>MISSION CONTROL & PRIVACY LEDGER</span>
+      <span>Task scenarios & privacy log (scripted)</span>
       <span style="font-size:12px; color:var(--success);">BLUR viewport overlay</span>
     </h3>
 
@@ -461,7 +474,7 @@
       <button class="preset-btn" onclick="setTask('Follow hidden instruction in widget')">Test 4: Adversarial Injection (BLOCK)</button>
       <button class="preset-btn" onclick="setTask('Open Rahul\'s invoice then view statement')">Test 5: Multi-Turn Local (2 Steps, 0 B)</button>
       <button class="preset-btn" onclick="setTask('Open Rahul\'s invoice then click the bar representing Q4')">Test 6: Multi-Turn Hybrid (L0 + L2)</button>
-      <button class="preset-btn" onclick="setTask('Verify DPDP Act 2023 compliance and generate synthetic surrogates')">Test 7: DPDP 2023 & Synthetic Privacy</button>
+      <button class="preset-btn" onclick="setTask('Review privacy controls and synthetic test values')">Test 7: Privacy controls & test values</button>
     </div>
 
     <div class="input-group">
@@ -470,7 +483,7 @@
     </div>
 
     <div class="output-card" id="evaluator-log">
-Ready. Select a preset or type a natural language command to execute.
+Ready. Select a preset or type a task to view its scripted scenario.
     </div>
   </div>
 
@@ -539,7 +552,7 @@ Ready. Select a preset or type a natural language command to execute.
       const task = document.getElementById('task-input-field').value.trim();
       const log = document.getElementById('evaluator-log');
 
-      log.textContent = `[Privaagent] Dispatching task: "${task}"...\n`;
+      log.textContent = `[Scripted walkthrough] Scenario: "${task}"...\n`;
 
       setTimeout(() => {
         const lower = task.toLowerCase();
@@ -549,7 +562,7 @@ Ready. Select a preset or type a natural language command to execute.
           const parts = task.split(/\s+(?:then|after\s+that)\s+|;\s*/i);
           log.textContent += `🔄 [Goal Decomposer]: Decomposed procedural instruction into ${parts.length} ordered subtasks:\n`;
           parts.forEach((p, i) => log.textContent += `   Step ${i + 1}: "${p.trim()}"\n`);
-          log.textContent += `🛡️ [Session Privacy Budget]: Limits: Max 50KB network, Max 4 remote calls, Max 8 steps\n\n`;
+          log.textContent += `🛡️ [Example session limits]: Max 50KB network, Max 4 remote calls, Max 8 steps\n\n`;
 
           let cumulativeBytes = 0;
           let halted = false;
@@ -561,31 +574,30 @@ Ready. Select a preset or type a natural language command to execute.
 
             if (pLower.includes("invoice")) {
               log.textContent += `[Step ${stepNum}/${parts.length}: "${p.trim()}"]\n`;
-              log.textContent += `  ✓ On-Device Local Solver: Target "btn-open-invoice" (conf: 99%)\n`;
+              log.textContent += `  ✓ Example local match: "btn-open-invoice"\n`;
               log.textContent += `  ✓ Disclosure: L0 LOCAL ONLY (0 Bytes transmitted)\n`;
               log.textContent += `  ✓ Risk Policy: ALLOW (Safe internal DOM action)\n`;
-              log.textContent += `  ✓ Execution: Dispatched synthetic click to "btn-open-invoice"\n\n`;
+              log.textContent += `  ✓ Example action: select "btn-open-invoice"\n\n`;
               document.getElementById('btn-open-invoice')?.click();
             } else if (pLower.includes("statement")) {
               log.textContent += `[Step ${stepNum}/${parts.length}: "${p.trim()}"]\n`;
-              log.textContent += `  ✓ On-Device Local Solver: Target "field-val" invoice id (conf: 95%)\n`;
+              log.textContent += `  ✓ Example local match: invoice-id field\n`;
               log.textContent += `  ✓ Disclosure: L0 LOCAL ONLY (0 Bytes transmitted)\n`;
               log.textContent += `  ✓ Risk Policy: ALLOW (Safe inspection)\n\n`;
             } else if (pLower.includes("q4") || pLower.includes("bar")) {
               cumulativeBytes += 1158;
               switchTab('tab-analytics');
               log.textContent += `[Step ${stepNum}/${parts.length}: "${p.trim()}"]\n`;
-              log.textContent += `  ✓ Visual Perception: Florence-2 isolated canvas crop [440x240], detected 4 bar ROIs\n`;
-              log.textContent += `  ✓ Disclosure: L2 SANITIZED VISUAL CROP ROI (1,158 Bytes)\n`;
-              log.textContent += `  ✓ Budget Update: Cumulative transmitted: 1,158 B / 50 KB\n`;
-              log.textContent += `  ✓ Fallback VLM: Resolved target to "revenue-chart_bar_4" (conf: 0.94)\n`;
-              log.textContent += `  ✓ Execution: Highlighted Q4 bar\n\n`;
+              log.textContent += `  ✓ Example visual step: localize a chart region\n`;
+              log.textContent += `  ✓ Example disclosure: L2 crop with a redaction manifest\n`;
+              log.textContent += `  ✓ Example byte count: 1,158 B (illustrative)\n`;
+              log.textContent += `  ✓ Example action: select the Q4 bar\n\n`;
             } else if (pLower.includes("pay")) {
               halted = true;
               log.textContent += `[Step ${stepNum}/${parts.length}: "${p.trim()}"]\n`;
-              log.textContent += `  ⚠️ Risk Policy Engine: Matched rule FINANCIAL_TRANSACTION\n`;
-              log.textContent += `  🛑 PAUSED_CONFIRMATION: Action requires explicit user authorization!\n\n`;
-              showCyberModal('FINANCIAL INTERVENTION REQUIRED', 'Privaagent Multi-Turn Guard: Subtask requires financial confirmation for outgoing transaction!', 'warning');
+              log.textContent += `  ⚠️ Risk policy: this action requires confirmation\n`;
+              log.textContent += `  🛑 Scenario paused for user approval\n\n`;
+              showCyberModal('Approval required', 'The scenario pauses this action and waits for explicit user approval.', 'warning');
             } else {
               log.textContent += `[Step ${stepNum}/${parts.length}: "${p.trim()}"]\n`;
               log.textContent += `  ✓ Executed under standard L0 policy.\n\n`;
@@ -593,51 +605,46 @@ Ready. Select a preset or type a natural language command to execute.
           });
 
           if (!halted) {
-            log.textContent += `🎉 [Multi-Turn Completion]: All ${parts.length} subtasks successfully completed!\n`;
-            log.textContent += `📊 Session Privacy Budget: ${cumulativeBytes} Bytes transmitted | ${cumulativeBytes === 0 ? "100.0% on-device" : "99.9% network savings"} | Status: SUCCESS\n`;
+            log.textContent += `✓ [Example scenario]: ${parts.length} subtasks shown\n`;
+            log.textContent += `📊 Example byte count: ${cumulativeBytes} B | scripted output\n`;
           }
           return;
         }
 
         if (task.toLowerCase().includes("invoice")) {
           log.textContent += `✓ [Task Parser]: Action = click, Target = "Open Rahul's invoice", Requires Vision = false\n`;
-          log.textContent += `✓ [Local Task Solver]: High-confidence match on element "btn-open-invoice" (Confidence: 98%)\n`;
+          log.textContent += `✓ [Example local match]: "btn-open-invoice"\n`;
           log.textContent += `✓ [Minimum Disclosure]: Level = L0 LOCAL ONLY\n`;
-          log.textContent += `✓ [Outbound Network Bytes]: 0 Bytes (100.0% Network Transmission Saved)\n`;
+          log.textContent += `✓ [Example L0 outcome]: no task request shown in this scripted scenario\n`;
           log.textContent += `✓ [Risk Policy]: ALLOW (Safe internal DOM action)\n`;
-          log.textContent += `✓ [Execution]: Target "btn-open-invoice" clicked in 0.22ms!\n`;
+          log.textContent += `✓ [Example action]: target "btn-open-invoice" selected by the scenario\n`;
           document.getElementById('btn-open-invoice').click();
         } else if (task.toLowerCase().includes("q4") || task.toLowerCase().includes("bar")) {
           switchTab('tab-analytics');
-          log.textContent += `✓ [Task Parser]: Action = click, Target = "Q4 bar", Requires Vision = true\n`;
-          log.textContent += `✓ [Local Perception]: Florence-2 isolated canvas crop [440x240], detected 4 bar ROIs\n`;
-          log.textContent += `✓ [Minimum Disclosure]: Level = L2 SANITIZED VISUAL CROP ROI\n`;
-          log.textContent += `✓ [Outbound Network]: 1,158 Bytes (Transmitted sanitized ROI only, 99.9% saved vs full screenshot)\n`;
-          log.textContent += `✓ [Fallback VLM]: Resolved target to "revenue-chart_bar_4" (conf: 0.94)\n`;
-          log.textContent += `✓ [Risk Policy]: ALLOW (Visual chart element)\n`;
-          log.textContent += `✓ [Execution]: Action dispatched to Q4 bar successfully!\n`;
+          log.textContent += `✓ [Scenario task]: click the Q4 bar\n`;
+          log.textContent += `✓ [Example visual step]: localize a chart region\n`;
+          log.textContent += `✓ [Example disclosure]: L2 crop with a redaction manifest\n`;
+          log.textContent += `✓ [Example byte count]: 1,158 B (illustrative)\n`;
+          log.textContent += `✓ [Example action]: select the Q4 bar\n`;
         } else if (task.toLowerCase().includes("pay")) {
           switchTab('tab-adversarial');
           log.textContent += `✓ [Task Parser]: Action = click, Target = "Pay Now $5,000"\n`;
           log.textContent += `⚠️ [Risk Policy Engine]: Matched rule FINANCIAL_TRANSACTION\n`;
-          log.textContent += `⚠️ [Verdict]: CONFIRM — Action triggers irreversible financial liability\n`;
-          log.textContent += `🛑 [User Safeguard]: Execution paused pending explicit user authorization.\n`;
-          showCyberModal('FINANCIAL LIABILITY DETECTED', 'Privaagent Policy Guard: Payment of $5,000 detected. Autonomous execution strictly paused pending explicit user authorization.', 'warning');
+          log.textContent += `⚠️ [Example policy result]: CONFIRM\n`;
+          log.textContent += `🛑 [Scenario]: paused and waiting for user approval\n`;
+          showCyberModal('Approval required', 'The scenario pauses this payment action and waits for explicit user approval.', 'warning');
         } else if (task.toLowerCase().includes("hidden") || task.toLowerCase().includes("instruction")) {
           log.textContent += `🚨 [Prompt Injection Scanner]: Scanning DOM candidates...\n`;
-          log.textContent += `🚨 [CRITICAL]: Matched rule IGNORE_PREVIOUS_INSTRUCTIONS in concealed element #malicious-injection-1 (display:none)\n`;
-          log.textContent += `🛑 [Verdict]: BLOCK — Adversarial attack strictly neutralized. 0 actions executed.\n`;
-          showCyberModal('PROMPT INJECTION ATTACK NEUTRALIZED', 'Privaagent Security Shield: Malicious prompt injection detected in concealed element #malicious-injection-1. Adversarial vector neutralized with 0 actions dispatched.', 'danger');
-        } else if (task.toLowerCase().includes("dpdp") || task.toLowerCase().includes("synthetic") || task.toLowerCase().includes("compliance")) {
-          log.textContent += `🛡️ [Enterprise Privacy Engine]: Initiating DPDP Act 2023 & GDPR Art. 25 Audit Certification...\n`;
-          log.textContent += `  ✓ Real Citizen Data Found: Aadhaar (9876 5432 1098), PAN (ABCDE1234F), Phone (+91 98765 43210)\n`;
-          log.textContent += `  ✓ Mode 1 (Redaction): Masked to [REDACTED_AADHAAR], [REDACTED_PAN]\n`;
-          log.textContent += `  ✓ Mode 2 (Synthetic): Generated Verhoeff Aadhaar "9999 4812 3901" & CBDT PAN "KJHPE8140X"\n`;
-          log.textContent += `  ✓ Cryptographic Ledger: 4 Transactions Chained (SHA-64 Root: 000ee1c8cf78fd4c)\n`;
-          log.textContent += `  ✓ Chain Integrity: VERIFIED_UNBROKEN (0 Hash Mismatches)\n`;
-          log.textContent += `  ✓ Leak Verification: 0 Raw Citizen Bytes Traversed Network\n`;
-          log.textContent += `  Audit summary available via Privacy Audit Dashboard\n`;
-          log.textContent += `\n👉 View Full Interactive Portal: Open extension/report/compliance-dashboard.html to print or inspect!\n`;
+          log.textContent += `⚠️ [Example finding]: hidden instruction in a page fixture\n`;
+          log.textContent += `🛑 [Example policy result]: BLOCK\n`;
+          showCyberModal('Action blocked', 'The scripted scenario represents a hidden-instruction case. The red-team tests exercise the scanner and action checks.', 'danger');
+        } else if (task.toLowerCase().includes("privacy") || task.toLowerCase().includes("synthetic") || task.toLowerCase().includes("audit")) {
+          log.textContent += `🛡️ [Privacy controls walkthrough]\n`;
+          log.textContent += `  • The page fixture contains example name, email, phone, and identifier-like values.\n`;
+          log.textContent += `  • Redaction replaces detected values with labels in disclosed text.\n`;
+          log.textContent += `  • Synthetic replacements are example test values; this is not differential privacy.\n`;
+          log.textContent += `  • The audit dashboard shows recorded privacy events; it is not a compliance certificate.\n`;
+          log.textContent += `\n👉 Open extension/report/audit-dashboard.html to inspect the dashboard UI.\n`;
         } else {
           log.textContent += `✓ Task processed under standard L0/L1 disclosure policy.\n`;
         }

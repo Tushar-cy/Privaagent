@@ -15,7 +15,7 @@ $suites = @(
     @{ Name = "5. Action Validator and Security Shield"; Cmd = "npx.cmd tsx ..\tests\test_validator.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "6. Viewport HUD and privacy overlays"; Cmd = "npx.cmd tsx ..\tests\test_ui_and_overlays.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "7. Multi-Turn Autonomous Agent and Budget"; Cmd = "npx.cmd tsx ..\tests\test_multiturn_agent.mjs"; Dir = "$ROOT\extension" },
-    @{ Name = "8. Enterprise DPDP Act 2023 Audit Vault"; Cmd = "npx.cmd tsx ..\tests\test_compliance_audit.mjs"; Dir = "$ROOT\extension" },
+    @{ Name = "8. Privacy Audit Vault"; Cmd = "npx.cmd tsx ..\tests\test_compliance_audit.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "9. Synthetic Replacer and Audit Vault"; Cmd = "npx.cmd tsx ..\tests\test_synthetic_replacer_and_audit_vault.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "10. Live HTTP Trust Boundary and Defense-in-Depth"; Cmd = "node ..\tests\test_live_http_end_to_end.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "11. Zero-Trust Red-Team Security & Invariants Suite"; Cmd = "npx.cmd tsx ..\tests\test_redteam_security.mjs"; Dir = "$ROOT\extension" },

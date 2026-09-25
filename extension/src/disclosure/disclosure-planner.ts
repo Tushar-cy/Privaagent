@@ -42,7 +42,7 @@ export function planDisclosure(
 
     return {
       level: "L3",
-      reason: "Task requires holistic page visual context without localized crop ROI; transmitting sanitized full viewport screenshot with all PII regions masked.",
+      reason: "Task requires page-wide visual context without a localized crop; transmitting a viewport screenshot with detected sensitive regions masked.",
       task: sanitizeTaskString(task),
       elements: disclosedElements,
       crop_box: undefined,
@@ -94,7 +94,7 @@ export function planDisclosure(
 
   // L3: Sanitized Full Viewport Screenshot
   // Triggered when visual reasoning is required across the page without a single localized crop ROI.
-  // Transmits full sanitized element tree + full sanitized screenshot with all PII regions masked.
+  // Transmits filtered element data plus a screenshot with detected sensitive regions masked.
   if (options.requiresVision && !options.targetCropTargetId) {
     const { disclosedElements, totalRedactedTokens } = maskPageStateForDisclosure(
       pageState,
@@ -103,7 +103,7 @@ export function planDisclosure(
 
     return {
       level: "L3",
-      reason: "Task requires holistic page visual context without localized crop ROI; transmitting sanitized full viewport screenshot with all PII regions masked.",
+      reason: "Task requires page-wide visual context without a localized crop; transmitting a viewport screenshot with detected sensitive regions masked.",
       task: sanitizeTaskString(task),
       elements: disclosedElements,
       crop_box: undefined,
@@ -122,7 +122,7 @@ export function planDisclosure(
 
   return {
     level: "L1",
-    reason: "Local solver requires remote VLM reasoning over structured semantic element tree; all sensitive spans replaced with tokens.",
+    reason: "Local solver requires remote reasoning over structured page data; detected sensitive spans are replaced with tokens.",
     task: sanitizeTaskString(task),
     elements: disclosedElements,
     redacted_token_count: totalRedactedTokens,

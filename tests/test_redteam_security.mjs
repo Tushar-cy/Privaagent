@@ -1,9 +1,5 @@
-// Comprehensive Red-Team Security & Integrity Test Suite (SIH26171)
-// Rigorously validates all 36 security guarantees across:
-// 1. Privacy & Leak Prevention (14 tests, including 3 visual-contract invariants)
-// 2. Action Security & Risk Policy (10 tests)
-// 3. AI Trust Boundary & Schema Validation (6 tests)
-// 4. Audit Vault Cryptographic Integrity (6 tests)
+// Red-Team Security & Integrity Test Suite (SIH26171)
+// Exercises privacy, action-risk, model-boundary, and audit-integrity checks.
 
 import assert from "assert";
 import { JSDOM } from "../extension/node_modules/jsdom/lib/api.js";
@@ -23,7 +19,7 @@ global.Image = canvasLib.Image;
 
 console.log("==================================================================");
 console.log("      PRIVAAGENT RED-TEAM SECURITY & INTEGRITY TEST SUITE         ");
-console.log("             Zero-Trust Trust Boundary Verification               ");
+console.log("             Privacy and action boundary checks                  ");
 console.log("==================================================================");
 
 let totalPassed = 0;
@@ -686,7 +682,7 @@ runTest("36. Audit ledger restores and verifies from persistent storage array", 
 console.log("\n==================================================================");
 console.log(` RED-TEAM SECURITY AUDIT SUMMARY: ${totalPassed} / ${totalPassed + totalFailed} TESTS PASSED`);
 if (totalFailed === 0) {
-console.log(" >>> ALL 37 ZERO-TRUST SECURITY INVARIANTS FULLY VERIFIED! <<<");
+console.log(" >>> ALL RED-TEAM CHECKS PASSED. <<<");
 } else {
   console.log(` >>> ${totalFailed} TEST(S) FAILED — REVIEW SECURITY CONTROLS! <<<`);
 }

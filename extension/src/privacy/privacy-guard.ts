@@ -1,7 +1,6 @@
-// Pre-Flight Privacy Guard: Final local gatekeeper before any network transmission.
-// Scans the fully assembled outbound Disclosure payload to ensure NO raw sensitive
-// information ever crosses the device boundary. If any unredacted pattern is found,
-// the request is STRICTLY BLOCKED on-device.
+// Pre-Flight Privacy Guard: Final local check before any network transmission.
+// Scans the assembled disclosure for supported raw-sensitive-data patterns and
+// validates the visual contract. A failed check blocks the request on-device.
 
 import { Disclosure } from "../common/types";
 import { isValidLuhn } from "./pii-detector";

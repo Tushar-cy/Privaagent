@@ -2,7 +2,7 @@
 // Modes:
 // 1. "BLUR" (Default) — Precision floating dark slate blur overlays with Range API exact sub-string bboxes.
 // 2. "GHOST" — Temporarily applies a masking CSS class to sensitive DOM elements.
-// 3. "SYNTHETIC" — Displays format-preserving differential privacy synthetic honeypot surrogates (Verhoeff Aadhaar, Luhn test card, valid PAN) in real-time.
+// 3. "SYNTHETIC" — Displays generated format-compatible example values for supported data types.
 
 import { PageElement, PageState } from "../common/types";
 import { getSubStringBoundingBox } from "../privacy/redactor";

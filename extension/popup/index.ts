@@ -588,7 +588,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (lBytesEl) lBytesEl.textContent = "0 B sent";
         if (lPrivacyGuardEl) {
-          lPrivacyGuardEl.textContent = "VERIFIED (Zero Network Data)";
+          lPrivacyGuardEl.textContent = "PASSED (local-only; 0 B sent)";
           setTone(lPrivacyGuardEl, "success");
         }
       } else if (path === "SANITIZED_VLM") {
@@ -608,14 +608,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (lBytesEl) lBytesEl.textContent = `${r.networkBytesSent} B`;
         if (lPrivacyGuardEl) {
-          lPrivacyGuardEl.textContent = "PASSED (Pre-Flight Audit Safe)";
+          lPrivacyGuardEl.textContent = "PASSED (local pre-send checks)";
           setTone(lPrivacyGuardEl, "success");
         }
       } else if (path === "BLOCKED") {
         setLedgerLevel("L3", "🔴 BLOCKED: PRIVACY AUDIT");
         if (ledgerHeadEl) ledgerHeadEl.textContent = "Architecture: Blocked by Pre-Flight Sentry";
         if (lModelEl) lModelEl.textContent = r.modelUsed || "PrivaAgent Privacy Guard";
-        if (lBackendEl) lBackendEl.textContent = r.executionBackend || "On-Device Security Kernel";
+        if (lBackendEl) lBackendEl.textContent = r.executionBackend || "Local privacy check";
         if (lLocalLatEl) lLocalLatEl.textContent = `${r.localLatencyMs} ms`;
         if (lSanLatEl) lSanLatEl.textContent = `${r.sanitizationLatencyMs} ms`;
         if (lVlmLatEl) lVlmLatEl.textContent = "0.0 ms (Blocked)";
