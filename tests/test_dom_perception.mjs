@@ -92,12 +92,14 @@ if (durationMs >= 50) {
 }
 
 // Assertion 2: Find invoice button
-const invoiceBtn = pageState.elements.find((el) => el.target_id === "btn-open-invoice");
+const findByDomId = (domId) => pageState.elements.find((el) => el.metadata?.domId === domId);
+const invoiceBtn = findByDomId("btn-open-invoice");
 if (!invoiceBtn) {
   throw new Error('Target element "btn-open-invoice" not found in extracted PageState!');
 }
 console.log(`[VERIFIED] Invoice button found:`, {
-  id: invoiceBtn.target_id,
+  target_id: invoiceBtn.target_id,
+  domId: invoiceBtn.metadata.domId,
   role: invoiceBtn.role,
   text: invoiceBtn.text,
   bbox: invoiceBtn.bbox,
@@ -105,7 +107,7 @@ console.log(`[VERIFIED] Invoice button found:`, {
 });
 
 // Assertion 3: Find canvas chart
-const canvasEl = pageState.elements.find((el) => el.target_id === "revenue-chart");
+const canvasEl = findByDomId("revenue-chart");
 if (!canvasEl) {
   throw new Error('Canvas element "revenue-chart" not found in extracted PageState!');
 }
@@ -117,8 +119,8 @@ console.log(`[VERIFIED] Canvas chart found:`, {
 });
 
 // Assertion 4: Find PII name & email
-const nameEl = pageState.elements.find((el) => el.target_id === "user-name");
-const emailEl = pageState.elements.find((el) => el.target_id === "user-email");
+const nameEl = findByDomId("user-name");
+const emailEl = findByDomId("user-email");
 if (!nameEl || nameEl.text !== "Rahul Sharma") {
   throw new Error(`User name element not properly extracted! text=${nameEl?.text}`);
 }
@@ -130,10 +132,10 @@ console.log(`[VERIFIED] User profile PII elements extracted correctly.`);
 // Assertion 5: Test action execution - Click "Open Rahul's invoice"
 console.log("[TEST] Dispatching click action to 'btn-open-invoice'...");
 const actionResult = await dom.window.eval(
-  "window.__privaagent_execute_action({ action: 'click', target_id: 'btn-open-invoice', reason: 'Open Rahul invoice' })"
+  `window.__privaagent_execute_action({ action: 'click', target_id: '${invoiceBtn.target_id}', reason: 'Open Rahul invoice' })`
 );
 
-if (!actionResult.success) {
+if (!actionResult.success || actionResult.target_id !== invoiceBtn.target_id) {
   throw new Error(`Click action failed: ${actionResult.error}`);
 }
 console.log(`[ACTION SUCCESS] Click executed successfully on ${actionResult.target_id}`);

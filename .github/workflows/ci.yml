@@ -49,6 +49,11 @@ jobs:
           cd extension
           npx tsc --noEmit
 
+      - name: Build Extension Bundles for Integration Tests
+        run: |
+          cd extension
+          npx vite build
+
       - name: Extension Test - DOM Perception
         run: |
           cd extension
