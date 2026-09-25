@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import ipaddress
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
@@ -8,7 +9,19 @@ from app.request_size_limit import RequestBodySizeLimitMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup: validate Ollama availability if using remote VLM provider."""
+    """Validate deployment auth and VLM settings before serving requests."""
+    if settings.SESSION_TOKEN == "change-this-for-local-evaluation":
+        bind_host = settings.HOST.strip().strip("[]").lower()
+        try:
+            is_loopback = ipaddress.ip_address(bind_host).is_loopback
+        except ValueError:
+            is_loopback = bind_host == "localhost" or bind_host.endswith(".localhost")
+        if not is_loopback:
+            raise RuntimeError(
+                "Refusing to bind the API beyond loopback while SESSION_TOKEN uses the demo sentinel. "
+                "Set a unique SESSION_TOKEN before exposing the backend."
+            )
+
     if settings.VLM_PROVIDER != "mock":
         from app.vlm.ollama_check import check_ollama_availability
         await check_ollama_availability(settings.VLM_API_BASE_URL, settings.VLM_MODEL_ID)

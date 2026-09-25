@@ -15,6 +15,7 @@ export interface OCRSpan {
 export interface OCRResult {
   spans: OCRSpan[];
   inferenceTimeMs: number;
+  complete?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -73,6 +74,7 @@ export async function runFallbackOCR(
 ): Promise<OCRResult> {
   const start = performance.now();
   const spans: OCRSpan[] = [];
+  let complete = false;
 
   try {
     // Obtain the pixel data as a data URL from the offscreen canvas
@@ -86,7 +88,7 @@ export async function runFallbackOCR(
         `[OCR] Empty/stub data URL for "${_targetId}" — no real canvas pixels available. ` +
         `Returning 0 spans. If running the benchmark, ensure @napi-rs/canvas is backing JSDOM.`
       );
-      return { spans, inferenceTimeMs: performance.now() - start };
+      return { spans, inferenceTimeMs: performance.now() - start, complete: false };
     }
 
 
@@ -94,6 +96,8 @@ export async function runFallbackOCR(
 
     // Run recognition — returns word-level data with bboxes
     const { data } = await worker.recognize(imageDataUrl);
+    if (!Array.isArray(data.words)) throw new Error("OCR engine returned an invalid word list");
+    complete = true;
 
     const [cropX, cropY, cropW, cropH] = crop.boundingBox;
 
@@ -123,11 +127,13 @@ export async function runFallbackOCR(
   } catch (err) {
     // Non-fatal: log and return empty spans — DOM perception still works
     console.error("[OCR] Tesseract inference failed:", err);
+    complete = false;
   }
 
   return {
     spans,
     inferenceTimeMs: performance.now() - start,
+    complete,
   };
 }
 
@@ -158,5 +164,3 @@ export async function terminateOCRWorker(): Promise<void> {
     _workerPromise = null;
   }
 }
-
-

@@ -13,10 +13,14 @@ export function executeNavigate(url?: string): ExecutionResult {
 
   try {
     const parsed = new URL(url, window.location.href);
-    window.location.href = parsed.href;
+    if (parsed.href === window.location.href) {
+      return { success: true, target_id: "window" };
+    }
+    window.location.assign(parsed.href);
     return {
       success: true,
       target_id: "window",
+      navigationPending: true,
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

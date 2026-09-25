@@ -82,15 +82,18 @@ export function parseTask(taskStr: string): ParsedTask {
   }
 
   // 2. Detect if task explicitly requires computer vision
-  const requiresVision = tokens.some((t) => VISION_KEYWORDS.includes(t));
+  const requiresVision = actionType !== "select" && tokens.some((t) => VISION_KEYWORDS.includes(t));
 
   // 3. Extract type value (e.g. "type hello into search")
   let typeValue: string | undefined;
   const typeValueTokens = new Set<string>();
-  if (actionType === "type") {
+  if (actionType === "type" || actionType === "select") {
     const quoteMatch = clean.match(/["']([^"']+)["']/);
     if (quoteMatch) {
       typeValue = quoteMatch[1];
+    } else if (actionType === "select") {
+      const phraseMatch = clean.match(/\b(?:select|choose|pick)\s+(.+?)(?:\s+\b(?:from|in|on)\b.+)?$/i);
+      typeValue = phraseMatch?.[1]?.trim().replace(/[.,;!?]+$/, "");
     } else {
       const typeIndex = tokens.indexOf("type");
       if (typeIndex !== -1 && tokens[typeIndex + 1]) {
@@ -121,6 +124,7 @@ export function parseTask(taskStr: string): ParsedTask {
   if (tokens.includes("button")) targetRoleHint = "button";
   else if (tokens.includes("link")) targetRoleHint = "link";
   else if (tokens.includes("input") || tokens.includes("field")) targetRoleHint = "textbox";
+  else if (actionType === "select") targetRoleHint = "combobox";
   else if (tokens.includes("chart") || tokens.includes("bar")) targetRoleHint = "chart_bar";
 
   return {

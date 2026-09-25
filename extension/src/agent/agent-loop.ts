@@ -42,7 +42,7 @@ function extractAnnotatedPageState(): PageState {
 export interface MultiTurnGoalResult {
   goal: string;
   decomposed: DecomposedGoal;
-  status: "SUCCESS" | "FAILED" | "PAUSED_CONFIRMATION" | "BUDGET_EXCEEDED";
+  status: "SUCCESS" | "FAILED" | "PAUSED_CONFIRMATION" | "BUDGET_EXCEEDED" | "NAVIGATION_PENDING";
   totalSteps: number;
   cumulativeBytesSent: number;
   history: StepRecord[];
@@ -110,8 +110,9 @@ export async function runMultiTurnAgent(
       };
     }
 
-    // 2. Refresh page state if needed
-    if (!currentState && doc) {
+    // 2. Perceive from the live DOM at the start of every step. The mutation
+    // observer's latest value can lag while asynchronous resolution is pending.
+    if (doc && typeof document !== "undefined" && doc === document) {
       currentState = extractAnnotatedPageState();
     }
     if (!currentState) {
@@ -347,6 +348,18 @@ export async function runMultiTurnAgent(
         cumulativeBytesSent: budget.getStatus().cumulativeBytesSent,
         history,
         error: `Execution failure in subtask "${subtask}": ${execution.error}`,
+      };
+    }
+
+    if (execution.navigationPending && i + 1 < decomposed.subtasks.length) {
+      return {
+        goal: goalStr,
+        decomposed,
+        status: "NAVIGATION_PENDING",
+        totalSteps: history.length,
+        cumulativeBytesSent: budget.getStatus().cumulativeBytesSent,
+        history,
+        error: "Navigation started. Remaining steps need fresh perception after the destination page loads.",
       };
     }
 

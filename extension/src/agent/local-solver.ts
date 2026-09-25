@@ -11,13 +11,53 @@ export interface LocalSolveResult {
   networkCallsMade: number; // Always 0 for local solver
 }
 
+interface SelectOptionRecord {
+  label?: string;
+  value?: string;
+  disabled?: boolean;
+}
+
+function matchingSelectOption(el: PageElement, task: ParsedTask): SelectOptionRecord | null {
+  if (task.actionType !== "select" || !task.typeValue) return null;
+  const metadata = el.metadata as Record<string, unknown> | undefined;
+  const options = Array.isArray(metadata?.selectOptions)
+    ? metadata.selectOptions as SelectOptionRecord[]
+    : [];
+  const wanted = task.typeValue.trim().toLowerCase();
+  const matches = options.filter((option) => !option.disabled &&
+    [option.label, option.value].some((candidate) =>
+      typeof candidate === "string" && candidate.trim().toLowerCase() === wanted));
+  return matches.length === 1 ? matches[0] : null;
+}
+
 /**
  * Computes semantic relevance score between a task and a candidate DOM element.
  */
 function scoreElementMatch(el: PageElement, task: ParsedTask, pageState?: PageState): number {
   if (!el.text && !el.target_id) return 0;
 
-  const elTextLower = (el.text || "").toLowerCase();
+  const metadata = el.metadata as Record<string, unknown> | undefined;
+  const tagName = String(metadata?.tagName || "").toLowerCase();
+  const disabled = metadata?.disabled === true;
+  const readOnly = metadata?.readOnly === true;
+  const role = el.role.toLowerCase();
+  const optionMatch = matchingSelectOption(el, task);
+  const compatible = task.actionType === "click"
+    ? !disabled && (el.interactable === true || ["button", "link", "checkbox", "menuitem", "tab", "canvas", "img"].includes(role))
+    : task.actionType === "type"
+      ? !disabled && !readOnly && (["textbox", "searchbox", "input"].includes(role) || ["input", "textarea"].includes(tagName))
+      : task.actionType === "select"
+        ? !disabled && tagName === "select" && optionMatch !== null
+        : task.actionType === "scroll"
+          ? true
+          : false;
+  if (!compatible) return 0;
+
+  const optionLabels = Array.isArray(metadata?.selectOptions)
+    ? (metadata.selectOptions as SelectOptionRecord[]).map((option) => option.label || "").join(" ")
+    : "";
+  const accessibleName = String(metadata?.accessibleName || "");
+  const elTextLower = [el.text || "", accessibleName, optionLabels].join(" ").toLowerCase();
   const elIdLower = el.target_id.toLowerCase();
   const taskRawLower = task.raw.toLowerCase();
 
@@ -61,6 +101,8 @@ function scoreElementMatch(el: PageElement, task: ParsedTask, pageState?: PageSt
     if (el.role === "textbox" || el.role === "input") {
       score += 0.25;
     }
+  } else if (task.actionType === "select" && optionMatch) {
+    score += 0.75;
   }
 
   // 4. Boost for interactable elements
@@ -106,25 +148,36 @@ function scoreElementMatch(el: PageElement, task: ParsedTask, pageState?: PageSt
  * Attempts to solve a task locally using on-device PageState data.
  */
 export function solveTaskLocally(pageState: PageState, task: ParsedTask): LocalSolveResult {
-  let bestScore = 0;
+  const ranked: Array<{ element: PageElement; score: number }> = [];
   let bestCandidate: PageElement | null = null;
+  let bestScore = 0;
 
   for (const element of pageState.elements) {
     const score = scoreElementMatch(element, task, pageState);
+    if (score > 0) ranked.push({ element, score });
     if (score > bestScore) {
       bestScore = score;
       bestCandidate = element;
     }
   }
 
+  ranked.sort((a, b) => b.score - a.score);
+
   // High-confidence local threshold
   const SOLVE_THRESHOLD = 0.75;
+  // Heuristic overlap scores are not probabilities. Require a clear lead over
+  // the runner-up before taking an autonomous action.
+  const MINIMUM_SCORE_MARGIN = 0.15;
+  const secondBestScore = ranked[1]?.score ?? 0;
 
-  if (bestScore >= SOLVE_THRESHOLD && bestCandidate) {
+  if (bestScore >= SOLVE_THRESHOLD && bestCandidate &&
+      bestScore - secondBestScore >= MINIMUM_SCORE_MARGIN) {
     const localAction: Action = {
       action: task.actionType,
       target_id: bestCandidate.target_id,
-      value: task.typeValue,
+      value: task.actionType === "select"
+        ? matchingSelectOption(bestCandidate, task)?.value
+        : task.typeValue,
       reason: `Directly resolved on-device: element "${bestCandidate.target_id}" matches task keywords [${task.keywords.join(", ")}] with ${(bestScore * 100).toFixed(0)}% confidence.`,
       confidence: bestScore,
     };

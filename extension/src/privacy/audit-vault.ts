@@ -44,6 +44,9 @@ export interface PrivacyAuditSummary {
 }
 
 export const GENESIS_PREVIOUS_HASH = "0".repeat(64);
+const MAX_AUDIT_RECORDS = 500;
+const REDACTED_TASK = "[REDACTED]";
+const REDACTED_POLICY_DETAIL = "Policy decision recorded";
 
 /**
  * Computes a standard cryptographic SHA-256 hash (FIPS 180-4) as a 64-character lowercase hex string.
@@ -185,8 +188,33 @@ export class PrivacyAuditVault {
    */
   public loadFromStorage(records: AuditRecord[]): { loaded: number; valid: boolean } {
     if (Array.isArray(records) && records.length > 0) {
-      this.records = [...records];
+      this.records = [...records].slice(-MAX_AUDIT_RECORDS);
       const check = this.verifyLedgerIntegrity();
+      // Older versions persisted raw user goals and subtasks. Remove them on
+      // restore, preserving a valid chain by rebuilding its hashes over the
+      // privacy-safe record fields. A compromised chain remains compromised.
+      if (check.valid && this.records.some((record) =>
+        record.goal !== REDACTED_TASK || record.subtask !== REDACTED_TASK || Boolean(record.policyApplied))) {
+        this.records = this.rehashRecords(this.records.map((record) => ({
+          ...record,
+          goal: REDACTED_TASK,
+          subtask: REDACTED_TASK,
+          policyApplied: record.policyApplied ? REDACTED_POLICY_DETAIL : undefined,
+        })));
+        if (typeof chrome !== "undefined" && chrome.storage?.local) {
+          try { chrome.storage.local.set({ privaagent_audit_ledger: this.records }); } catch (_) {}
+        }
+      } else if (!check.valid) {
+        this.records = this.records.map((record) => ({
+          ...record,
+          goal: REDACTED_TASK,
+          subtask: REDACTED_TASK,
+          policyApplied: record.policyApplied ? REDACTED_POLICY_DETAIL : undefined,
+        }));
+        if (typeof chrome !== "undefined" && chrome.storage?.local) {
+          try { chrome.storage.local.set({ privaagent_audit_ledger: this.records }); } catch (_) {}
+        }
+      }
       return { loaded: records.length, valid: check.valid };
     }
     return { loaded: 0, valid: true };
@@ -204,14 +232,14 @@ export class PrivacyAuditVault {
     const timestamp = Date.now();
     const payloadHash = PrivacyAuditVault.calculateRecordHash(
       previousHash,
-      entry.goal,
-      entry.subtask,
+      REDACTED_TASK,
+      REDACTED_TASK,
       entry.targetId,
       entry.action,
       entry.outboundBytes,
       entry.riskVerdict,
       entry.entitiesMasked,
-      entry.policyApplied,
+      entry.policyApplied ? REDACTED_POLICY_DETAIL : undefined,
       entry.isLocal,
       entry.disclosureLevel,
       timestamp
@@ -220,8 +248,8 @@ export class PrivacyAuditVault {
     const record: AuditRecord = {
       id: `audit_${timestamp}_${Math.random().toString(36).substring(2, 7)}`,
       timestamp,
-      goal: entry.goal,
-      subtask: entry.subtask,
+      goal: REDACTED_TASK,
+      subtask: REDACTED_TASK,
       disclosureLevel: entry.disclosureLevel,
       entitiesMasked: entry.entitiesMasked,
       outboundBytes: entry.outboundBytes,
@@ -230,11 +258,14 @@ export class PrivacyAuditVault {
       action: entry.action,
       targetId: entry.targetId,
       riskVerdict: entry.riskVerdict,
-      policyApplied: entry.policyApplied,
+      policyApplied: entry.policyApplied ? REDACTED_POLICY_DETAIL : undefined,
       isLocal: entry.isLocal,
     };
 
     this.records.push(record);
+    if (this.records.length > MAX_AUDIT_RECORDS) {
+      this.records.splice(0, this.records.length - MAX_AUDIT_RECORDS);
+    }
 
     // Persist to chrome.storage.local if running in extension runtime
     if (typeof chrome !== "undefined" && chrome.storage?.local) {
@@ -268,7 +299,9 @@ export class PrivacyAuditVault {
       return { valid: true, chainLength: 0, rootHash: GENESIS_PREVIOUS_HASH };
     }
 
-    let expectedPreviousHash = GENESIS_PREVIOUS_HASH;
+    // The retained ledger can be a bounded suffix. Its first previousHash is
+    // the chain anchor for that suffix; subsequent records are fully checked.
+    let expectedPreviousHash = this.records[0].previousHash || GENESIS_PREVIOUS_HASH;
 
     for (let i = 0; i < this.records.length; i++) {
       const record = this.records[i];
@@ -314,6 +347,29 @@ export class PrivacyAuditVault {
 
     const rootHash = this.records[this.records.length - 1].payloadHash;
     return { valid: true, chainLength: this.records.length, rootHash };
+  }
+
+  private rehashRecords(records: AuditRecord[]): AuditRecord[] {
+    let previousHash = records[0]?.previousHash || GENESIS_PREVIOUS_HASH;
+    return records.map((record) => {
+      const safeRecord: AuditRecord = { ...record, previousHash };
+      safeRecord.payloadHash = PrivacyAuditVault.calculateRecordHash(
+        safeRecord.previousHash,
+        safeRecord.goal,
+        safeRecord.subtask,
+        safeRecord.targetId,
+        safeRecord.action,
+        safeRecord.outboundBytes,
+        safeRecord.riskVerdict,
+        safeRecord.entitiesMasked,
+        safeRecord.policyApplied,
+        safeRecord.isLocal,
+        safeRecord.disclosureLevel,
+        safeRecord.timestamp
+      );
+      previousHash = safeRecord.payloadHash;
+      return safeRecord;
+    });
   }
 
   /**

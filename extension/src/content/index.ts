@@ -219,7 +219,9 @@ function initialize(): void {
         }
 
         // Provision Mandatory Session Auth Token
-        window.__privaagent_session_token = result?.privaagent_session_token || "change-this-for-local-evaluation";
+        window.__privaagent_session_token = typeof result?.privaagent_session_token === "string"
+          ? result.privaagent_session_token
+          : undefined;
 
         runPerception();
       }
@@ -449,10 +451,10 @@ async function handleRunGoalMessage(
   budgetLimits?: any,
   maxLevel: DisclosureLevel = "L2"
 ): Promise<MultiTurnGoalResult> {
-  if (!latestPageState) runPerception();
+  const initialState = runPerception();
   overlayManager.updateHUD("Multi-Turn", `Decomposing: "${goalStr.slice(0, 20)}..."`);
 
-  const result = await runMultiTurnAgent(goalStr, latestPageState || undefined, {
+  const result = await runMultiTurnAgent(goalStr, initialState, {
     budgetLimits,
     maxDisclosureLevel: maxLevel,
     doc: document,
@@ -477,11 +479,11 @@ async function handleRunTaskMessage(
   execution?: ExecutionResult;
   error?: string;
 }> {
-  if (!latestPageState) runPerception();
-  if (!latestPageState) throw new Error("Unable to capture page state.");
+  const pageState = runPerception();
+  if (!pageState) throw new Error("Unable to capture page state.");
 
   overlayManager.updateHUD("Thinking...", `Reasoning: "${taskStr.slice(0, 20)}..."`);
-  const resolution = await resolveTaskAction(taskStr, latestPageState, {
+  const resolution = await resolveTaskAction(taskStr, pageState, {
     simulateUnsafeSanitization,
     maxDisclosureLevel: maxLevel,
   });
@@ -497,7 +499,7 @@ async function handleRunTaskMessage(
       goal: taskStr,
       subtask: taskStr,
       disclosureLevel: resolution.disclosure.level,
-      entitiesMasked: extractSensitiveEntityTypes(latestPageState),
+      entitiesMasked: extractSensitiveEntityTypes(pageState),
       outboundBytes: 0,
       action: "block",
       targetId: "none",
@@ -520,13 +522,13 @@ async function handleRunTaskMessage(
     return { success: false, resolution, error: `Policy ceiling violation: requires ${requestedLevel}, ceiling is ${ceiling}.` };
   }
 
-  const validation = validateAction(resolution.action, latestPageState, document);
+  const validation = validateAction(resolution.action, pageState, document);
 
   if (!validation.valid || validation.verdict === "BLOCK") {
     overlayManager.updateHUD("BLOCKED", "Action blocked by safety policy");
     PrivacyAuditVault.getInstance().record({
       goal: taskStr, subtask: taskStr, disclosureLevel: resolution.disclosure.level,
-      entitiesMasked: extractSensitiveEntityTypes(latestPageState), outboundBytes: resolution.networkBytesSent,
+      entitiesMasked: extractSensitiveEntityTypes(pageState), outboundBytes: resolution.networkBytesSent,
       action: resolution.action.action, targetId: resolution.action.target_id,
       riskVerdict: "BLOCK", policyApplied: validation.error || "Blocked by security policy", isLocal: resolution.isLocal,
     });
@@ -537,7 +539,7 @@ async function handleRunTaskMessage(
     overlayManager.updateHUD("CONFIRM", "User confirmation required");
     PrivacyAuditVault.getInstance().record({
       goal: taskStr, subtask: taskStr, disclosureLevel: resolution.disclosure.level,
-      entitiesMasked: extractSensitiveEntityTypes(latestPageState), outboundBytes: resolution.networkBytesSent,
+      entitiesMasked: extractSensitiveEntityTypes(pageState), outboundBytes: resolution.networkBytesSent,
       action: resolution.action.action, targetId: resolution.action.target_id,
       riskVerdict: "CONFIRM", policyApplied: validation.policyResult?.requiredUserConfirmation || "High-risk action", isLocal: resolution.isLocal,
     });
@@ -546,14 +548,14 @@ async function handleRunTaskMessage(
 
   overlayManager.updateHUD(resolution.disclosure.level, `Executing ${resolution.action.action}`);
   const execution = await executeAction(resolution.action, {
-    pageState: latestPageState,
+    pageState,
     doc: document,
   });
   overlayManager.updateHUD(resolution.disclosure.level, execution.success ? "Done" : "Execution failed");
 
   PrivacyAuditVault.getInstance().record({
     goal: taskStr, subtask: taskStr, disclosureLevel: resolution.disclosure.level,
-    entitiesMasked: extractSensitiveEntityTypes(latestPageState), outboundBytes: resolution.networkBytesSent,
+    entitiesMasked: extractSensitiveEntityTypes(pageState), outboundBytes: resolution.networkBytesSent,
     action: resolution.action.action, targetId: resolution.action.target_id,
     riskVerdict: validation.verdict, policyApplied: execution.error || "Executed successfully", isLocal: resolution.isLocal,
   });

@@ -41,11 +41,18 @@ function selectL1Candidates(
 
   const ranked = pageState.elements.map((element, index) => {
     const metadata = element.metadata as Record<string, unknown> | undefined;
+    const selectOptionText = Array.isArray(metadata?.selectOptions)
+      ? (metadata.selectOptions as Array<{ label?: string; disabled?: boolean }>)
+          .filter((option) => !option.disabled)
+          .map((option) => option.label || "")
+          .join(" ")
+      : "";
     const searchable = new Set(words([
       element.text || "",
       element.role || "",
       String(metadata?.accessibleName || ""),
       String(metadata?.tagName || ""),
+      selectOptionText,
     ].join(" ")));
     const lexicalMatches = keywords.filter((keyword) => searchable.has(keyword)).length;
     const roleMatch = Boolean(options.targetRoleHint &&
@@ -127,9 +134,12 @@ export function planDisclosure(
     const targetElement = pageState.elements.find(
       (el) => el.target_id === options.targetCropTargetId
     );
+    const cropElements = pageState.elements.filter((element) =>
+      element.target_id === options.targetCropTargetId ||
+      (element.metadata as any)?.derived_from === options.targetCropTargetId);
 
     const { disclosedElements, totalRedactedTokens } = maskPageStateForDisclosure(
-      pageState,
+      { ...pageState, elements: cropElements },
       options.resolveLiveElement
     );
 
@@ -137,11 +147,7 @@ export function planDisclosure(
       level: "L2",
       reason: `Target element "${options.targetCropTargetId}" requires visual reasoning; transmitting sanitized visual crop ROI only.`,
       task: sanitizeTaskString(task),
-      elements: disclosedElements.filter((el) => {
-        if (el.target_id === options.targetCropTargetId) return true;
-        const originalEl = pageState.elements.find((orig) => orig.target_id === el.target_id);
-        return originalEl && (originalEl.metadata as any)?.derived_from === options.targetCropTargetId;
-      }),
+      elements: disclosedElements,
       crop_box: targetElement?.bbox,
       screenshot_data: options.sanitizedScreenshotBase64,
       redacted_token_count: totalRedactedTokens,

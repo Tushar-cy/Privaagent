@@ -12,6 +12,28 @@ const BADGE_COLORS: Record<string, string> = {
   OFF: "#6b7280",     // Grey (Shield disabled by user)
 };
 
+let sessionTokenProvisioning = false;
+
+function ensureSessionToken(): void {
+  if (sessionTokenProvisioning) return;
+  sessionTokenProvisioning = true;
+  chrome.storage.local.get(["privaagent_session_token"], (result) => {
+    if (result?.privaagent_session_token) {
+      sessionTokenProvisioning = false;
+      return;
+    }
+    const token = "sih_" + crypto.randomUUID().replace(/-/g, "");
+    chrome.storage.local.set({ privaagent_session_token: token }, () => {
+      sessionTokenProvisioning = false;
+      console.log("[Privaagent Security] Generated a missing per-install session token.");
+    });
+  });
+}
+
+// Service workers may start without a fresh onInstalled event (for example,
+// after extension storage was cleared). Provision before any request is made.
+ensureSessionToken();
+
 chrome.runtime.onInstalled.addListener((details) => {
   console.log("[Privaagent Service Worker] Installed successfully:", details.reason);
   if (chrome.action?.setBadgeBackgroundColor) {
@@ -19,20 +41,13 @@ chrome.runtime.onInstalled.addListener((details) => {
     chrome.action.setBadgeText({ text: "ON" });
   }
   
-  // Initialize shield state and generate a secure random session token if one doesn't exist
-  chrome.storage.local.get(["privaagent_session_token"], (result) => {
-    const payload: any = { privaagent_shield_enabled: true };
-    if (!result.privaagent_session_token) {
-      // Generate a cryptographically secure per-install token (UUID v4)
-      payload.privaagent_session_token = "sih_" + crypto.randomUUID().replace(/-/g, "");
-      console.log("[Privaagent Security] Generated new per-install session token. Copy this to your .env file!");
-    }
-    chrome.storage.local.set(payload);
-  });
+  chrome.storage.local.set({ privaagent_shield_enabled: true });
+  ensureSessionToken();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   console.log("[Privaagent Service Worker] Browser startup - Sentry active");
+  ensureSessionToken();
   // Re-apply badge color on startup
   chrome.action?.setBadgeBackgroundColor?.({ color: "#10b981" });
 

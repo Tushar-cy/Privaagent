@@ -20,8 +20,6 @@ export function startObservingDOM(onUpdate: PageStateUpdateCallback): void {
 
   observer = new MutationObserver((mutations) => {
     // Filter out internal Privaagent mutations to prevent self-triggering re-extraction loops.
-    // We write data-privaagent-id attributes on every element we scan — if we don't exclude
-    // these writes, every extraction triggers another extraction infinitely.
     const hasExternalMutations = mutations.some((mutation) => {
       const target = mutation.target as HTMLElement;
 
@@ -29,14 +27,6 @@ export function startObservingDOM(onUpdate: PageStateUpdateCallback): void {
       if (
         target.id?.startsWith("privaagent-") ||
         target.className?.includes?.("privaagent-")
-      ) {
-        return false;
-      }
-
-      // Exclude our own data-privaagent-id attribute writes (Bug 7 fix)
-      if (
-        mutation.type === "attributes" &&
-        mutation.attributeName === "data-privaagent-id"
       ) {
         return false;
       }
@@ -61,8 +51,11 @@ export function startObservingDOM(onUpdate: PageStateUpdateCallback): void {
       childList: true,
       subtree: true,
       attributes: true,
-      // Tightened filter: do NOT observe data-privaagent-id (our own writes)
-      attributeFilter: ["class", "style", "disabled", "hidden", "aria-hidden", "value", "src", "href"],
+      attributeFilter: [
+        "class", "style", "disabled", "readonly", "hidden", "aria-hidden", "aria-disabled",
+        "aria-readonly", "role", "aria-label", "aria-labelledby", "alt", "title", "placeholder",
+        "name", "type", "value", "src", "href",
+      ],
       characterData: true,
     });
   }

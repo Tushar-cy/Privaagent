@@ -6,6 +6,7 @@ export interface ExecutionResult {
   success: boolean;
   target_id: string;
   error?: string;
+  navigationPending?: boolean;
 }
 
 export function executeClick(
@@ -32,6 +33,10 @@ export function executeClick(
     };
   }
 
+  if (element.matches(":disabled") || element.getAttribute("aria-disabled") === "true") {
+    return { success: false, target_id: targetId, error: `Target element "${targetId}" is disabled.` };
+  }
+
   const rect = element.getBoundingClientRect();
   const style = window.getComputedStyle(element);
   if (
@@ -48,7 +53,13 @@ export function executeClick(
     };
   }
 
-  // Scroll into view if off-screen and method exists
+  // Preserve the intended relative point for derived chart/canvas targets,
+  // because scrolling can change the element's viewport coordinates.
+  const pointRatio = clickPoint && rect.width > 0 && rect.height > 0
+    ? { x: (clickPoint.x - rect.left) / rect.width, y: (clickPoint.y - rect.top) / rect.height }
+    : undefined;
+
+  // Scroll into view before calculating the final click coordinates.
   if (typeof element.scrollIntoView === "function") {
     element.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
   }
@@ -56,9 +67,17 @@ export function executeClick(
   const win = element.ownerDocument.defaultView || (typeof window !== "undefined" ? window : globalThis);
   const MouseEventCtor = (win as any).MouseEvent || MouseEvent;
   const PointerEventCtor = (win as any).PointerEvent || null;
+  const currentRect = element.getBoundingClientRect();
+  if (currentRect.width <= 0 || currentRect.height <= 0) {
+    return { success: false, target_id: targetId, error: "Target element became non-visible while scrolling into view." };
+  }
 
-  const centerX = clickPoint?.x ?? rect.left + rect.width / 2;
-  const centerY = clickPoint?.y ?? rect.top + rect.height / 2;
+  const centerX = pointRatio
+    ? currentRect.left + Math.max(0, Math.min(1, pointRatio.x)) * currentRect.width
+    : currentRect.left + currentRect.width / 2;
+  const centerY = pointRatio
+    ? currentRect.top + Math.max(0, Math.min(1, pointRatio.y)) * currentRect.height
+    : currentRect.top + currentRect.height / 2;
 
   const eventInit: MouseEventInit = {
     bubbles: true,
@@ -70,22 +89,26 @@ export function executeClick(
 
   if (PointerEventCtor) {
     try {
-      element.dispatchEvent(new PointerEventCtor("pointerdown", eventInit));
+      element.dispatchEvent(new PointerEventCtor("pointerdown", { ...eventInit, button: 0, buttons: 1, pointerType: "mouse", isPrimary: true }));
     } catch (_) {}
   }
-  element.dispatchEvent(new MouseEventCtor("mousedown", eventInit));
+  element.dispatchEvent(new MouseEventCtor("mousedown", { ...eventInit, button: 0, buttons: 1 }));
   if (PointerEventCtor) {
     try {
-      element.dispatchEvent(new PointerEventCtor("pointerup", eventInit));
+      element.dispatchEvent(new PointerEventCtor("pointerup", { ...eventInit, button: 0, buttons: 0, pointerType: "mouse", isPrimary: true }));
     } catch (_) {}
   }
-  element.dispatchEvent(new MouseEventCtor("mouseup", eventInit));
+  element.dispatchEvent(new MouseEventCtor("mouseup", { ...eventInit, button: 0, buttons: 0 }));
 
-  if (element instanceof HTMLElement) {
+  if (clickPoint) {
+    // A visual target is a coordinate on a canvas/chart. HTMLElement.click()
+    // discards that coordinate and fires an additional center click.
+    element.dispatchEvent(new MouseEventCtor("click", { ...eventInit, button: 0, buttons: 0 }));
+  } else if ((win as any).HTMLElement && element instanceof (win as any).HTMLElement) {
+    if (typeof (element as HTMLElement).focus === "function") (element as HTMLElement).focus();
     element.click();
-    if (typeof element.focus === "function") element.focus();
   } else {
-    element.dispatchEvent(new MouseEventCtor("click", eventInit));
+    element.dispatchEvent(new MouseEventCtor("click", { ...eventInit, button: 0, buttons: 0 }));
   }
 
   return {

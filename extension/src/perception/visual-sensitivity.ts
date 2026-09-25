@@ -34,16 +34,24 @@ async function loadImage(dataUrl: string): Promise<ImageBitmap> {
  */
 export async function detectVisualSensitivity(
   pageState: PageState,
-  screenshotDataUrl?: string
+  screenshotDataUrl?: string,
+  analysisBox?: [number, number, number, number]
 ): Promise<Map<string, VisualSensitivityResult>> {
   const results = new Map<string, VisualSensitivityResult>();
 
   // 1. Identify candidate elements
   const candidates: PageElement[] = [];
+  const semanticMatches = new Map<PageElement, boolean>();
   const keywordRegex = /avatar|photo|profile|face|portrait/i;
 
   for (const el of pageState.elements) {
     if (!el.bbox || el.bbox[2] < 16 || el.bbox[3] < 16) continue; // Skip tiny/invisible
+    if (analysisBox) {
+      const [x, y, width, height] = el.bbox;
+      const [cropX, cropY, cropWidth, cropHeight] = analysisBox;
+      if (x + width <= cropX || x >= cropX + cropWidth ||
+          y + height <= cropY || y >= cropY + cropHeight) continue;
+    }
 
     const isVisualTag =
       el.role === "img" ||
@@ -77,14 +85,28 @@ export async function detectVisualSensitivity(
 
     if (isVisualTag || hasSemanticMatch) {
       candidates.push(el);
-      // Temporarily stash semantic match state in metadata so we don't recalculate
-      if (!el.metadata) el.metadata = {};
-      (el.metadata as any)._hasSemanticMatch = hasSemanticMatch;
+      semanticMatches.set(el, hasSemanticMatch);
     }
   }
 
-  // Cap at ~20 candidates to respect performance budget
-  const topCandidates = candidates.slice(0, 20);
+  // Prioritize likely personal imagery and task-relevant visuals before applying
+  // the per-frame cap; DOM order alone routinely starves later candidates.
+  const rolePriority = (element: PageElement) =>
+    element.role === "img" ? 3 : element.role === "canvas" ? 2 : 1;
+  const rankedCandidates = candidates
+    .sort((a, b) => Number(semanticMatches.get(b) === true) - Number(semanticMatches.get(a) === true) ||
+      rolePriority(b) - rolePriority(a) || (b.task_relevance || 0) - (a.task_relevance || 0) ||
+      (b.confidence || 0) - (a.confidence || 0));
+  const topCandidates = rankedCandidates.slice(0, 20);
+  // The screenshot includes every candidate, so uninspected regions are
+  // blacked out instead of implicitly treated as clean.
+  for (const el of rankedCandidates.slice(20)) {
+    results.set(el.target_id, {
+      kind: "image",
+      source: "candidate-cap-conservative",
+      reason: "visual:uninspected-region",
+    });
+  }
   if (topCandidates.length === 0) return results;
 
   let sourceImg: ImageBitmap | null = null;
@@ -94,9 +116,11 @@ export async function detectVisualSensitivity(
     } catch (_) {}
   }
 
+  const analysisStart = performance.now();
+  try {
   for (const el of topCandidates) {
     const [bx, by, bw, bh] = el.bbox!;
-    const hasSemanticMatch = (el.metadata as any)._hasSemanticMatch;
+    const hasSemanticMatch = semanticMatches.get(el) === true;
 
     if (!sourceImg || !pageState.viewport) {
       // Without screenshot pixels, we must fail closed on semantic matches.
@@ -123,9 +147,14 @@ export async function detectVisualSensitivity(
       const scaleX = sourceImg.width / pageState.viewport.width;
       const scaleY = sourceImg.height / pageState.viewport.height;
       
+      // Bound per-candidate pixel work while preserving aspect ratio. These
+      // checks only need classification, not source-resolution coordinates.
+      const scale = Math.min(1, 512 / Math.max(clampedBw, clampedBh));
+      const analysisWidth = Math.max(1, Math.round(clampedBw * scale));
+      const analysisHeight = Math.max(1, Math.round(clampedBh * scale));
       const cropCanvas = document.createElement("canvas");
-      cropCanvas.width = clampedBw;
-      cropCanvas.height = clampedBh;
+      cropCanvas.width = analysisWidth;
+      cropCanvas.height = analysisHeight;
       const ctx = cropCanvas.getContext("2d");
       
       if (!ctx) {
@@ -140,30 +169,46 @@ export async function detectVisualSensitivity(
         clampedBh * scaleY,
         0,
         0,
-        clampedBw,
-        clampedBh
+        analysisWidth,
+        analysisHeight
       );
 
       const pixelCrop: PixelCrop = {
         canvas: cropCanvas,
-        width: clampedBw,
-        height: clampedBh,
+        width: analysisWidth,
+        height: analysisHeight,
         boundingBox: [clampedBx, clampedBy, clampedBw, clampedBh],
         toDataURL: (type) => cropCanvas.toDataURL(type),
         getImageData: () => {
           try {
-            return ctx.getImageData(0, 0, clampedBw, clampedBh);
+          return ctx.getImageData(0, 0, analysisWidth, analysisHeight);
           } catch {
             return null;
           }
         },
       };
 
-      // Create a timeout promise to enforce budget
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 100));
+      const remainingBudget = 150 - (performance.now() - analysisStart);
+      if (remainingBudget <= 0) {
+        results.set(el.target_id, { kind: "unknown", source: "analysis-timeout" });
+        continue;
+      }
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<null>((resolve) =>
+        timeoutHandle = setTimeout(() => resolve(null), Math.min(100, remainingBudget)));
 
-      const facePromise = detectFacesInCrop(pixelCrop, undefined);
-      const faceRes = await Promise.race([facePromise, timeoutPromise]);
+      const facePromise = detectFacesInCrop(pixelCrop, resolvePerceivedElement(el) || undefined);
+      let faceRes: Awaited<ReturnType<typeof detectFacesInCrop>> | null;
+      try {
+        faceRes = await Promise.race([facePromise, timeoutPromise]);
+      } finally {
+        if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+      }
+
+      if (!faceRes && performance.now() - analysisStart >= 150) {
+        results.set(el.target_id, { kind: "unknown", source: "analysis-timeout" });
+        continue;
+      }
 
       if (faceRes && faceRes.faces.length > 0) {
         const res: VisualSensitivityResult = {
@@ -216,4 +261,7 @@ export async function detectVisualSensitivity(
   }
 
   return results;
+  } finally {
+    sourceImg?.close();
+  }
 }

@@ -47,6 +47,26 @@ class SessionTokenMap {
 
 export const sessionTokens = new SessionTokenMap();
 
+/** Keep one authoritative replacement per overlapping sensitive span. */
+function normalizeDetections(detections: SensitiveDetection[]): SensitiveDetection[] {
+  const prioritized = [...detections]
+    .filter((detection) => Number.isInteger(detection.span?.[0]) &&
+      Number.isInteger(detection.span?.[1]) && detection.span[0] >= 0 &&
+      detection.span[1] > detection.span[0])
+    // Prefer the widest match so a shorter overlapping detector cannot leave
+    // the tail of a larger sensitive value in the outgoing text.
+    .sort((a, b) => (b.span[1] - b.span[0]) - (a.span[1] - a.span[0]) ||
+      b.confidence - a.confidence || a.span[0] - b.span[0]);
+  const accepted: SensitiveDetection[] = [];
+  for (const detection of prioritized) {
+    if (!accepted.some((existing) =>
+      Math.max(existing.span[0], detection.span[0]) < Math.min(existing.span[1], detection.span[1]))) {
+      accepted.push(detection);
+    }
+  }
+  return accepted.sort((a, b) => b.span[0] - a.span[0]);
+}
+
 /**
  * Computes exact sub-string bounding box within a DOM node using Range API.
  * When exactText is provided, searches for the exact substring in the node's
@@ -163,8 +183,8 @@ export function redactElementText(
     };
   }
 
-  // Sort detections descending by start index to replace backwards safely
-  const sortedDetections = [...detections].sort((a, b) => b.span[0] - a.span[0]);
+  // De-duplicate overlapping detector results before applying index-based edits.
+  const sortedDetections = normalizeDetections(detections);
 
   let sanitized = text;
   const overlays: RedactionOverlaySpec[] = [];
@@ -210,7 +230,7 @@ export function sanitizeTaskString(task: string): string {
   const detections = detectSensitiveSpans(task);
   if (!detections || detections.length === 0) return task;
 
-  const sorted = [...detections].sort((a, b) => b.span[0] - a.span[0]);
+  const sorted = normalizeDetections(detections);
   let sanitized = task;
   for (const d of sorted) {
     const token = sessionTokens.getToken(d.text, d.type);

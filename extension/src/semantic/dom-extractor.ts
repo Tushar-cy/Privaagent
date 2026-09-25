@@ -39,6 +39,11 @@ export function resolvePerceivedElement(element: PageElement): Element | null {
   return node?.isConnected ? node : null;
 }
 
+/** True when a PageElement came from this extractor, including detached nodes. */
+export function hasPerceivedNodeBinding(element: PageElement): boolean {
+  return perceivedNodeBindings.has(element);
+}
+
 /**
  * Determines whether an element is visible in the page layout.
  */
@@ -100,7 +105,10 @@ function isCandidateElement(el: Element): boolean {
     tagName === "input" ||
     tagName === "textarea" ||
     tagName === "select" ||
-    tagName === "canvas"
+    tagName === "canvas" ||
+    tagName === "img" ||
+    tagName === "video" ||
+    tagName === "svg"
   ) {
     return true;
   }
@@ -153,7 +161,7 @@ function isCandidateElement(el: Element): boolean {
 function collectAllNodesWithShadow(root: Document | ShadowRoot | Element): Element[] {
   const nodes: Element[] = [];
   const selector =
-    "button, a, input, textarea, select, canvas, h1, h2, h3, h4, h5, h6, p, span, label, li, td, th, div, section, article, [role]";
+    "button, a, input, textarea, select, canvas, img, video, svg, h1, h2, h3, h4, h5, h6, p, span, label, li, td, th, div, section, article, [role]";
 
   try {
     const list = root.querySelectorAll(selector);
@@ -197,8 +205,8 @@ export function extractPageState(): ExtractionResult {
     sequenceIndex++;
     const targetId = generateStableTargetId(el, sequenceIndex);
 
-    // Tag element for instant O(1) query
-    el.setAttribute("data-privaagent-id", targetId);
+    // Keep target bindings extension-owned. Do not add page-visible attributes:
+    // page scripts can observe or rewrite attributes on their own DOM.
     elementRegistry.set(targetId, el);
 
     // Determine text representation
@@ -232,6 +240,14 @@ export function extractPageState(): ExtractionResult {
 
     // Role
     const role = a11y.role && a11y.role !== "generic" ? a11y.role : tagName;
+    const selectOptions = tagName === "select"
+      ? Array.from((el as HTMLSelectElement).options).map((option) => ({
+          label: (option.label || option.textContent || "").trim(),
+          value: option.value,
+          disabled: option.disabled || (option.parentElement?.tagName.toLowerCase() === "optgroup" &&
+            (option.parentElement as HTMLOptGroupElement).disabled),
+        }))
+      : undefined;
 
     const pageElement: PageElement = {
       target_id: targetId,
@@ -257,6 +273,11 @@ export function extractPageState(): ExtractionResult {
         ariaRole: (el.getAttribute("role") || a11y.role || "").toLowerCase().trim(),
         accessibleName: a11y.accessibleName || "",
         isPassword,
+        selectOptions,
+        disabled: (el as HTMLInputElement).matches?.(":disabled") === true ||
+          el.getAttribute("aria-disabled") === "true",
+        readOnly: (el as HTMLInputElement).readOnly === true ||
+          el.getAttribute("aria-readonly") === "true",
         domId: (el as HTMLElement).id || undefined,
       },
     };

@@ -31,6 +31,9 @@ Thumbs.db
 # Local scratch files
 scratch/
 *.log
+ppt-output/
+.codex-ppt-work/
+.codex-finalizer/
 
 # Tesseract WASM language data (downloaded at runtime, not committed)
 *.traineddata

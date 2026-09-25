@@ -176,6 +176,75 @@ export function validateAction(
     }
   }
 
+  const liveTagName = liveEl.tagName.toLowerCase();
+  const isDisabled = liveEl.matches(":disabled") || liveEl.getAttribute("aria-disabled") === "true";
+  if (isDisabled && ["click", "type", "select"].includes(action.action)) {
+    return {
+      valid: false,
+      verdict: "BLOCK",
+      element: liveEl,
+      error: `Pre-execution validation failed: target element "${action.target_id}" is disabled.`,
+      requiresReplan: true,
+    };
+  }
+
+  if (action.action === "type") {
+    const isTextInput = liveTagName === "input" &&
+      !["button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(
+        ((liveEl as HTMLInputElement).type || "text").toLowerCase()
+      );
+    const isTextarea = liveTagName === "textarea";
+    const editableAttribute = liveEl.getAttribute("contenteditable");
+    const isEditable = (editableAttribute !== null && editableAttribute.toLowerCase() !== "false") ||
+      (liveEl as HTMLElement).isContentEditable === true;
+    const isReadOnly = liveEl.hasAttribute("readonly") || liveEl.getAttribute("aria-readonly") === "true";
+    if ((!isTextInput && !isTextarea && !isEditable) || isReadOnly) {
+      return {
+        valid: false,
+        verdict: "BLOCK",
+        element: liveEl,
+        error: isReadOnly
+          ? `Pre-execution validation failed: target element "${action.target_id}" is read-only.`
+          : `Pre-execution validation failed: target element "${action.target_id}" does not accept text input.`,
+        requiresReplan: true,
+      };
+    }
+  }
+
+  if (action.action === "select") {
+    if (liveTagName !== "select") {
+      return {
+        valid: false,
+        verdict: "BLOCK",
+        element: liveEl,
+        error: `Pre-execution validation failed: target element "${action.target_id}" is not a native select control.`,
+        requiresReplan: true,
+      };
+    }
+    const select = liveEl as HTMLSelectElement;
+    if (action.value === undefined) {
+      return {
+        valid: false,
+        verdict: "BLOCK",
+        element: liveEl,
+        error: "Pre-execution validation failed: select action has no requested option value.",
+        requiresReplan: true,
+      };
+    }
+    const requestedValue = action.value ?? "";
+    const option = Array.from(select.options).find((candidate) => candidate.value === requestedValue);
+    if (!option || option.disabled || (option.parentElement?.tagName.toLowerCase() === "optgroup" &&
+        (option.parentElement as HTMLOptGroupElement).disabled)) {
+      return {
+        valid: false,
+        verdict: "BLOCK",
+        element: liveEl,
+        error: `Pre-execution validation failed: requested select option is missing or disabled.`,
+        requiresReplan: true,
+      };
+    }
+  }
+
   // 4. Check for layout and semantic drift against the current PageState record.
   // 4a. Structural role / tag verification
   const liveTag = liveEl.tagName.toLowerCase();

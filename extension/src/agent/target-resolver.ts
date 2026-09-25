@@ -14,12 +14,13 @@ import { Action, Disclosure, DisclosureLevel, PageState, VisualRedactionManifest
 import { planDisclosure } from "../disclosure/disclosure-planner";
 import { parseTask, ParsedTask } from "./task-parser";
 import { solveTaskLocally, LocalSolveResult } from "./local-solver";
-import { requestRemoteAction, RemoteResolutionOptions } from "./action-planner";
+import { buildResolverEndpoint, requestRemoteAction, RemoteResolutionOptions } from "./action-planner";
 import { captureAndSanitizeTab } from "./capture-tab";
 import { getPerformanceProfiler } from "../common/profiler";
 import { verifyOutgoingDisclosure, PrivacyGuardResult } from "../privacy/privacy-guard";
 import { locateLiveElement } from "../validator/action-validator";
 import { inspectElementForHiddenInjection } from "../validator/prompt-injection";
+import { extractPageState, hasPerceivedNodeBinding } from "../semantic/dom-extractor";
 
 export type ProcessingPath = "LOCAL" | "SANITIZED_VLM" | "BLOCKED";
 
@@ -53,6 +54,32 @@ export interface ResolverOptions extends RemoteResolutionOptions {
   sanitizedScreenshotManifest?: VisualRedactionManifest;
   resolveLiveElement?: (targetId: string) => Element | null;
   simulateUnsafeSanitization?: boolean; // For testing/demonstrating BLOCKED state in SIH demo
+}
+
+function perceptionStillMatchesLiveDom(snapshot: PageState): boolean {
+  if (typeof document === "undefined" || typeof window === "undefined") return true;
+  const boundElements = snapshot.elements.filter((element) =>
+    typeof element.metadata?.derived_from !== "string" &&
+    hasPerceivedNodeBinding(element));
+  if (boundElements.length === 0) return true;
+
+  const liveState = extractPageState().pageState;
+  if (snapshot.url !== liveState.url || boundElements.length !== liveState.elements.length) return false;
+  const liveById = new Map(liveState.elements.map((element) => [element.target_id, element]));
+  return boundElements.every((before) => {
+    const current = liveById.get(before.target_id);
+    if (!current || before.role !== current.role || before.text !== current.text) return false;
+    if (before.bbox && current.bbox && before.bbox.some((value, index) => value !== current.bbox![index])) return false;
+    const beforeMeta = before.metadata as Record<string, unknown> | undefined;
+    const currentMeta = current.metadata as Record<string, unknown> | undefined;
+    const sameSemantics = beforeMeta?.tagName === currentMeta?.tagName &&
+      beforeMeta?.ariaRole === currentMeta?.ariaRole &&
+      beforeMeta?.accessibleName === currentMeta?.accessibleName &&
+      beforeMeta?.disabled === currentMeta?.disabled && beforeMeta?.readOnly === currentMeta?.readOnly;
+    if (!sameSemantics) return false;
+    return String(beforeMeta?.tagName).toLowerCase() !== "select" ||
+      JSON.stringify(beforeMeta?.selectOptions || []) === JSON.stringify(currentMeta?.selectOptions || []);
+  });
 }
 
 /**
@@ -235,6 +262,76 @@ export async function resolveTaskAction(
     }
   }
 
+  const requiredDisclosureLevel: DisclosureLevel = isVisualEscalation
+    ? (options.forceEscalationLevel === "L3" || !targetCropId ? "L3" : "L2")
+    : "L1";
+  const disclosureOrder: Record<DisclosureLevel, number> = { L0: 0, L1: 1, L2: 2, L3: 3 };
+  const disclosureCeiling = options.maxDisclosureLevel ?? "L2";
+  if (disclosureOrder[requiredDisclosureLevel] > disclosureOrder[disclosureCeiling]) {
+    const totalLatencyMs = Number((performance.now() - overallStartTime).toFixed(2));
+    const blockReason = `Disclosure ceiling exceeded: request requires ${requiredDisclosureLevel}, maximum allowed is ${disclosureCeiling}. No request was sent.`;
+    const disclosure: Disclosure = {
+      level: requiredDisclosureLevel,
+      reason: blockReason,
+      task: "",
+      elements: [],
+      redacted_token_count: 0,
+    };
+    return {
+      action: { action: parsedTask.actionType, target_id: "none", reason: blockReason, confidence: 0 },
+      processingPath: "BLOCKED",
+      modelUsed: "PrivaAgent Outbound Policy Gate",
+      executionBackend: "Local privacy check (request not sent)",
+      localLatencyMs,
+      sanitizationLatencyMs: 0,
+      vlmLatencyMs: 0,
+      totalLatencyMs,
+      latencyMs: totalLatencyMs,
+      isLocal: true,
+      disclosure,
+      parsedTask,
+      networkBytesSent: 0,
+      detectedEntities: [],
+      privacyVerificationPassed: true,
+      externalRequestMade: false,
+      ceilingExceeded: true,
+      blockReason,
+    };
+  }
+
+  try {
+    buildResolverEndpoint(options.serverBaseUrl || "http://127.0.0.1:8000");
+  } catch (error: unknown) {
+    const totalLatencyMs = Number((performance.now() - overallStartTime).toFixed(2));
+    const blockReason = error instanceof Error ? error.message : "Remote resolver URL is not permitted.";
+    const disclosure: Disclosure = {
+      level: requiredDisclosureLevel,
+      reason: blockReason,
+      task: "",
+      elements: [],
+      redacted_token_count: 0,
+    };
+    return {
+      action: { action: parsedTask.actionType, target_id: "none", reason: blockReason, confidence: 0 },
+      processingPath: "BLOCKED",
+      modelUsed: "PrivaAgent Transport Policy Gate",
+      executionBackend: "Local privacy check (request not sent)",
+      localLatencyMs,
+      sanitizationLatencyMs: 0,
+      vlmLatencyMs: 0,
+      totalLatencyMs,
+      latencyMs: totalLatencyMs,
+      isLocal: true,
+      disclosure,
+      parsedTask,
+      networkBytesSent: 0,
+      detectedEntities: [],
+      privacyVerificationPassed: true,
+      externalRequestMade: false,
+      blockReason,
+    };
+  }
+
   // Step 1: On-device screenshot capture & pixel redaction (burns opaque blackouts onto canvas)
   let screenshotData = options.sanitizedScreenshotBase64;
   let screenshotManifest = options.sanitizedScreenshotManifest;
@@ -251,6 +348,39 @@ export async function resolveTaskAction(
     } catch (_) {
       // Graceful fallback if tab capture is unavailable in current context
     }
+  }
+
+  // Visual payloads are valid only as a sanitized image plus the manifest for
+  // that exact image. Capture, decoding, or analysis failures must stop locally.
+  if (isVisualEscalation && (!screenshotData || !screenshotManifest)) {
+    const totalLatencyMs = Number((performance.now() - overallStartTime).toFixed(2));
+    const blockReason = "Visual capture or sanitization did not produce a complete screenshot and redaction manifest. No request was sent.";
+    const disclosure: Disclosure = {
+      level: options.forceEscalationLevel === "L3" || !targetCropId ? "L3" : "L2",
+      reason: blockReason,
+      task: "",
+      elements: [],
+      redacted_token_count: 0,
+    };
+    return {
+      action: { action: parsedTask.actionType, target_id: "none", reason: blockReason, confidence: 0 },
+      processingPath: "BLOCKED",
+      modelUsed: "PrivaAgent Visual Disclosure Gate",
+      executionBackend: "Local privacy check (visual request not sent)",
+      localLatencyMs,
+      sanitizationLatencyMs: Number((performance.now() - sanitizationStart).toFixed(2)),
+      vlmLatencyMs: 0,
+      totalLatencyMs,
+      latencyMs: totalLatencyMs,
+      isLocal: true,
+      disclosure,
+      parsedTask,
+      networkBytesSent: 0,
+      detectedEntities: [],
+      privacyVerificationPassed: true,
+      externalRequestMade: false,
+      blockReason,
+    };
   }
 
 
@@ -319,6 +449,32 @@ export async function resolveTaskAction(
       networkBytesSent: 0,
       detectedEntities,
       privacyVerificationPassed: false,
+      externalRequestMade: false,
+      blockReason,
+    };
+  }
+
+  // Re-check that the DOM snapshot used to build the request still describes
+  // the live page. New or changed content requires a fresh perception pass.
+  if (!perceptionStillMatchesLiveDom(pageState)) {
+    const totalLatencyMs = Number((performance.now() - overallStartTime).toFixed(2));
+    const blockReason = "Page content changed while preparing the disclosure. Refresh perception and retry; no request was sent.";
+    return {
+      action: { action: parsedTask.actionType, target_id: "none", reason: blockReason, confidence: 0 },
+      processingPath: "BLOCKED",
+      modelUsed: "PrivaAgent Freshness Gate",
+      executionBackend: "Local privacy check (request not sent)",
+      localLatencyMs,
+      sanitizationLatencyMs,
+      vlmLatencyMs: 0,
+      totalLatencyMs,
+      latencyMs: totalLatencyMs,
+      isLocal: true,
+      disclosure,
+      parsedTask,
+      networkBytesSent: 0,
+      detectedEntities,
+      privacyVerificationPassed: true,
       externalRequestMade: false,
       blockReason,
     };

@@ -40,16 +40,31 @@ async function dispatchLowLevelAction(
 
     case "select": {
       const el = verifiedElement;
-      if (el instanceof HTMLSelectElement) {
-        el.value = validAction.value ?? "";
-        el.dispatchEvent(new Event("change", { bubbles: true }));
-        return { success: true, target_id: validAction.target_id };
+      if (!el || el.tagName.toLowerCase() !== "select") {
+        return {
+          success: false,
+          target_id: validAction.target_id,
+          error: `Element "${validAction.target_id}" is not an HTMLSelectElement.`,
+        };
       }
-      return {
-        success: false,
-        target_id: validAction.target_id,
-        error: `Element "${validAction.target_id}" is not an HTMLSelectElement.`,
-      };
+      const select = el as HTMLSelectElement;
+      const value = validAction.value ?? "";
+      const option = Array.from(select.options).find((candidate) => candidate.value === value);
+      if (!select.isConnected || select.matches(":disabled") ||
+          select.getAttribute("aria-disabled") === "true" || !option || option.disabled ||
+          (option.parentElement?.tagName.toLowerCase() === "optgroup" &&
+            (option.parentElement as HTMLOptGroupElement).disabled)) {
+        return { success: false, target_id: validAction.target_id, error: "Requested select control or option is unavailable or disabled." };
+      }
+      select.value = value;
+      const win = select.ownerDocument.defaultView;
+      const EventCtor = win?.Event || Event;
+      select.dispatchEvent(new EventCtor("input", { bubbles: true }));
+      select.dispatchEvent(new EventCtor("change", { bubbles: true }));
+      if (select.value !== value) {
+        return { success: false, target_id: validAction.target_id, error: "The select control did not accept the requested option." };
+      }
+      return { success: true, target_id: validAction.target_id };
     }
 
     default:

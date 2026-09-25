@@ -4,6 +4,9 @@
 // visual payload is dispatched.
 
 import { BoundingBox, VisualRedactionManifest } from "../common/types";
+import { runFallbackOCR, OCRSpan } from "../perception/ocr";
+import { PixelCrop } from "../perception/browser-state";
+import { detectSensitiveSpans } from "../privacy/sensitivity";
 
 export interface TabCaptureResult {
   success: boolean;
@@ -74,6 +77,83 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
     img.onerror = (err) => reject(new Error("Failed to load screenshot image: " + err));
     img.src = dataUrl;
   });
+}
+
+async function makeScreenshotOCRCrop(
+  dataUrl: string,
+  cropBox: BoundingBox | undefined,
+  viewport: { width: number; height: number }
+): Promise<PixelCrop | null> {
+  const image = await loadImage(dataUrl);
+  const imageWidth = image.naturalWidth || image.width;
+  const imageHeight = image.naturalHeight || image.height;
+  if (imageWidth <= 0 || imageHeight <= 0 || viewport.width <= 0 || viewport.height <= 0) return null;
+
+  const [x, y, width, height] = cropBox || [0, 0, viewport.width, viewport.height];
+  const left = Math.max(0, x);
+  const top = Math.max(0, y);
+  const right = Math.min(viewport.width, x + width);
+  const bottom = Math.min(viewport.height, y + height);
+  if (right <= left || bottom <= top) return null;
+
+  const scaleX = imageWidth / viewport.width;
+  const scaleY = imageHeight / viewport.height;
+  const sourceX = Math.max(0, Math.floor(left * scaleX));
+  const sourceY = Math.max(0, Math.floor(top * scaleY));
+  const sourceRight = Math.min(imageWidth, Math.ceil(right * scaleX));
+  const sourceBottom = Math.min(imageHeight, Math.ceil(bottom * scaleY));
+  const canvas = document.createElement("canvas");
+  canvas.width = sourceRight - sourceX;
+  canvas.height = sourceBottom - sourceY;
+  const context = canvas.getContext("2d");
+  if (!context || canvas.width <= 0 || canvas.height <= 0) return null;
+  context.drawImage(image, sourceX, sourceY, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+  const boundingBox: BoundingBox = [
+    left,
+    top,
+    canvas.width / scaleX,
+    canvas.height / scaleY,
+  ];
+  return {
+    canvas,
+    width: canvas.width,
+    height: canvas.height,
+    boundingBox,
+    toDataURL: (type) => canvas.toDataURL(type),
+    getImageData: () => {
+      try { return context.getImageData(0, 0, canvas.width, canvas.height); } catch { return null; }
+    },
+  };
+}
+
+function findOCRSensitiveBoxes(spans: OCRSpan[]): BoundingBox[] {
+  let combinedText = "";
+  const indexedSpans = spans.map((span) => {
+    const start = combinedText.length;
+    combinedText += span.text;
+    const end = combinedText.length;
+    combinedText += " ";
+    return { span, start, end };
+  });
+
+  const boxes: BoundingBox[] = [];
+  for (const detection of detectSensitiveSpans(combinedText)) {
+    const matches = indexedSpans.filter((indexed) =>
+      Math.max(indexed.start, detection.span[0]) < Math.min(indexed.end, detection.span[1]));
+    if (matches.length === 0) continue;
+    const left = Math.min(...matches.map(({ span }) => span.bbox[0]));
+    const top = Math.min(...matches.map(({ span }) => span.bbox[1]));
+    const right = Math.max(...matches.map(({ span }) => span.bbox[0] + span.bbox[2]));
+    const bottom = Math.max(...matches.map(({ span }) => span.bbox[1] + span.bbox[3]));
+    const pad = 3;
+    boxes.push([
+      Math.max(0, left - pad),
+      Math.max(0, top - pad),
+      right - left + pad * 2,
+      bottom - top + pad * 2,
+    ]);
+  }
+  return boxes;
 }
 
 /**
@@ -254,8 +334,8 @@ export async function sanitizeScreenshot(
 import { detectVisualSensitivity } from "../perception/visual-sensitivity";
 
 /**
- * High-level orchestration: captures the current tab, runs visual detection,
- * merges detected sensitive regions and sanitizes their pixels.
+ * High-level orchestration: captures the current tab, runs visual detection
+ * and on-device OCR, then sanitizes every detected sensitive region.
  *
  * Returns the screenshot and its `VisualRedactionManifest`. Callers must attach
  * the manifest to any outbound L2/L3 disclosure payload; backend validation
@@ -270,7 +350,7 @@ export async function captureAndSanitizeTab(
     return {};
   }
 
-  // Time budget: detect visual sensitivity with 150ms timeout
+  // Keep per-frame pixel classification within its 150ms budget.
   // GENERIC entries are produced by the previous visual pass. Drop them before
   // analyzing this screenshot so a former face/photo classification cannot
   // stick to a changed page merely because the PageState object was reused.
@@ -300,11 +380,19 @@ export async function captureAndSanitizeTab(
   
   try {
     const start = performance.now();
-    const visualResults = await detectVisualSensitivity(pageState, result.dataUrl);
+    const visualResults = await detectVisualSensitivity(pageState, result.dataUrl, cropBox);
     const duration = performance.now() - start;
 
     if (duration > 150) {
-      console.warn(`[VisualSensitivity] Detection exceeded 150ms budget (${duration.toFixed(2)}ms). Falling back to semantic-only for remaining.`);
+      console.warn(`[VisualSensitivity] Detection exceeded 150ms budget (${duration.toFixed(2)}ms). Blocking visual disclosure.`);
+      return {};
+    }
+
+    // Any incomplete visual pass fails closed. The manifest cannot claim that
+    // an image was sanitized when pixels could not be inspected.
+    if (Array.from(visualResults.values()).some((result) =>
+      result.source === "analysis-timeout" || result.source === "no-pixels" || result.source === "crop-failed")) {
+      return {};
     }
 
     // Merge visually flagged elements into sensitiveBoxes and update pageState for overlays
@@ -332,8 +420,41 @@ export async function captureAndSanitizeTab(
       }
     }
   } catch (err) {
-    console.error("[VisualSensitivity] Engine failed, falling back:", err);
+    console.error("[VisualSensitivity] Engine failed. Blocking visual disclosure:", err);
+    return {};
   }
+
+  // OCR the exact pixels that may leave the device. DOM scanning cannot see
+  // identifiers rendered into canvas, video, or image pixels.
+  const viewport = pageState?.viewport || {
+    width: window.innerWidth,
+    height: window.innerHeight,
+  };
+  let ocrCrop: PixelCrop | null;
+  try {
+    ocrCrop = await makeScreenshotOCRCrop(result.dataUrl, cropBox, viewport);
+  } catch (_) {
+    return {};
+  }
+  if (!ocrCrop) return {};
+
+  let ocrTimeout: ReturnType<typeof setTimeout> | undefined;
+  let ocrResult: Awaited<ReturnType<typeof runFallbackOCR>> | null;
+  try {
+    const timeout = new Promise<null>((resolve) => {
+      ocrTimeout = setTimeout(() => resolve(null), 6000);
+    });
+    ocrResult = await Promise.race([runFallbackOCR("screenshot", ocrCrop), timeout]);
+  } catch (_) {
+    return {};
+  } finally {
+    if (ocrTimeout !== undefined) clearTimeout(ocrTimeout);
+  }
+  if (!ocrResult || ocrResult.complete !== true) {
+    console.warn("[ScreenshotOCR] OCR was incomplete. Blocking visual disclosure.");
+    return {};
+  }
+  sensitiveBoxes.push(...findOCRSensitiveBoxes(ocrResult.spans));
 
   const sanitizeResult = await sanitizeScreenshot(result.dataUrl, sensitiveBoxes, cropBox, pageState?.viewport);
   if (!sanitizeResult.dataUrl) {

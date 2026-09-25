@@ -9,6 +9,27 @@ export interface RemoteResolutionOptions {
   sessionToken?: string;
 }
 
+export function buildResolverEndpoint(baseUrl: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(baseUrl);
+  } catch {
+    throw new Error("Remote resolver URL must be an absolute HTTP(S) URL.");
+  }
+
+  const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  const isLoopback = host === "localhost" || host.endsWith(".localhost") || host === "::1" ||
+    /^127(?:\.\d{1,3}){3}$/.test(host);
+  if (parsed.username || parsed.password || parsed.search || parsed.hash) {
+    throw new Error("Remote resolver URL cannot contain credentials, a query, or a fragment.");
+  }
+  if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && isLoopback)) {
+    throw new Error("Remote resolver connections require HTTPS; plain HTTP is allowed only for loopback development servers.");
+  }
+
+  return `${parsed.origin}${parsed.pathname.replace(/\/+$/, "")}/api/resolve-action`;
+}
+
 /**
  * Sends a sanitized Disclosure payload across the network to the VLM fallback API.
  */
@@ -22,7 +43,7 @@ export async function requestRemoteAction(
     options.sessionToken ||
     (typeof window !== "undefined" ? (window as any).__privaagent_session_token : undefined);
 
-  const endpoint = `${serverBaseUrl}/api/resolve-action`;
+  const endpoint = buildResolverEndpoint(serverBaseUrl);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
