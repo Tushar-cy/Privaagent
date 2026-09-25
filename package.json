@@ -1,0 +1,26 @@
+{
+  "name": "privaagent",
+  "version": "1.0.0",
+  "description": "Privaagent (SIH26171) - On-device Visual Perception for Light-weight Browser Agents",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/test_redteam_security.mjs",
+    "test:all": "powershell -ExecutionPolicy Bypass -File ./run-all-tests.ps1",
+    "test:redteam": "node tests/test_redteam_security.mjs",
+    "test:synthetic": "node tests/test_synthetic_replacer_and_audit_vault.mjs",
+    "test:dom": "node extension/node_modules/tsx/dist/cli.mjs tests/test_dom_perception.mjs",
+    "test:privacy": "node extension/node_modules/tsx/dist/cli.mjs tests/test_privacy_engine.mjs",
+    "test:vision": "node extension/node_modules/tsx/dist/cli.mjs tests/test_local_vision.mjs",
+    "test:agent": "node extension/node_modules/tsx/dist/cli.mjs tests/test_agent_and_backend.mjs",
+    "test:validator": "node extension/node_modules/tsx/dist/cli.mjs tests/test_validator.mjs",
+    "test:ui": "node extension/node_modules/tsx/dist/cli.mjs tests/test_ui_and_overlays.mjs",
+    "test:multiturn": "node extension/node_modules/tsx/dist/cli.mjs tests/test_multiturn_agent.mjs",
+    "test:compliance": "node extension/node_modules/tsx/dist/cli.mjs tests/test_compliance_audit.mjs",
+    "test:audit": "node extension/node_modules/tsx/dist/cli.mjs tests/test_audit_dashboard.mjs",
+    "test:pixels": "node extension/test-redaction-pixels.mjs",
+    "benchmark": "node extension/node_modules/tsx/dist/cli.mjs benchmark/scripts/run-benchmark.mjs",
+    "start": "powershell -ExecutionPolicy Bypass -File ./start-privaagent.ps1",
+    "demo": "powershell -ExecutionPolicy Bypass -File ./start-demo.ps1"
+  }
+}

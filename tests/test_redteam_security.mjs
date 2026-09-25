@@ -2,19 +2,42 @@
 // Exercises privacy, action-risk, model-boundary, and audit-integrity checks.
 
 import assert from "assert";
-import { JSDOM } from "../extension/node_modules/jsdom/lib/api.js";
-import { ActionSchema } from "../extension/src/common/types.ts";
-import { evaluateActionRisk, resolveNavigationUrl } from "../extension/src/validator/risk-policy.ts";
-import { validateAction } from "../extension/src/validator/action-validator.ts";
-import { verifyOutgoingDisclosure } from "../extension/src/privacy/privacy-guard.ts";
-import { planDisclosure } from "../extension/src/disclosure/disclosure-planner.ts";
-import { PrivacyAuditVault, computePayloadHash } from "../extension/src/privacy/audit-vault.ts";
-import { sanitizeScreenshot } from "../extension/src/agent/capture-tab.ts";
-import { extractPageState } from "../extension/src/semantic/dom-extractor.ts";
-import { requestValidatedExecution } from "../extension/src/content/index.ts";
+import { spawnSync } from "child_process";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Self-bootstrap: If running under plain node without tsx, transparently respawn with tsx
+const isTsx = Boolean(
+  process.env.__PRIVAAGENT_TSX_LOADED ||
+  process.execArgv.some(arg => arg.includes("tsx")) ||
+  process.argv.some(arg => arg.includes("tsx"))
+);
+
+if (!isTsx) {
+  const tsxCli = path.resolve(__dirname, "../extension/node_modules/tsx/dist/cli.mjs");
+  const result = spawnSync(process.execPath, [tsxCli, __filename, ...process.argv.slice(2)], {
+    stdio: "inherit",
+    env: { ...process.env, __PRIVAAGENT_TSX_LOADED: "1" }
+  });
+  process.exit(result.status ?? 0);
+}
+
+const { JSDOM } = await import("../extension/node_modules/jsdom/lib/api.js");
+const { ActionSchema } = await import("../extension/src/common/types.ts");
+const { evaluateActionRisk, resolveNavigationUrl } = await import("../extension/src/validator/risk-policy.ts");
+const { validateAction } = await import("../extension/src/validator/action-validator.ts");
+const { verifyOutgoingDisclosure } = await import("../extension/src/privacy/privacy-guard.ts");
+const { planDisclosure } = await import("../extension/src/disclosure/disclosure-planner.ts");
+const { PrivacyAuditVault, computePayloadHash } = await import("../extension/src/privacy/audit-vault.ts");
+const { sanitizeScreenshot } = await import("../extension/src/agent/capture-tab.ts");
+const { extractPageState } = await import("../extension/src/semantic/dom-extractor.ts");
+const { requestValidatedExecution } = await import("../extension/src/content/index.ts");
 
 // Initialize napi-rs canvas globally for Node.js image manipulation
-import canvasLib from "../extension/node_modules/@napi-rs/canvas/index.js";
+const { default: canvasLib } = await import("../extension/node_modules/@napi-rs/canvas/index.js");
 global.Image = canvasLib.Image;
 
 console.log("==================================================================");

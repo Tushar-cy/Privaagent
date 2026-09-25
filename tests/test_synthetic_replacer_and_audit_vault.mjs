@@ -3,7 +3,30 @@
 // cryptographic hash chaining, tamper detection, and audit summary export.
 
 import assert from "node:assert";
-import {
+import { spawnSync } from "child_process";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Self-bootstrap: If running under plain node without tsx, transparently respawn with tsx
+const isTsx = Boolean(
+  process.env.__PRIVAAGENT_TSX_LOADED ||
+  process.execArgv.some(arg => arg.includes("tsx")) ||
+  process.argv.some(arg => arg.includes("tsx"))
+);
+
+if (!isTsx) {
+  const tsxCli = path.resolve(__dirname, "../extension/node_modules/tsx/dist/cli.mjs");
+  const result = spawnSync(process.execPath, [tsxCli, __filename, ...process.argv.slice(2)], {
+    stdio: "inherit",
+    env: { ...process.env, __PRIVAAGENT_TSX_LOADED: "1" }
+  });
+  process.exit(result.status ?? 0);
+}
+
+const {
   computeVerhoeffChecksum,
   validateVerhoeff,
   generateSyntheticAadhaar,
@@ -16,12 +39,12 @@ import {
   generateSyntheticIFSC,
   obfuscateText,
   generateSyntheticSurrogate,
-} from "../extension/src/privacy/synthetic-replacer.ts";
+} = await import("../extension/src/privacy/synthetic-replacer.ts");
 
-import {
+const {
   PrivacyAuditVault,
   computePayloadHash,
-} from "../extension/src/privacy/audit-vault.ts";
+} = await import("../extension/src/privacy/audit-vault.ts");
 
 console.log("==================================================");
 console.log("   PRIVAAGENT SYNTHETIC REPLACER & AUDIT VAULT   ");
