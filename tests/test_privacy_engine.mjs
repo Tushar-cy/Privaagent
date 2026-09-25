@@ -207,7 +207,7 @@ if (l0Disclosure.level !== "L0" || l0Disclosure.elements.length !== 0) {
 console.log("✓ L0 Escalation: Local solvable task emits 0 elements across network.");
 
 // Case B: Semantic Fallback -> L1
-const l1Disclosure = planDisclosure("Find customer account status", samplePageState, {
+const l1Disclosure = planDisclosure("Open Rahul's invoice", samplePageState, {
   isSolvableLocally: false,
   requiresVision: false,
 });
