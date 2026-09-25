@@ -9,6 +9,7 @@ import { resolveTaskAction, AgentResolutionResult } from "./target-resolver";
 import { validateAction, ValidationResult } from "../validator/action-validator";
 import { executeAction, ExecutionResult } from "../execution";
 import { extractPageState } from "../semantic/dom-extractor";
+import { annotatePageStateSensitivity } from "../privacy/sensitivity";
 import { PrivacyAuditVault } from "../privacy/audit-vault";
 
 export interface StepRecord {
@@ -32,6 +33,10 @@ function extractSensitiveEntityTypes(state: PageState | null): string[] {
       const dets = (e.metadata?.sensitive_detections as any[]) || [];
       return dets.length > 0 ? dets.map((d) => String(d.type)) : ["SENSITIVE"];
     });
+}
+
+function extractAnnotatedPageState(): PageState {
+  return annotatePageStateSensitivity(extractPageState().pageState);
 }
 
 export interface MultiTurnGoalResult {
@@ -68,7 +73,11 @@ export async function runMultiTurnAgent(
   const budget = new SessionPrivacyBudget(options.budgetLimits);
   const history: StepRecord[] = [];
 
-  let currentState: PageState | null = initialPageState || (doc ? extractPageState().pageState : null);
+  let currentState: PageState | null = initialPageState
+    ? annotatePageStateSensitivity(initialPageState)
+    : doc
+      ? extractAnnotatedPageState()
+      : null;
 
   for (let i = 0; i < decomposed.subtasks.length; i++) {
     const subtask = decomposed.subtasks[i];
@@ -103,7 +112,7 @@ export async function runMultiTurnAgent(
 
     // 2. Refresh page state if needed
     if (!currentState && doc) {
-      currentState = extractPageState().pageState;
+      currentState = extractAnnotatedPageState();
     }
     if (!currentState) {
       return {
@@ -346,7 +355,7 @@ export async function runMultiTurnAgent(
       await new Promise((r) => setTimeout(r, options.delayBetweenStepsMs));
     }
     if (doc) {
-      currentState = extractPageState().pageState;
+      currentState = extractAnnotatedPageState();
     }
   }
 

@@ -80,6 +80,21 @@ export function evaluateActionRisk(
       };
     }
 
+    const baseUrlString = currentOrigin || (typeof window !== "undefined" ? window.location.href : undefined);
+    let baseUrl: URL | undefined;
+    let destinationUrl: URL;
+    try {
+      baseUrl = baseUrlString ? new URL(baseUrlString) : undefined;
+      destinationUrl = baseUrl ? new URL(rawUrl, baseUrl) : new URL(rawUrl);
+    } catch {
+      matchedRules.push("INVALID_NAVIGATION_URL");
+      return {
+        verdict: "BLOCK",
+        policyReason: "Navigation strictly BLOCKED: destination URL is invalid or cannot be resolved safely.",
+        matchedRules,
+      };
+    }
+
     // Block dangerous URI schemes
     for (const scheme of BLOCKED_SCHEMES) {
       if (targetUrl.startsWith(scheme)) {
@@ -94,7 +109,7 @@ export function evaluateActionRisk(
 
     // Block executable file downloads
     for (const ext of DANGEROUS_EXTENSIONS) {
-      if (targetUrl.endsWith(ext) || targetUrl.includes(`${ext}?`)) {
+      if (destinationUrl.pathname.toLowerCase().endsWith(ext)) {
         matchedRules.push("DANGEROUS_FILE_DOWNLOAD");
         return {
           verdict: "BLOCK",
@@ -105,21 +120,15 @@ export function evaluateActionRisk(
     }
 
     // Cross-origin navigation requires confirmation
-    if (currentOrigin && targetUrl.startsWith("http")) {
-      try {
-        const destOrigin = new URL(targetUrl).origin;
-        if (destOrigin !== currentOrigin) {
-          matchedRules.push("CROSS_ORIGIN_NAVIGATION");
-          return {
-            verdict: "CONFIRM",
-            policyReason: `Navigation moves from ${currentOrigin} to external origin ${destOrigin}. User confirmation required.`,
-            matchedRules,
-            requiredUserConfirmation: `Allow navigation to external site: ${destOrigin}?`,
-          };
-        }
-      } catch {
-        // Invalid URL format
-      }
+    if (baseUrl && destinationUrl.origin !== baseUrl.origin) {
+      const destOrigin = destinationUrl.origin;
+      matchedRules.push("CROSS_ORIGIN_NAVIGATION");
+      return {
+        verdict: "CONFIRM",
+        policyReason: `Navigation moves from ${baseUrl.origin} to external origin ${destOrigin}. User confirmation required.`,
+        matchedRules,
+        requiredUserConfirmation: `Allow navigation to external site: ${destOrigin}?`,
+      };
     }
   }
 
