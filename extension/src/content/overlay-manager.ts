@@ -1,3 +1,5 @@
+// UI convention: no emoji in rendered labels/badges — use the SVG
+// icon set from design-tokens.css. This file has regressed on this twice.
 // Live On-Page Privacy Overlay Layer — Tri-Mode Defense Engine
 // Modes:
 // 1. "BLUR" (Default) — Precision floating dark slate blur overlays with Range API exact sub-string bboxes.
@@ -19,6 +21,49 @@ const shieldSvg = `<svg class="icon" style="width:12px;height:12px;vertical-alig
 const ghostSvg = `<svg class="icon" style="width:12px;height:12px;vertical-align:-2px;" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>`;
 const synthSvg = `<svg class="icon" style="width:12px;height:12px;vertical-align:-2px;" viewBox="0 0 24 24"><polygon fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"></polygon></svg>`;
 
+type OverlayIcon = "lock" | "identity" | "financial" | "person" | "synthetic";
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+const OVERLAY_ICON_SHAPES: Record<OverlayIcon, Array<{ tag: "path" | "rect" | "circle" | "polygon"; attrs: Record<string, string> }>> = {
+  lock: [
+    { tag: "rect", attrs: { x: "5", y: "11", width: "14", height: "10", rx: "2" } },
+    { tag: "path", attrs: { d: "M8 11V7a4 4 0 0 1 8 0v4" } },
+  ],
+  identity: [
+    { tag: "path", attrs: { d: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" } },
+    { tag: "path", attrs: { d: "M9 12h.01M12 12h4M9 16h7" } },
+  ],
+  financial: [
+    { tag: "rect", attrs: { x: "2", y: "5", width: "20", height: "14", rx: "2" } },
+    { tag: "path", attrs: { d: "M2 10h20M6 15h2" } },
+  ],
+  person: [
+    { tag: "circle", attrs: { cx: "12", cy: "8", r: "4" } },
+    { tag: "path", attrs: { d: "M5 21a7 7 0 0 1 14 0" } },
+  ],
+  synthetic: [
+    { tag: "polygon", attrs: { points: "12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" } },
+  ],
+};
+
+function createOverlayIcon(doc: Document, icon: OverlayIcon): SVGSVGElement {
+  const svg = doc.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("class", "icon");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  svg.style.cssText = "width:12px;height:12px;flex:0 0 12px;vertical-align:-2px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;";
+
+  for (const shape of OVERLAY_ICON_SHAPES[icon]) {
+    const element = doc.createElementNS(SVG_NS, shape.tag);
+    for (const [attribute, value] of Object.entries(shape.attrs)) {
+      element.setAttribute(attribute, value);
+    }
+    svg.appendChild(element);
+  }
+  return svg;
+}
+
 export type RedactionMode = "BLUR" | "GHOST" | "SYNTHETIC";
 
 interface OverlayEntry {
@@ -27,6 +72,7 @@ interface OverlayEntry {
   width: number;
   height: number;
   label: string;
+  icon: OverlayIcon;
   isSecret: boolean;
   type: string;
   syntheticValue?: string;
@@ -164,30 +210,54 @@ export class OverlayManager {
   }
 
   private computeLabel(type: string, isSecret: boolean): string {
-    if (this.mode === "SYNTHETIC") {
-      const surrogate = generateSyntheticSurrogate(type);
-      return `⬡ ${surrogate}`;
-    }
-
-    if (isSecret) return "⬛ [SECRET]";
+    if (this.mode === "SYNTHETIC") return generateSyntheticSurrogate(type);
+    if (isSecret) return "[SECRET]";
     switch (type) {
-      case "EMAIL": return "🔒 [EMAIL]";
-      case "PHONE": return "🔒 [PHONE]";
-      case "AADHAAR": return "🔒 [AADHAAR]";
-      case "PAN": return "🔒 [PAN]";
-      case "CREDIT_CARD": return "🔒 [CARD]";
-      case "GSTIN": return "🏛️ [GSTIN]";
-      case "DRIVING_LICENSE": return "🪪 [DL]";
-      case "BANK_ACCOUNT": return "🏦 [BANK A/C]";
-      case "DOB": return "📅 [DOB]";
-      case "VEHICLE_RC": return "🚗 [RC]";
-      case "PASSPORT_IN": return "✈️ [PASSPORT]";
-      case "VOTER_ID": return "🗳️ [VOTER ID]";
-      case "UPI_ID": return "💸 [UPI]";
-      case "IFSC": return "🏦 [IFSC]";
-      case "PERSON": return "🛡️ [NAME]";
-      case "PASSWORD": return "🔑 [PASSWORD]";
-      default: return "🔒 [REDACTED]";
+      case "EMAIL": return "[EMAIL]";
+      case "PHONE": return "[PHONE]";
+      case "AADHAAR": return "[AADHAAR]";
+      case "PAN": return "[PAN]";
+      case "CREDIT_CARD": return "[CARD]";
+      case "GSTIN": return "[GSTIN]";
+      case "DRIVING_LICENSE": return "[DL]";
+      case "BANK_ACCOUNT": return "[BANK A/C]";
+      case "DOB": return "[DOB]";
+      case "VEHICLE_RC": return "[RC]";
+      case "PASSPORT_IN": return "[PASSPORT]";
+      case "VOTER_ID": return "[VOTER ID]";
+      case "UPI_ID": return "[UPI]";
+      case "IFSC": return "[IFSC]";
+      case "PERSON": return "[NAME]";
+      case "PASSWORD": return "[PASSWORD]";
+      default: return "[REDACTED]";
+    }
+  }
+
+  private computeIcon(type: string, isSecret: boolean): OverlayIcon {
+    if (this.mode === "SYNTHETIC") return "synthetic";
+    if (isSecret) return "lock";
+
+    switch (type) {
+      case "AADHAAR":
+      case "PAN":
+      case "GSTIN":
+      case "DRIVING_LICENSE":
+      case "VEHICLE_RC":
+      case "PASSPORT_IN":
+      case "VOTER_ID":
+        return "identity";
+      case "CREDIT_CARD":
+      case "BANK_ACCOUNT":
+      case "UPI_ID":
+      case "IFSC":
+        return "financial";
+      case "EMAIL":
+      case "PHONE":
+      case "DOB":
+      case "PERSON":
+        return "person";
+      default:
+        return "lock";
     }
   }
 
@@ -214,6 +284,7 @@ export class OverlayManager {
         width: elemWidth,
         height: elemHeight,
         label: this.computeLabel("GENERIC", false),
+        icon: this.computeIcon("GENERIC", false),
         isSecret: false,
         type: "GENERIC",
       });
@@ -230,6 +301,7 @@ export class OverlayManager {
 
       const isSecret = detection.type === "SECRET_KEY";
       const label = this.computeLabel(detection.type, isSecret);
+      const icon = this.computeIcon(detection.type, isSecret);
 
       if (bbox && bbox[2] > 0 && bbox[3] > 0) {
         const [bLeft, bTop, bWidth, bHeight] = bbox;
@@ -239,6 +311,7 @@ export class OverlayManager {
           width: this.mode === "SYNTHETIC" ? Math.max(bWidth, 140) : bWidth,
           height: bHeight,
           label,
+          icon,
           isSecret,
           type: detection.type,
           syntheticValue: this.mode === "SYNTHETIC" ? generateSyntheticSurrogate(detection.type) : undefined,
@@ -250,6 +323,7 @@ export class OverlayManager {
           width: elemWidth,
           height: elemHeight,
           label,
+          icon,
           isSecret,
           type: detection.type,
         });
@@ -337,7 +411,8 @@ export class OverlayManager {
           badge.style.background = "rgba(10, 15, 29, 0.95)";
         }
 
-        badge.textContent = String(entry.label).slice(0, 128);
+        badge.appendChild(createOverlayIcon(this.doc, entry.icon));
+        badge.appendChild(this.doc.createTextNode(` ${String(entry.label).slice(0, 128)}`));
         overlay.appendChild(badge);
 
         container.appendChild(overlay);

@@ -73,3 +73,9 @@ This log records design choices visible in the current implementation. “Altern
 **Why**  Client-side checks protect the normal extension path; server-side checks reduce the impact of a malformed or direct request.
 
 **Trade-off**  Rules exist in more than one layer and need regression tests to prevent drift. Pattern checks and image validation still cannot prove that all sensitive content has been found.
+
+## 7. Use SVG icons for rendered privacy labels
+
+**Convention**  Rendered labels and badges use the SVG icon set from `design-tokens.css`; emoji are not used in UI output.
+
+**Why**  SVG icons have consistent rendering and sizing across browsers, while emoji appearance varies by platform and can make privacy labels harder to scan.
