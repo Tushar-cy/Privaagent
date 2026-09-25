@@ -4,6 +4,7 @@
 import { PageElement, PageState, PerceptionSource } from "../common/types";
 import { getElementA11yInfo } from "./accessibility";
 import { getPerformanceProfiler } from "../common/profiler";
+import { isExtensionUiNodeOrDescendant } from "./extension-ui-nodes";
 
 // Map to resolve target_id back to live DOM elements in O(1) time
 const elementRegistry = new Map<string, Element>();
@@ -167,6 +168,7 @@ function collectAllNodesWithShadow(root: Document | ShadowRoot | Element): Eleme
     const list = root.querySelectorAll(selector);
     for (let i = 0; i < list.length; i++) {
       const el = list[i];
+      if (isExtensionUiNodeOrDescendant(el)) continue;
       nodes.push(el);
       // Recursively traverse open shadow roots
       if (el.shadowRoot) {

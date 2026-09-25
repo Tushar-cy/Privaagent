@@ -1,5 +1,9 @@
 {
   "manifest_version": 3,
+  "minimum_chrome_version": "109",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+  },
   "name": "Privaagent - Adaptive Minimum-Disclosure Agent",
   "version": "0.1.0",
   "description": "On-device visual perception and minimum-disclosure privacy preservation for browser agents.",
@@ -25,11 +29,5 @@
   "action": {
     "default_popup": "popup/index.html",
     "default_title": "Privaagent"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["report/*", "assets/*"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  }
 }

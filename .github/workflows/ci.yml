@@ -54,6 +54,14 @@ jobs:
           cd extension
           npx vite build
 
+      - name: Verify Committed Unpacked Extension Matches Source Build
+        run: git diff --exit-code -- privaagent-extension
+
+      - name: Extension Test - Live Chrome Visual Disclosure and OCR
+        run: |
+          cd extension
+          node ../tests/test_visual_browser_e2e.mjs
+
       - name: Extension Test - DOM Perception
         run: |
           cd extension

@@ -12,6 +12,7 @@ import { resolveTaskAction, AgentResolutionResult } from "../agent/target-resolv
 import { validateAction, ValidationResult } from "../validator/action-validator";
 import { runMultiTurnAgent, MultiTurnGoalResult, AgentLoopOptions } from "../agent/agent-loop";
 import { PrivacyAuditVault, PrivacyAuditSummary } from "../privacy/audit-vault";
+import { parseTask } from "../agent/task-parser";
 
 declare global {
   interface Window {
@@ -58,6 +59,10 @@ if (typeof window !== "undefined") {
 
   window.addEventListener("PRIVAAGENT_OCR_INIT_END", () => {
     overlayManager.updateHUD("Loaded", "Vision Engine Ready");
+  });
+
+  window.addEventListener("PRIVAAGENT_OCR_INIT_ERROR", () => {
+    overlayManager.updateHUD("BLOCKED", "Vision OCR unavailable; visual disclosure blocked");
   });
 }
 
@@ -348,6 +353,13 @@ if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
     return true;
   }
 
+  if (message?.type === "OCR_WORKER_STATUS") {
+    if (message.status === "loading") overlayManager.updateHUD("Loading", "Initializing Vision Engine locally...");
+    else if (message.status === "ready") overlayManager.updateHUD("Loaded", "Vision Engine Ready");
+    else overlayManager.updateHUD("BLOCKED", "Vision OCR unavailable; visual disclosure blocked");
+    return false;
+  }
+
   if (message?.type === "RUN_GOAL") {
     handleRunGoalMessage(message.goal, message.budgetLimits, normalizeDisclosureLevel(message.maxLevel ?? "L2"))
       .then((res) => sendResponse(res))
@@ -481,6 +493,10 @@ async function handleRunTaskMessage(
 }> {
   const pageState = runPerception();
   if (!pageState) throw new Error("Unable to capture page state.");
+
+  // Start OCR setup while the local solver and visual capture checks run. The
+  // first visual task then waits only for any remaining worker warmup.
+  if (parseTask(taskStr).requiresVision) safeSendBackgroundMessage({ type: "OCR_WARMUP" });
 
   overlayManager.updateHUD("Thinking...", `Reasoning: "${taskStr.slice(0, 20)}..."`);
   const resolution = await resolveTaskAction(taskStr, pageState, {

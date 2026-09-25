@@ -12,6 +12,22 @@ const BADGE_COLORS: Record<string, string> = {
   OFF: "#6b7280",     // Grey (Shield disabled by user)
 };
 
+function sendPopupOCRMessage(message: Record<string, unknown>): Promise<any> {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(message, (response) => {
+      const error = chrome.runtime.lastError;
+      if (error || !response) reject(new Error(error?.message || "The Privaagent popup did not respond to the OCR request"));
+      else resolve(response);
+    });
+  });
+}
+
+function sendOCRStatus(tabId: number, status: "loading" | "ready" | "error"): void {
+  chrome.tabs.sendMessage(tabId, { type: "OCR_WORKER_STATUS", status }, () => {
+    void chrome.runtime.lastError;
+  });
+}
+
 let sessionTokenProvisioning = false;
 
 function ensureSessionToken(): void {
@@ -97,6 +113,49 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: false, error: "chrome.tabs.captureVisibleTab API unavailable" });
       }
       break;
+    }
+
+    case "OCR_RECOGNIZE": {
+      console.debug("[OCR background] Received on-device OCR request.");
+      if (!sender.tab?.id || typeof message.imageDataUrl !== "string") {
+        sendResponse({ complete: false, error: "OCR requests are accepted only from a browser tab" });
+        break;
+      }
+      const tabId = sender.tab.id;
+      sendOCRStatus(tabId, "loading");
+      sendPopupOCRMessage({ type: "OCR_RECOGNIZE_POPUP", imageDataUrl: message.imageDataUrl })
+        .then((result) => {
+          sendOCRStatus(tabId, result?.complete ? "ready" : "error");
+          sendResponse(result);
+        })
+        .catch((error: unknown) => {
+          sendOCRStatus(tabId, "error");
+          sendResponse({
+            complete: false,
+            error: error instanceof Error ? error.message : "Extension popup OCR is unavailable",
+          });
+        });
+      return true;
+    }
+
+    case "OCR_WARMUP": {
+      console.debug("[OCR background] Received OCR warmup request.");
+      if (!sender.tab?.id) {
+        sendResponse({ ready: false, error: "OCR warmup must be requested by a browser tab" });
+        break;
+      }
+      const tabId = sender.tab.id;
+      sendOCRStatus(tabId, "loading");
+      sendPopupOCRMessage({ type: "OCR_WARM_POPUP" })
+        .then((result) => {
+          sendOCRStatus(tabId, result?.ready ? "ready" : "error");
+          sendResponse(result);
+        })
+        .catch((error: unknown) => {
+          sendOCRStatus(tabId, "error");
+          sendResponse({ ready: false, error: error instanceof Error ? error.message : "Extension popup OCR is unavailable" });
+        });
+      return true;
     }
 
     case "UPDATE_BADGE": {

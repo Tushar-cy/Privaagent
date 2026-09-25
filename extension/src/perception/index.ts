@@ -3,7 +3,7 @@
 import { PageState } from "../common/types";
 import { captureElementPixels } from "./browser-state";
 import { runFlorenceVision, initializeFlorenceModel, VisionResult } from "./vision";
-import { runFallbackOCR, OCRResult } from "./ocr";
+import { initializeOCRWorker, runFallbackOCR, OCRResult } from "./ocr";
 import { detectFacesInCrop, FaceDetectionResult } from "./face-detector";
 import { fusePerceptionEvidence, FusionResult } from "./evidence-fusion";
 import { getPerformanceProfiler } from "../common/profiler";
@@ -13,6 +13,7 @@ export {
   runFlorenceVision,
   initializeFlorenceModel,
   runFallbackOCR,
+  initializeOCRWorker,
   detectFacesInCrop,
   fusePerceptionEvidence,
 };

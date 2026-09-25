@@ -64,13 +64,19 @@ function perceptionStillMatchesLiveDom(snapshot: PageState): boolean {
   if (boundElements.length === 0) return true;
 
   const liveState = extractPageState().pageState;
-  if (snapshot.url !== liveState.url || boundElements.length !== liveState.elements.length) return false;
-  const liveById = new Map(liveState.elements.map((element) => [element.target_id, element]));
+  if (snapshot.url !== liveState.url) return false;
+  // Sequence-based opaque IDs can shift when a page adds an unrelated node.
+  // Compare by the extension-owned exact node binding instead of requiring an
+  // identical page-wide element count or matching the newly assigned ID.
+  const liveByNode = new Map<Element, typeof liveState.elements[number]>();
+  for (const element of liveState.elements) {
+    const node = resolvePerceivedElement(element);
+    if (node) liveByNode.set(node, element);
+  }
   return boundElements.every((before) => {
-    const current = liveById.get(before.target_id);
-    if (!current || before.role !== current.role || before.text !== current.text) return false;
     const beforeNode = resolvePerceivedElement(before);
-    if (!beforeNode || beforeNode !== resolvePerceivedElement(current)) return false;
+    const current = beforeNode ? liveByNode.get(beforeNode) : undefined;
+    if (!current || before.role !== current.role || before.text !== current.text) return false;
     if (before.bbox && current.bbox && before.bbox.some((value, index) => value !== current.bbox![index])) return false;
     const beforeMeta = before.metadata as Record<string, unknown> | undefined;
     const currentMeta = current.metadata as Record<string, unknown> | undefined;

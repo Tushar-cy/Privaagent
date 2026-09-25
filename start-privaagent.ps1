@@ -7,15 +7,20 @@ Write-Host ""
 
 $ROOT = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# 1. Verify Extension Build
-$manifestPath = Join-Path $ROOT "extension\dist\manifest.json"
+# 1. Rebuild the extension every launch so the unpacked folder always matches source.
+Write-Host "[1/3] Building Chrome MV3 Extension from current source..." -ForegroundColor Yellow
+Push-Location (Join-Path $ROOT "extension")
+npm.cmd run build
+$buildExitCode = $LASTEXITCODE
+Pop-Location
+if ($buildExitCode -ne 0) {
+    Write-Host "[FAILED] Extension build exited with code $buildExitCode. The browser will not launch a stale bundle." -ForegroundColor Red
+    exit $buildExitCode
+}
+$manifestPath = Join-Path $ROOT "privaagent-extension\manifest.json"
 if (-not (Test-Path $manifestPath)) {
-    Write-Host "[1/3] Building Chrome MV3 Extension..." -ForegroundColor Yellow
-    Set-Location (Join-Path $ROOT "extension")
-    npm.cmd run build
-    Set-Location $ROOT
-} else {
-    Write-Host "[1/3] Extension build verified at: $ROOT\extension\dist" -ForegroundColor Green
+    Write-Host "[FAILED] Build did not produce the unpacked extension at $manifestPath" -ForegroundColor Red
+    exit 1
 }
 
 # 2. Check and Launch FastAPI Backend

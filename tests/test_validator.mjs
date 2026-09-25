@@ -11,7 +11,7 @@ import {
   validateAction,
 } from "../extension/src/validator/index.ts";
 import { executeAction } from "../extension/src/execution/index.ts";
-import { extractPageState } from "../extension/src/semantic/dom-extractor.ts";
+import { extractPageState, resolvePerceivedElement } from "../extension/src/semantic/dom-extractor.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const adversarialHtmlPath = path.resolve(__dirname, "../benchmark/adversarial/prompt-injection-page.html");
@@ -64,15 +64,16 @@ const doc = dom.window.document;
 const safeEl = doc.getElementById("btn-view-statement");
 const payEl = doc.getElementById("btn-pay-now");
 const deleteEl = doc.getElementById("btn-delete-account");
-safeEl.setAttribute("data-privaagent-id", "el_statement");
-payEl.setAttribute("data-privaagent-id", "el_payment");
-deleteEl.setAttribute("data-privaagent-id", "el_delete");
 extractPageState(); // Assign extension-issued IDs and bind the exact test nodes.
+
+function targetIdFor(element) {
+  const snapshot = extractPageState().pageState;
+  return snapshot.elements.find((record) => resolvePerceivedElement(record) === element)?.target_id;
+}
 
 function pageStateFor(targetId, element, overrides = {}) {
   const snapshot = extractPageState().pageState;
-  const currentId = element.getAttribute("data-privaagent-id");
-  const extracted = snapshot.elements.find((item) => item.target_id === currentId);
+  const extracted = snapshot.elements.find((item) => resolvePerceivedElement(item) === element);
   if (extracted) {
     Object.assign(extracted, overrides);
     return { ...snapshot, elements: [extracted] };
@@ -144,9 +145,13 @@ console.log("✓ Hidden and transparent DOM prompt injections detected with CRIT
 console.log("\n[TEST 3] Testing Risk Policy Classification...");
 
 // 3A: Routine safe action -> ALLOW
-const safeAction = { action: "click", target_id: safeEl.getAttribute("data-privaagent-id"), reason: "View statement" };
+const safeTargetId = targetIdFor(safeEl);
+const paymentTargetId = targetIdFor(payEl);
+const deleteTargetId = targetIdFor(deleteEl);
+if (!safeTargetId || !paymentTargetId || !deleteTargetId) throw new Error("Perception failed to bind an action target.");
+const safeAction = { action: "click", target_id: safeTargetId, reason: "View statement" };
 const safeVerdict = evaluateActionRisk(safeAction, {
-  target_id: "el_statement",
+  target_id: safeTargetId,
   role: "button",
   text: "View Statement",
   bbox: [24, 50, 140, 36],
@@ -162,9 +167,9 @@ if (safeVerdict.verdict !== "ALLOW") {
 console.log("  ✓ Safe button action classified as: ALLOW");
 
 // 3B: Financial action -> CONFIRM
-const payAction = { action: "click", target_id: "el_payment", reason: "Execute payment" };
+const payAction = { action: "click", target_id: paymentTargetId, reason: "Execute payment" };
 const payVerdict = evaluateActionRisk(payAction, {
-  target_id: "el_payment",
+  target_id: paymentTargetId,
   role: "button",
   text: "Pay Now $5,000",
   bbox: [24, 100, 160, 36],
@@ -180,9 +185,9 @@ if (payVerdict.verdict !== "CONFIRM" || !payVerdict.matchedRules.includes("FINAN
 console.log("  ✓ Financial transaction action classified as: CONFIRM (User Approval Required)");
 
 // 3C: Destructive action -> CONFIRM
-const deleteAction = { action: "click", target_id: "el_delete", reason: "Erase account" };
+const deleteAction = { action: "click", target_id: deleteTargetId, reason: "Erase account" };
 const deleteVerdict = evaluateActionRisk(deleteAction, {
-  target_id: "el_delete",
+  target_id: deleteTargetId,
   role: "button",
   text: "Delete Account and Erase Data",
   bbox: [200, 100, 220, 36],
@@ -219,7 +224,7 @@ console.log("  ✓ Dangerous .exe binary download classified as: BLOCK");
 console.log("\n[TEST 4] Testing Pre-Execution Live DOM Validation...");
 
 // 4A: Valid live element
-const v1 = validateAction(safeAction, pageStateFor("el_statement", safeEl), doc);
+const v1 = validateAction(safeAction, pageStateFor(safeTargetId, safeEl), doc);
 if (!v1.valid || v1.verdict !== "ALLOW") {
   throw new Error("Live DOM validation failed on valid element!");
 }
@@ -234,7 +239,6 @@ if (v2.valid || !v2.requiresReplan) {
 console.log("  ✓ Missing element correctly blocked with requiresReplan=true.");
 
 // 4C: Hidden element
-hiddenEl.setAttribute("data-privaagent-id", "el_hidden_injection");
 const hiddenAction = { action: "click", target_id: "el_hidden_injection", reason: "Click hidden" };
 const v3 = validateAction(hiddenAction, pageStateFor("el_hidden_injection", hiddenEl), doc);
 if (v3.valid || v3.verdict !== "BLOCK") {
@@ -265,7 +269,6 @@ for (const field of sensitiveFields) {
   input.type = field.type;
   input.name = field.name;
   if (field.autocomplete) input.setAttribute("autocomplete", field.autocomplete);
-  input.setAttribute("data-privaagent-id", field.target);
   doc.body.appendChild(input);
   const recorded = pageStateFor(field.target, input, { sensitive: field.recordedSensitive });
   field.target = recorded.elements[0].target_id;
@@ -296,7 +299,6 @@ console.log("  ✓ Execution gate pauses sensitive typing until the user confirm
 const visualCanvas = doc.createElement("canvas");
 visualCanvas.id = "chart-target";
 visualCanvas.textContent = "Chart";
-visualCanvas.setAttribute("data-privaagent-id", "el_chart_parent");
 doc.body.appendChild(visualCanvas);
 const forgedVisualTarget = doc.createElement("button");
 forgedVisualTarget.setAttribute("data-privaagent-id", "el_chart_q4");
@@ -355,7 +357,8 @@ const duplicateA = doc.createElement("button");
 const duplicateB = doc.createElement("button");
 doc.body.append(duplicateA, duplicateB);
 const duplicateState = extractPageState().pageState;
-const duplicateAId = duplicateA.getAttribute("data-privaagent-id");
+const duplicateAId = duplicateState.elements.find((element) => resolvePerceivedElement(element) === duplicateA)?.target_id;
+if (!duplicateAId) throw new Error("Perception failed to bind the duplicate-target test node.");
 duplicateB.setAttribute("data-privaagent-id", duplicateAId);
 const duplicateResult = validateAction({ action: "click", target_id: duplicateAId, reason: "Bound target" }, duplicateState, doc);
 if (!duplicateResult.valid || duplicateResult.element !== duplicateA) {

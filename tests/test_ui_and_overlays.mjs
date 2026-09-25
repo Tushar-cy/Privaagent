@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { JSDOM } from "../extension/node_modules/jsdom/lib/api.js";
 
-import { extractPageState } from "../extension/src/semantic/dom-extractor.ts";
+import { extractPageState, resolvePerceivedElement } from "../extension/src/semantic/dom-extractor.ts";
 import { annotatePageStateSensitivity } from "../extension/src/privacy/sensitivity.ts";
 import { OverlayManager } from "../extension/src/content/overlay-manager.ts";
 import { resolveTaskAction } from "../extension/src/agent/target-resolver.ts";
@@ -174,8 +174,7 @@ console.log("✓ Viewport blur shield successfully toggled on/off.");
 
 // GHOST mode uses a temporary masking class on sensitive page elements.
 const sensitiveTarget = sensitiveState.elements.find((element) => element.sensitive && element.target_id !== "user-avatar-face");
-const liveSensitiveElement = Array.from(doc.querySelectorAll("[data-privaagent-id]"))
-  .find((element) => element.getAttribute("data-privaagent-id") === sensitiveTarget?.target_id);
+const liveSensitiveElement = sensitiveTarget ? resolvePerceivedElement(sensitiveTarget) : null;
 if (!liveSensitiveElement) throw new Error("Could not resolve a sensitive target for GHOST mode verification.");
 overlayMgr.setMode("GHOST");
 if (!liveSensitiveElement.classList.contains("privaagent-ghost-redacted")) {

@@ -350,7 +350,9 @@ export async function captureAndSanitizeTab(
     return {};
   }
 
-  // Keep per-frame pixel classification within its 150ms budget.
+  // Bound per-frame pixel classification inside detectVisualSensitivity. Its
+  // budget excludes first-use screenshot decoding; measuring that startup work
+  // here caused valid visual requests to fail closed on ordinary cold frames.
   // GENERIC entries are produced by the previous visual pass. Drop them before
   // analyzing this screenshot so a former face/photo classification cannot
   // stick to a changed page merely because the PageState object was reused.
@@ -379,14 +381,7 @@ export async function captureAndSanitizeTab(
   }
   
   try {
-    const start = performance.now();
     const visualResults = await detectVisualSensitivity(pageState, result.dataUrl, cropBox);
-    const duration = performance.now() - start;
-
-    if (duration > 150) {
-      console.warn(`[VisualSensitivity] Detection exceeded 150ms budget (${duration.toFixed(2)}ms). Blocking visual disclosure.`);
-      return {};
-    }
 
     // Any incomplete visual pass fails closed. The manifest cannot claim that
     // an image was sanitized when pixels could not be inspected.
@@ -442,7 +437,10 @@ export async function captureAndSanitizeTab(
   let ocrResult: Awaited<ReturnType<typeof runFallbackOCR>> | null;
   try {
     const timeout = new Promise<null>((resolve) => {
-      ocrTimeout = setTimeout(() => resolve(null), 6000);
+      // First-use worker startup loads local WASM and English data. Allow cold
+      // extension installs enough time to initialize while still failing
+      // closed if OCR stalls.
+      ocrTimeout = setTimeout(() => resolve(null), 15000);
     });
     ocrResult = await Promise.race([runFallbackOCR("screenshot", ocrCrop), timeout]);
   } catch (_) {

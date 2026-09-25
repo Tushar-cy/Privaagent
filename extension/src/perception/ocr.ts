@@ -24,6 +24,49 @@ export interface OCRResult {
 
 let _workerPromise: Promise<any> | null = null;
 
+function dispatchOCREvent(name: string): void {
+  if (typeof window === "undefined" || typeof window.CustomEvent === "undefined") return;
+  try {
+    window.dispatchEvent(new window.CustomEvent(name));
+  } catch (_) {}
+}
+
+async function importTesseract(): Promise<any> {
+  const isNodeRuntime = typeof process !== "undefined" && Boolean(process.versions?.node);
+  const host = globalThis as any;
+  if (!isNodeRuntime || typeof host.document === "undefined") return import("tesseract.js");
+
+  // JSDOM exposes window/document in Node. Tesseract detects those globals as
+  // a browser and turns its absolute Node worker path into an HTTP URL, which
+  // worker_threads rejects with ERR_WORKER_PATH. Load it once with browser
+  // globals hidden so it selects its Node worker implementation.
+  const windowDescriptor = Object.getOwnPropertyDescriptor(host, "window");
+  const documentDescriptor = Object.getOwnPropertyDescriptor(host, "document");
+  try {
+    delete host.window;
+    delete host.document;
+    return await import("tesseract.js");
+  } finally {
+    if (windowDescriptor) Object.defineProperty(host, "window", windowDescriptor);
+    if (documentDescriptor) Object.defineProperty(host, "document", documentDescriptor);
+  }
+}
+
+function requestExtensionOCR(imageDataUrl: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(
+      { type: "OCR_RECOGNIZE", imageDataUrl },
+      (response) => {
+        const error = chrome.runtime.lastError;
+        if (error) reject(new Error(error.message || "Extension popup OCR request failed"));
+        else if (!response?.complete || !Array.isArray(response.words)) {
+          reject(new Error(response?.error || "Extension popup OCR returned an incomplete result"));
+        } else resolve(response);
+      },
+    );
+  });
+}
+
 /**
  * Returns (and lazily initializes) the shared Tesseract worker.
  * Uses English language data only (~4 MB WASM, cached in browser after first load).
@@ -31,17 +74,23 @@ let _workerPromise: Promise<any> | null = null;
 async function getTesseractWorker(): Promise<any> {
   if (_workerPromise) return _workerPromise;
 
-  _workerPromise = (async () => {
+  const initialization = (async () => {
     // Notify UI that a heavy lazy-load operation is starting
-    if (typeof window !== "undefined" && typeof window.CustomEvent !== "undefined") {
-      try {
-        window.dispatchEvent(new window.CustomEvent("PRIVAAGENT_OCR_INIT_START"));
-      } catch (e) {}
-    }
+    dispatchOCREvent("PRIVAAGENT_OCR_INIT_START");
 
     // Dynamic import so the extension bundle only loads Tesseract when first needed
-    const Tesseract = await import("tesseract.js");
+    const Tesseract = await importTesseract();
+    const extensionOCRPaths = typeof chrome !== "undefined" && chrome.runtime?.getURL
+      ? {
+          workerPath: chrome.runtime.getURL("assets/ocr/worker.min.js"),
+          workerBlobURL: false,
+          corePath: chrome.runtime.getURL("assets/ocr"),
+          langPath: chrome.runtime.getURL("assets/ocr/lang"),
+          gzip: true,
+        }
+      : {};
     const worker = await Tesseract.createWorker("eng", 1, {
+      ...extensionOCRPaths,
       // Suppress verbose logging in production
       logger: (m: any) => {
         if (m.status === "recognizing text") {
@@ -52,16 +101,33 @@ async function getTesseractWorker(): Promise<any> {
     console.log("[OCR] Tesseract.js WASM worker initialized (eng)");
 
     // Notify UI that initialization is complete
-    if (typeof window !== "undefined" && typeof window.CustomEvent !== "undefined") {
-      try {
-        window.dispatchEvent(new window.CustomEvent("PRIVAAGENT_OCR_INIT_END"));
-      } catch (e) {}
-    }
+    dispatchOCREvent("PRIVAAGENT_OCR_INIT_END");
 
     return worker;
   })();
 
+  _workerPromise = initialization.catch((error) => {
+    _workerPromise = null;
+    dispatchOCREvent("PRIVAAGENT_OCR_INIT_ERROR");
+    throw error;
+  });
   return _workerPromise;
+}
+
+/** Runs local OCR in the extension popup's shared worker. */
+export async function recognizeOCRImage(imageDataUrl: string): Promise<any[]> {
+  if (!imageDataUrl.startsWith("data:image/") || imageDataUrl.length < 100) {
+    throw new Error("OCR received an invalid or empty image");
+  }
+  const worker = await getTesseractWorker();
+  const { data } = await worker.recognize(imageDataUrl);
+  if (!Array.isArray(data.words)) throw new Error("OCR engine returned an invalid word list");
+  return data.words;
+}
+
+/** Starts the shared OCR worker without running recognition. */
+export async function initializeOCRWorker(): Promise<void> {
+  await getTesseractWorker();
 }
 
 /**
@@ -92,17 +158,26 @@ export async function runFallbackOCR(
     }
 
 
-    const worker = await getTesseractWorker();
-
-    // Run recognition — returns word-level data with bboxes
-    const { data } = await worker.recognize(imageDataUrl);
-    if (!Array.isArray(data.words)) throw new Error("OCR engine returned an invalid word list");
+    // Content-script Workers inherit the page's origin. Ask the extension
+    // background to broker OCR to the extension popup's local worker instead.
+    const useOffscreenDocument = typeof chrome !== "undefined" && Boolean(chrome.runtime?.id) &&
+      typeof window !== "undefined" && window.location.protocol !== "chrome-extension:";
+    let words: any[];
+    if (useOffscreenDocument) {
+      const response = await requestExtensionOCR(imageDataUrl);
+      words = response.words;
+    } else {
+      const worker = await getTesseractWorker();
+      const { data } = await worker.recognize(imageDataUrl);
+      words = data.words;
+    }
+    if (!Array.isArray(words)) throw new Error("OCR engine returned an invalid word list");
     complete = true;
 
     const [cropX, cropY, cropW, cropH] = crop.boundingBox;
 
     // Tesseract bbox coords are relative to the cropped image
-    for (const word of data.words) {
+    for (const word of words) {
       if (!word.text.trim() || word.confidence < 30) continue;
 
       const { x0, y0, x1, y1 } = word.bbox;
@@ -127,6 +202,7 @@ export async function runFallbackOCR(
   } catch (err) {
     // Non-fatal: log and return empty spans — DOM perception still works
     console.error("[OCR] Tesseract inference failed:", err);
+    dispatchOCREvent("PRIVAAGENT_OCR_INIT_ERROR");
     complete = false;
   }
 

@@ -5,6 +5,29 @@ import { detectSecrets } from "../src/privacy/secret-detector";
 import { verifyOutgoingDisclosure } from "../src/privacy/privacy-guard";
 import { PrivacyAuditVault } from "../src/privacy/audit-vault";
 import { dispatchUserApprovedAction } from "./confirmation";
+import { initializeOCRWorker, recognizeOCRImage } from "../src/perception/ocr";
+
+// OCR runs in the extension popup because Chrome can host its local Web Worker
+// here. The background service worker brokers requests from the content script.
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== "OCR_RECOGNIZE_POPUP" && message?.type !== "OCR_WARM_POPUP") return false;
+  if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL("src/background/index.js")) {
+    sendResponse({ complete: false, ready: false, error: "Invalid internal OCR request" });
+    return false;
+  }
+
+  const operation = message.type === "OCR_WARM_POPUP"
+    ? initializeOCRWorker().then(() => ({ ready: true }))
+    : typeof message.imageDataUrl === "string"
+      ? recognizeOCRImage(message.imageDataUrl).then((words) => ({ complete: true, words }))
+      : Promise.reject(new Error("OCR request did not include an image"));
+  operation.then(sendResponse).catch((error: unknown) => sendResponse({
+    complete: false,
+    ready: false,
+    error: error instanceof Error ? error.message : "Popup OCR failed",
+  }));
+  return true;
+});
 
 document.addEventListener("DOMContentLoaded", () => {
 

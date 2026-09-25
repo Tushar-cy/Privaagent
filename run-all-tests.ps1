@@ -29,6 +29,7 @@ $suites = @(
     @{ Name = "1. DOM Perception and Execution"; Cmd = "npx.cmd tsx ..\tests\test_dom_perception.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "2. Privacy Engine and PII Detectors"; Cmd = "npx.cmd tsx ..\tests\test_privacy_engine.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "3. Local Vision and Multimodal Fusion"; Cmd = "npx.cmd tsx ..\tests\test_local_vision.mjs"; Dir = "$ROOT\extension" },
+    @{ Name = "3a. Live Chrome Visual Disclosure and OCR"; Cmd = "node ..\tests\test_visual_browser_e2e.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "4. Agent Local Solver and Minimum Disclosure"; Cmd = "npx.cmd tsx ..\tests\test_agent_and_backend.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "5. Action Validator and Security Shield"; Cmd = "npx.cmd tsx ..\tests\test_validator.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "6. Focused Security Regression Boundaries"; Cmd = "npx.cmd tsx ..\tests\test_security_regressions.mjs"; Dir = "$ROOT\extension" },

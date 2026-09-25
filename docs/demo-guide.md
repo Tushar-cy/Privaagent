@@ -21,7 +21,7 @@ Use a simple task on the fixture page, such as opening the invoice. When using t
 
 ### 2. Visual task
 
-Use a chart task on a page with a canvas. The extension attempts to localize the target and prepare an L2 crop; the backend requires screenshot data and a matching redaction manifest. OCR and chart localization may fail on small labels or unusual layouts. The saved internal benchmark's chart fixture detected 1 of 5 visual elements; see [Known limitations](KNOWN_LIMITATIONS.md).
+Keep the Privaagent popup open while a visual task runs; it initializes the local OCR worker and loads its bundled language data on first use. Then use a chart task on a page with a canvas. The extension attempts to localize the target and prepare an L2 crop; the backend requires screenshot data and a matching redaction manifest. OCR and chart localization may fail on small labels or unusual layouts. The saved internal benchmark's chart fixture detected 1 of 5 visual elements; see [Known limitations](KNOWN_LIMITATIONS.md).
 
 ### 3. Risky action
 

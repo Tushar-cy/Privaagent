@@ -12,6 +12,7 @@ import { resolvePerceivedElement } from "../semantic/dom-extractor";
 import { SensitiveDetection } from "../privacy/sensitivity";
 import { BoundingBox } from "../common/types";
 import { generateSyntheticSurrogate } from "../privacy/synthetic-replacer";
+import { markExtensionUiNode } from "../semantic/extension-ui-nodes";
 
 const OVERLAY_CONTAINER_ID = "privaagent-redaction-root";
 const HUD_BADGE_ID = "privaagent-status-hud";
@@ -81,6 +82,7 @@ interface OverlayEntry {
 export class OverlayManager {
   private container: HTMLDivElement | null = null;
   private hudBadge: HTMLDivElement | null = null;
+  private ghostStyle: HTMLStyleElement | null = null;
   private isVisible: boolean = true;
   private mode: RedactionMode = "BLUR";
   private doc: Document;
@@ -92,11 +94,11 @@ export class OverlayManager {
   }
 
   private ensureGhostStyle(): void {
-    let style = this.doc.getElementById(GHOST_STYLE_ID) as HTMLStyleElement;
-    if (!style && this.doc.head) {
-      style = this.doc.createElement("style");
-      style.id = GHOST_STYLE_ID;
-      style.textContent = `
+    if (this.ghostStyle?.isConnected || !this.doc.head) return;
+    const style = this.doc.createElement("style");
+    style.id = GHOST_STYLE_ID;
+    markExtensionUiNode(style);
+    style.textContent = `
         .privaagent-ghost-redacted {
           color: transparent !important;
           text-shadow: 0 0 10px rgba(56, 189, 248, 0.85) !important;
@@ -105,8 +107,8 @@ export class OverlayManager {
           pointer-events: none !important;
         }
       `;
-      this.doc.head.appendChild(style);
-    }
+    this.doc.head.appendChild(style);
+    this.ghostStyle = style;
   }
 
   private removeGhostStyle(): void {
@@ -114,28 +116,27 @@ export class OverlayManager {
       el.classList.remove("privaagent-ghost-redacted");
     }
     this.ghostTaggedElements.clear();
-    const style = this.doc.getElementById(GHOST_STYLE_ID);
-    if (style && style.parentNode) {
-      style.parentNode.removeChild(style);
+    if (this.ghostStyle?.parentNode) {
+      this.ghostStyle.parentNode.removeChild(this.ghostStyle);
     }
+    this.ghostStyle = null;
   }
 
   private ensureContainer(): HTMLDivElement {
-    let container = this.doc.getElementById(OVERLAY_CONTAINER_ID) as HTMLDivElement;
-    if (!container) {
-      container = this.doc.createElement("div");
-      container.id = OVERLAY_CONTAINER_ID;
-      container.style.position = "fixed";
-      container.style.inset = "0";
-      container.style.width = "100%";
-      container.style.height = "100%";
-      container.style.pointerEvents = "none";
-      container.style.zIndex = "2147483640";
-      container.style.overflow = "hidden";
+    if (this.container?.isConnected) return this.container;
+    const container = this.doc.createElement("div");
+    container.id = OVERLAY_CONTAINER_ID;
+    markExtensionUiNode(container);
+    container.style.position = "fixed";
+    container.style.inset = "0";
+    container.style.width = "100%";
+    container.style.height = "100%";
+    container.style.pointerEvents = "none";
+    container.style.zIndex = "2147483640";
+    container.style.overflow = "hidden";
 
-      if (this.doc.body) {
-        this.doc.body.appendChild(container);
-      }
+    if (this.doc.body) {
+      this.doc.body.appendChild(container);
     }
     this.container = container;
     return container;
@@ -160,10 +161,11 @@ export class OverlayManager {
   public updateHUD(level: string = "L0", statusText: string = "Privacy Shield Active"): void {
     if (!this.doc.body) return;
 
-    let hud = this.doc.getElementById(HUD_BADGE_ID) as HTMLDivElement;
-    if (!hud) {
+    let hud = this.hudBadge;
+    if (!hud?.isConnected) {
       hud = this.doc.createElement("div");
       hud.id = HUD_BADGE_ID;
+      markExtensionUiNode(hud);
       hud.style.position = "fixed";
       hud.style.bottom = "16px";
       hud.style.right = "16px";
@@ -360,6 +362,7 @@ export class OverlayManager {
 
       for (const entry of entries) {
         const overlay = this.doc.createElement("div");
+        markExtensionUiNode(overlay);
         overlay.className = "privaagent-blur-overlay";
         overlay.style.position = "absolute";
         overlay.style.left = `${entry.left}px`;
@@ -391,6 +394,7 @@ export class OverlayManager {
         overlay.style.overflow = "hidden";
 
         const badge = this.doc.createElement("span");
+        markExtensionUiNode(badge);
         badge.style.fontSize = "9px";
         badge.style.fontWeight = "bold";
         badge.style.padding = "1px 4px";
@@ -451,5 +455,7 @@ export class OverlayManager {
     if (this.hudBadge && this.hudBadge.parentNode) {
       this.hudBadge.parentNode.removeChild(this.hudBadge);
     }
+    this.container = null;
+    this.hudBadge = null;
   }
 }

@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import { JSDOM } from "../extension/node_modules/jsdom/lib/api.js";
 import { createCanvas } from "../extension/node_modules/@napi-rs/canvas/index.js";
 
-import { extractPageState } from "../extension/src/semantic/dom-extractor.ts";
+import { extractPageState, resolvePerceivedElement } from "../extension/src/semantic/dom-extractor.ts";
 import { processVisualRegion } from "../extension/src/perception/index.ts";
 import {
   parseTask,
@@ -138,9 +138,10 @@ if (!localResult.isLocal) {
 if (localResult.networkBytesSent !== 0) {
   throw new Error(`Expected 0 network bytes, got ${localResult.networkBytesSent}`);
 }
-const resolvedDomEl = dom.window.document.querySelector(`[data-privaagent-id="${localResult.action.target_id}"]`);
-if (localResult.action.target_id !== "btn-open-invoice" && (!resolvedDomEl || resolvedDomEl.id !== "btn-open-invoice")) {
-  throw new Error(`Expected target to map to 'btn-open-invoice', got '${localResult.action.target_id}'`);
+const perceivedTarget = pageState.elements.find((element) => element.target_id === localResult.action.target_id);
+const resolvedDomEl = perceivedTarget ? resolvePerceivedElement(perceivedTarget) : null;
+if (!resolvedDomEl || resolvedDomEl.id !== "btn-open-invoice") {
+  throw new Error(`Expected opaque target '${localResult.action.target_id}' to resolve to the invoice button.`);
 }
 console.log(`✓ Zero-Network Fast-Path verified: 0 bytes sent, target correctly resolved on-device (opaque ID: ${localResult.action.target_id} -> DOM id: btn-open-invoice).`);
 

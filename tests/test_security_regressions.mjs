@@ -100,6 +100,83 @@ assert.notEqual(targetValidation.element, duplicate);
 assert.equal(targetValidation.valid, true, targetValidation.error);
 console.log("  ✓ Target authorization remains bound to the exact perceived DOM node.");
 
+// A task may take long enough for page content to change after disclosure
+// preparation. Prove the final freshness gate prevents the first network call.
+const freshnessDom = new JSDOM("<!doctype html><html><body><button>Open dashboard</button></body></html>", {
+  url: "https://example.test/freshness/",
+});
+global.window = freshnessDom.window;
+global.document = freshnessDom.window.document;
+global.Element = freshnessDom.window.Element;
+global.HTMLElement = freshnessDom.window.HTMLElement;
+global.Node = freshnessDom.window.Node;
+global.getComputedStyle = freshnessDom.window.getComputedStyle.bind(freshnessDom.window);
+freshnessDom.window.Element.prototype.getBoundingClientRect = () => ({
+  left: 10, top: 10, width: 120, height: 32, right: 130, bottom: 42,
+});
+const freshnessPageState = extractPageState().pageState;
+const freshnessButton = freshnessDom.window.document.querySelector("button");
+let freshnessNetworkCalls = 0;
+const staleResolution = await resolveTaskAction("Find the quarterly revenue trend", freshnessPageState, {
+  forceEscalationLevel: "L1",
+  beforeRemoteRequest: () => {
+    freshnessButton.textContent = "Changed after disclosure preparation";
+    return true;
+  },
+  fetchFn: async () => {
+    freshnessNetworkCalls++;
+    throw new Error("Stale disclosure must not reach fetch");
+  },
+});
+assert.equal(staleResolution.processingPath, "BLOCKED");
+assert.match(staleResolution.blockReason || "", /Page content changed/);
+assert.equal(staleResolution.networkBytesSent, 0);
+assert.equal(staleResolution.externalRequestMade, false);
+assert.equal(freshnessNetworkCalls, 0);
+console.log("  ✓ A DOM mutation at the outbound boundary blocks disclosure with zero network calls.");
+
+// Unrelated insertions can renumber opaque sequence IDs, but must not block a
+// disclosure when every node from the original snapshot is still unchanged.
+const benignMutationDom = new JSDOM("<!doctype html><html><body><button>Open dashboard</button></body></html>", {
+  url: "https://example.test/benign-mutation/",
+});
+global.window = benignMutationDom.window;
+global.document = benignMutationDom.window.document;
+global.Element = benignMutationDom.window.Element;
+global.HTMLElement = benignMutationDom.window.HTMLElement;
+global.Node = benignMutationDom.window.Node;
+global.getComputedStyle = benignMutationDom.window.getComputedStyle.bind(benignMutationDom.window);
+benignMutationDom.window.Element.prototype.getBoundingClientRect = () => ({
+  left: 10, top: 10, width: 120, height: 32, right: 130, bottom: 42,
+});
+const benignMutationState = extractPageState().pageState;
+const originalButton = benignMutationDom.window.document.querySelector("button");
+let benignMutationNetworkCalls = 0;
+const benignMutationResolution = await resolveTaskAction("Find the quarterly revenue trend", benignMutationState, {
+  forceEscalationLevel: "L1",
+  beforeRemoteRequest: () => {
+    const unrelated = benignMutationDom.window.document.createElement("button");
+    unrelated.textContent = "New unrelated notification";
+    benignMutationDom.window.document.body.insertBefore(unrelated, originalButton);
+    return true;
+  },
+  fetchFn: async (_url, request) => {
+    benignMutationNetworkCalls++;
+    const requestBody = JSON.parse(request.body);
+    const target = requestBody.elements[0]?.target_id;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ action: "click", target_id: target, reason: "Benign DOM mutation test", confidence: 0.9 }),
+      text: async () => "",
+    };
+  },
+});
+assert.equal(benignMutationResolution.processingPath, "SANITIZED_VLM");
+assert.equal(benignMutationNetworkCalls, 1);
+assert.equal(originalButton.textContent, "Open dashboard");
+console.log("  ✓ Unrelated DOM insertion and opaque-ID renumbering do not block a fresh disclosure.");
+
 // A repeated sensitive substring should use the detector's second span rather
 // than the first same-text occurrence when computing its pixel box.
 const repeated = dom.window.document.createElement("p");

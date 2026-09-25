@@ -6,6 +6,24 @@ function extensionPostBuildPlugin() {
   return {
     name: "extension-post-build",
     async closeBundle() {
+      const ocrAssets = [
+        ["node_modules/tesseract.js/dist/worker.min.js", "assets/ocr/worker.min.js"],
+        ["node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm.js", "assets/ocr/tesseract-core-simd-lstm.wasm.js"],
+        ["node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm", "assets/ocr/tesseract-core-simd-lstm.wasm"],
+        ["node_modules/tesseract.js-core/tesseract-core-lstm.wasm.js", "assets/ocr/tesseract-core-lstm.wasm.js"],
+        ["node_modules/tesseract.js-core/tesseract-core-lstm.wasm", "assets/ocr/tesseract-core-lstm.wasm"],
+        ["node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz", "assets/ocr/lang/eng.traineddata.gz"],
+      ];
+      for (const [source, target] of ocrAssets) {
+        const sourcePath = resolve(__dirname, source);
+        const targetPath = resolve(__dirname, "dist", target);
+        if (!fs.existsSync(sourcePath)) {
+          throw new Error(`[Vite Post-Build] Required local OCR resource is missing: ${sourcePath}`);
+        }
+        fs.mkdirSync(resolve(targetPath, ".."), { recursive: true });
+        fs.copyFileSync(sourcePath, targetPath);
+      }
+
       // 1. Copy manifest.json to dist
       const manifestSrc = resolve(__dirname, "manifest.json");
       const manifestDest = resolve(__dirname, "dist/manifest.json");

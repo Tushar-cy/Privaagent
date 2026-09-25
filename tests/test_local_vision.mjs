@@ -189,7 +189,32 @@ console.log(`[OCR] Detected text spans: ${ocrRes.spans.map((s) => s.text).join("
 if (!ocrRes || typeof ocrRes.inferenceTimeMs !== "number" || !Array.isArray(ocrRes.spans)) {
   throw new Error("OCR did not return valid result structure");
 }
+if (ocrRes.complete !== true) {
+  throw new Error("Tesseract OCR did not complete; an empty fallback result is not a successful OCR run.");
+}
 console.log(`✓ Fallback OCR successfully executed: ${ocrRes.spans.length} text spans detected in ${ocrRes.inferenceTimeMs.toFixed(1)} ms.`);
+
+const textCanvas = createCanvas(900, 240);
+const textContext = textCanvas.getContext("2d");
+textContext.fillStyle = "#ffffff";
+textContext.fillRect(0, 0, textCanvas.width, textCanvas.height);
+textContext.fillStyle = "#000000";
+textContext.font = "bold 112px Arial";
+textContext.textBaseline = "middle";
+textContext.fillText("Q4 2026", 36, 120);
+const knownTextOCR = await runFallbackOCR("known-text-fixture", {
+  canvas: textCanvas,
+  width: textCanvas.width,
+  height: textCanvas.height,
+  boundingBox: [0, 0, textCanvas.width, textCanvas.height],
+  toDataURL: (type) => textCanvas.toDataURL(type),
+  getImageData: () => textContext.getImageData(0, 0, textCanvas.width, textCanvas.height),
+});
+const recognizedFixtureText = knownTextOCR.spans.map((span) => span.text).join(" ").toUpperCase();
+if (knownTextOCR.complete !== true || !recognizedFixtureText.includes("Q4") || !recognizedFixtureText.includes("2026")) {
+  throw new Error(`OCR failed the readable text fixture: complete=${knownTextOCR.complete}, text=${JSON.stringify(recognizedFixtureText)}`);
+}
+console.log(`✓ OCR recognized the known visual text fixture: ${recognizedFixtureText}`);
 
 // ----------------------------------------------------
 // TEST 5: BlazeFace Specialist Face Detection on Avatar

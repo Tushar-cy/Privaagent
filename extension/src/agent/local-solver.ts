@@ -34,9 +34,10 @@ function matchingSelectOption(el: PageElement, task: ParsedTask): SelectOptionRe
  * Computes semantic relevance score between a task and a candidate DOM element.
  */
 function scoreElementMatch(el: PageElement, task: ParsedTask, pageState?: PageState): number {
-  if (!el.text && !el.target_id) return 0;
-
   const metadata = el.metadata as Record<string, unknown> | undefined;
+  const accessibleName = String(metadata?.accessibleName || "");
+  if (!el.text && !accessibleName) return 0;
+
   const tagName = String(metadata?.tagName || "").toLowerCase();
   const disabled = metadata?.disabled === true;
   const readOnly = metadata?.readOnly === true;
@@ -56,9 +57,7 @@ function scoreElementMatch(el: PageElement, task: ParsedTask, pageState?: PageSt
   const optionLabels = Array.isArray(metadata?.selectOptions)
     ? (metadata.selectOptions as SelectOptionRecord[]).map((option) => option.label || "").join(" ")
     : "";
-  const accessibleName = String(metadata?.accessibleName || "");
   const elTextLower = [el.text || "", accessibleName, optionLabels].join(" ").toLowerCase();
-  const elIdLower = el.target_id.toLowerCase();
   const taskRawLower = task.raw.toLowerCase();
 
   let score = 0;
@@ -70,16 +69,10 @@ function scoreElementMatch(el: PageElement, task: ParsedTask, pageState?: PageSt
   if (elTextLower.length > 0 && elTextLower.includes(task.raw.toLowerCase())) {
     score += 0.6;
   }
-  // Target ID token match (e.g. search-input contains "search", btn-open-invoice contains "invoice")
-  const idTokens = elIdLower.split(/[^a-z0-9_]+/);
-  if (task.keywords.some((kw) => idTokens.includes(kw))) {
-    score += 0.2;
-  }
-
   // 2. Keyword overlap
   let matchedKeywords = 0;
   for (const kw of task.keywords) {
-    if (elTextLower.includes(kw) || elIdLower.includes(kw)) {
+    if (elTextLower.includes(kw)) {
       matchedKeywords++;
     }
   }
@@ -126,7 +119,8 @@ function scoreElementMatch(el: PageElement, task: ParsedTask, pageState?: PageSt
       const anchorEl = pageState.elements.find(
         (a) =>
           a.target_id !== el.target_id &&
-          ((a.text && a.text.toLowerCase().includes(anchorKw)) || a.target_id.toLowerCase().includes(anchorKw))
+          ((a.text && a.text.toLowerCase().includes(anchorKw)) ||
+            String((a.metadata as Record<string, unknown> | undefined)?.accessibleName || "").toLowerCase().includes(anchorKw))
       );
 
       if (anchorEl && anchorEl.bbox) {
