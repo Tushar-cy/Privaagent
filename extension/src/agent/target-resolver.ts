@@ -20,7 +20,7 @@ import { getPerformanceProfiler } from "../common/profiler";
 import { verifyOutgoingDisclosure, PrivacyGuardResult } from "../privacy/privacy-guard";
 import { locateLiveElement } from "../validator/action-validator";
 import { inspectElementForHiddenInjection } from "../validator/prompt-injection";
-import { extractPageState, hasPerceivedNodeBinding } from "../semantic/dom-extractor";
+import { extractPageState, hasPerceivedNodeBinding, resolvePerceivedElement } from "../semantic/dom-extractor";
 
 export type ProcessingPath = "LOCAL" | "SANITIZED_VLM" | "BLOCKED";
 
@@ -69,6 +69,8 @@ function perceptionStillMatchesLiveDom(snapshot: PageState): boolean {
   return boundElements.every((before) => {
     const current = liveById.get(before.target_id);
     if (!current || before.role !== current.role || before.text !== current.text) return false;
+    const beforeNode = resolvePerceivedElement(before);
+    if (!beforeNode || beforeNode !== resolvePerceivedElement(current)) return false;
     if (before.bbox && current.bbox && before.bbox.some((value, index) => value !== current.bbox![index])) return false;
     const beforeMeta = before.metadata as Record<string, unknown> | undefined;
     const currentMeta = current.metadata as Record<string, unknown> | undefined;
@@ -265,6 +267,33 @@ export async function resolveTaskAction(
   const requiredDisclosureLevel: DisclosureLevel = isVisualEscalation
     ? (options.forceEscalationLevel === "L3" || !targetCropId ? "L3" : "L2")
     : "L1";
+  const freshnessBlockReason = "Page content changed while preparing the disclosure. Refresh perception and retry; no request was sent.";
+  const freshnessBlockedResult = (
+    disclosure: Disclosure,
+    detectedEntities: Array<{ type: string; placeholder: string }> = [],
+    sanitizationLatencyMs = Number((performance.now() - sanitizationStart).toFixed(2)),
+  ): AgentResolutionResult => {
+    const totalLatencyMs = Number((performance.now() - overallStartTime).toFixed(2));
+    return {
+      action: { action: parsedTask.actionType, target_id: "none", reason: freshnessBlockReason, confidence: 0 },
+      processingPath: "BLOCKED",
+      modelUsed: "PrivaAgent Freshness Gate",
+      executionBackend: "Local privacy check (request not sent)",
+      localLatencyMs,
+      sanitizationLatencyMs,
+      vlmLatencyMs: 0,
+      totalLatencyMs,
+      latencyMs: totalLatencyMs,
+      isLocal: true,
+      disclosure,
+      parsedTask,
+      networkBytesSent: 0,
+      detectedEntities,
+      privacyVerificationPassed: true,
+      externalRequestMade: false,
+      blockReason: freshnessBlockReason,
+    };
+  };
   const disclosureOrder: Record<DisclosureLevel, number> = { L0: 0, L1: 1, L2: 2, L3: 3 };
   const disclosureCeiling = options.maxDisclosureLevel ?? "L2";
   if (disclosureOrder[requiredDisclosureLevel] > disclosureOrder[disclosureCeiling]) {
@@ -330,6 +359,18 @@ export async function resolveTaskAction(
       externalRequestMade: false,
       blockReason,
     };
+  }
+
+  // Fail before expensive capture or sanitization if perception is already stale.
+  if (!perceptionStillMatchesLiveDom(pageState)) {
+    const disclosure: Disclosure = {
+      level: requiredDisclosureLevel,
+      reason: freshnessBlockReason,
+      task: "",
+      elements: [],
+      redacted_token_count: 0,
+    };
+    return freshnessBlockedResult(disclosure, [], 0);
   }
 
   // Step 1: On-device screenshot capture & pixel redaction (burns opaque blackouts onto canvas)
@@ -454,32 +495,6 @@ export async function resolveTaskAction(
     };
   }
 
-  // Re-check that the DOM snapshot used to build the request still describes
-  // the live page. New or changed content requires a fresh perception pass.
-  if (!perceptionStillMatchesLiveDom(pageState)) {
-    const totalLatencyMs = Number((performance.now() - overallStartTime).toFixed(2));
-    const blockReason = "Page content changed while preparing the disclosure. Refresh perception and retry; no request was sent.";
-    return {
-      action: { action: parsedTask.actionType, target_id: "none", reason: blockReason, confidence: 0 },
-      processingPath: "BLOCKED",
-      modelUsed: "PrivaAgent Freshness Gate",
-      executionBackend: "Local privacy check (request not sent)",
-      localLatencyMs,
-      sanitizationLatencyMs,
-      vlmLatencyMs: 0,
-      totalLatencyMs,
-      latencyMs: totalLatencyMs,
-      isLocal: true,
-      disclosure,
-      parsedTask,
-      networkBytesSent: 0,
-      detectedEntities,
-      privacyVerificationPassed: true,
-      externalRequestMade: false,
-      blockReason,
-    };
-  }
-
   // Step 4: Enforce all outbound policy before the first network request.
   const serializedDisclosure = JSON.stringify(disclosure);
   const outboundBytes = new TextEncoder().encode(serializedDisclosure).byteLength;
@@ -518,6 +533,13 @@ export async function resolveTaskAction(
       ceilingExceeded: exceedsCeiling,
       blockReason,
     };
+  }
+
+  // Capture, OCR, disclosure planning, and policy checks can yield or take time.
+  // Revalidate at the final outbound boundary so none of those steps can send
+  // a disclosure built from an outdated page snapshot.
+  if (!perceptionStillMatchesLiveDom(pageState)) {
+    return freshnessBlockedResult(disclosure, detectedEntities, sanitizationLatencyMs);
   }
 
   // The byte estimate matches the serialized disclosure body sent by action-planner.

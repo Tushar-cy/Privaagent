@@ -105,8 +105,9 @@ export function executeClick(
     // discards that coordinate and fires an additional center click.
     element.dispatchEvent(new MouseEventCtor("click", { ...eventInit, button: 0, buttons: 0 }));
   } else if ((win as any).HTMLElement && element instanceof (win as any).HTMLElement) {
-    if (typeof (element as HTMLElement).focus === "function") (element as HTMLElement).focus();
-    element.click();
+    const htmlElement = element as HTMLElement;
+    if (typeof htmlElement.focus === "function") htmlElement.focus();
+    htmlElement.click();
   } else {
     element.dispatchEvent(new MouseEventCtor("click", { ...eventInit, button: 0, buttons: 0 }));
   }
