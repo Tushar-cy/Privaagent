@@ -49,18 +49,54 @@ jobs:
           cd extension
           npx tsc --noEmit
 
-      - name: Run Extension Automated Security & Privacy Tests
+      - name: Extension Test - DOM Perception
         run: |
           cd extension
           npx tsx ../tests/test_dom_perception.mjs
+
+      - name: Extension Test - Privacy Engine
+        run: |
+          cd extension
           npx tsx ../tests/test_privacy_engine.mjs
+
+      - name: Extension Test - Local Vision
+        run: |
+          cd extension
           npx tsx ../tests/test_local_vision.mjs
+
+      - name: Extension Test - Agent and Backend
+        run: |
+          cd extension
           npx tsx ../tests/test_agent_and_backend.mjs
+
+      - name: Extension Test - Action Validator
+        run: |
+          cd extension
           npx tsx ../tests/test_validator.mjs
+
+      - name: Extension Test - UI and Overlays
+        run: |
+          cd extension
           npx tsx ../tests/test_ui_and_overlays.mjs
+
+      - name: Extension Test - Multi-Turn Agent
+        run: |
+          cd extension
           npx tsx ../tests/test_multiturn_agent.mjs
+
+      - name: Extension Test - Compliance Audit
+        run: |
+          cd extension
           npx tsx ../tests/test_compliance_audit.mjs
+
+      - name: Extension Test - Synthetic Replacer and Audit Vault
+        run: |
+          cd extension
           npx tsx ../tests/test_synthetic_replacer_and_audit_vault.mjs
+
+      - name: Extension Test - Red-Team Security
+        run: |
+          cd extension
           npx tsx ../tests/test_redteam_security.mjs
 
       - name: Run FastAPI Backend API, Visual Contract, and Schema Tests
