@@ -6,6 +6,34 @@ import { detectStructuredPII } from "../src/privacy/pii-detector";
 import { detectSecrets } from "../src/privacy/secret-detector";
 
 document.addEventListener("DOMContentLoaded", () => {
+
+  function setPopupState(state) {
+    const card = document.getElementById("dynamic-status-card");
+    const title = document.getElementById("status-title");
+    const desc = document.getElementById("status-desc");
+    const icon = document.getElementById("status-icon-svg");
+    if (!card) return;
+    
+    card.className = "status-card state-" + state;
+    if (state === "active") {
+      title.textContent = "Protection Active";
+      desc.textContent = "Local AI is monitoring your session for prompt injections and outbound data leaks.";
+      icon.innerHTML = '<svg class="icon-lg" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+    } else if (state === "loading") {
+      title.textContent = "Analyzing Context...";
+      desc.textContent = "WASM intent engine is scanning the local DOM tree.";
+      icon.innerHTML = '<svg class="icon-lg" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
+    } else if (state === "error") {
+      title.textContent = "Action Blocked";
+      desc.textContent = "Concealed prompt injection or privacy violation detected.";
+      icon.innerHTML = '<svg class="icon-lg" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+    } else if (state === "empty") {
+      title.textContent = "Standby";
+      desc.textContent = "Privaagent is currently disabled. Toggle active to resume local protection.";
+      icon.innerHTML = '<svg class="icon-lg" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>';
+    }
+  }
+
   // ─── Element refs ────────────────────────────────────────────────────────
   const toggleShieldEl  = document.getElementById("toggle-shield")  as HTMLInputElement;
   const shieldStatusEl  = document.getElementById("shield-status")  as HTMLDivElement;
@@ -202,13 +230,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ─── Fetch page state and populate metrics + feed ────────────────────────
   function refreshPageState() {
-    logoEl?.classList.add("pulsing");
-    headerEl?.classList.add("scanning");
+    
+    
 
     queryActiveTab((tabId) => {
       sendTabMsg(tabId, { type: "GET_PAGE_STATE" }, (response) => {
-        logoEl?.classList.remove("pulsing");
-        headerEl?.classList.remove("scanning");
+        
+        
 
         if (!response) {
           if (tabUrlEl) tabUrlEl.textContent = "Protected Browser Page or Dev Tab";
@@ -246,12 +274,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ─── Shield Toggle UI ────────────────────────────────────────────────────
   function applyShieldUI(enabled: boolean) {
-    if (!shieldStatusEl || !statusDotEl || !statusLabelEl) return;
-    if (enabled) {
-      shieldStatusEl.className = "shield-status on";
-      statusDotEl.className = "status-dot";
-      statusLabelEl.textContent = "ACTIVE";
-    } else {
+    if (statusLabelEl) statusLabelEl.textContent = enabled ? "Active" : "Standby";
+    setPopupState(enabled ? "active" : "empty");
+  } else {
       shieldStatusEl.className = "shield-status off";
       statusDotEl.className = "status-dot off";
       statusLabelEl.textContent = "PAUSED";
@@ -349,6 +374,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btnRunEl) {
       btnRunEl.disabled = true;
       btnRunEl.textContent = isCompound ? "⏳ Planning..." : "⏳ Running...";
+      setPopupState("loading");
     }
     if (ledgerBoxEl) ledgerBoxEl.classList.remove("show");
 
@@ -374,6 +400,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         showLedger(res, isCompound, task);
+          setPopupState(res.success ? "active" : "error");
         refreshPageState();
       });
     });
