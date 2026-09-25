@@ -151,7 +151,13 @@ export async function requestValidatedExecution(
   action: any,
   options?: { userConfirmed?: boolean }
 ): Promise<ExecutionResult> {
-  const pageState = runPerception();
+  // Extract and annotate page state directly to avoid triggering overlay
+  // rendering in environments where overlayManager was constructed without
+  // a real document (e.g. test harnesses that set global.document post-import).
+  const result = extractPageState();
+  const pageState = annotatePageStateSensitivity(result.pageState);
+  latestPageState = pageState;
+  latestDurationMs = result.durationMs;
   const valResult = validateAction(action, pageState, document);
   if (!valResult.valid || valResult.verdict === "BLOCK") {
     return {
