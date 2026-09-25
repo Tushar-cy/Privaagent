@@ -159,11 +159,13 @@ export class PrivacyAuditVault {
     entitiesMasked: string[] = [],
     policyApplied: string = "",
     isLocal: boolean = true,
-    disclosureLevel: string = "L0"
+    disclosureLevel: string = "L0",
+    timestamp: number = 0
   ): string {
     const sortedEntities = (entitiesMasked || []).slice().sort().join(",");
     const canonical = [
       previousHash,
+      timestamp,
       goal,
       subtask,
       targetId,
@@ -199,6 +201,7 @@ export class PrivacyAuditVault {
         ? this.records[this.records.length - 1].payloadHash
         : GENESIS_PREVIOUS_HASH;
 
+    const timestamp = Date.now();
     const payloadHash = PrivacyAuditVault.calculateRecordHash(
       previousHash,
       entry.goal,
@@ -210,12 +213,13 @@ export class PrivacyAuditVault {
       entry.entitiesMasked,
       entry.policyApplied,
       entry.isLocal,
-      entry.disclosureLevel
+      entry.disclosureLevel,
+      timestamp
     );
 
     const record: AuditRecord = {
-      id: `audit_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      timestamp: Date.now(),
+      id: `audit_${timestamp}_${Math.random().toString(36).substring(2, 7)}`,
+      timestamp,
       goal: entry.goal,
       subtask: entry.subtask,
       disclosureLevel: entry.disclosureLevel,
@@ -291,7 +295,8 @@ export class PrivacyAuditVault {
         record.entitiesMasked,
         record.policyApplied,
         record.isLocal,
-        record.disclosureLevel
+        record.disclosureLevel,
+        record.timestamp
       );
 
       if (record.payloadHash !== recomputed) {

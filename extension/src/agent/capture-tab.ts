@@ -126,12 +126,12 @@ export async function sanitizeScreenshot(
     // Calculate scaling factor between CSS coordinates (used by DOM element bounding boxes)
     // and device pixels (captured by chrome.tabs.captureVisibleTab at high-DPI scaling)
     const viewportW =
-      (typeof window !== "undefined" && window.innerWidth > 0 ? window.innerWidth : 0) ||
       viewport?.width ||
+      (typeof window !== "undefined" && window.innerWidth > 0 ? window.innerWidth : 0) ||
       imgW;
     const viewportH =
-      (typeof window !== "undefined" && window.innerHeight > 0 ? window.innerHeight : 0) ||
       viewport?.height ||
+      (typeof window !== "undefined" && window.innerHeight > 0 ? window.innerHeight : 0) ||
       imgH;
 
     const scaleX = viewportW > 0 ? imgW / viewportW : 1.0;

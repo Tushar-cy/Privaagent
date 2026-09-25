@@ -213,7 +213,7 @@ function initialize(): void {
         }
 
         // Provision Mandatory Session Auth Token
-        window.__privaagent_session_token = result?.privaagent_session_token || "sih_secure_session_v1";
+        window.__privaagent_session_token = result?.privaagent_session_token || "change-this-for-local-evaluation";
 
         runPerception();
       }

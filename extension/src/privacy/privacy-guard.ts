@@ -160,6 +160,22 @@ export function verifyOutgoingDisclosure(disclosure: Disclosure): PrivacyGuardRe
           field: "screenshot_data",
         });
       }
+
+      // STRICT VISUAL CONTRACT ENFORCEMENT (P0)
+      const manifest = disclosure.redaction_manifest;
+      if (!manifest) {
+        detectedLeaks.push({
+          type: "MISSING_VISUAL_CONTRACT",
+          snippet: "Missing VisualRedactionManifest for screenshot payload",
+          field: "redaction_manifest",
+        });
+      } else if (manifest.redactedBoxCount !== manifest.sourceSensitiveBoxCount) {
+        detectedLeaks.push({
+          type: "VISUAL_CONTRACT_VIOLATION",
+          snippet: `Manifest mismatch: ${manifest.sourceSensitiveBoxCount} sensitive boxes required, but only ${manifest.redactedBoxCount} redacted`,
+          field: "redaction_manifest",
+        });
+      }
     }
   }
 

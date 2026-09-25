@@ -18,8 +18,17 @@ chrome.runtime.onInstalled.addListener((details) => {
     chrome.action.setBadgeBackgroundColor({ color: "#10b981" });
     chrome.action.setBadgeText({ text: "ON" });
   }
-  // Initialize shield state as enabled
-  chrome.storage.local.set({ privaagent_shield_enabled: true });
+  
+  // Initialize shield state and generate a secure random session token if one doesn't exist
+  chrome.storage.local.get(["privaagent_session_token"], (result) => {
+    const payload: any = { privaagent_shield_enabled: true };
+    if (!result.privaagent_session_token) {
+      // Generate a secure random per-install token
+      payload.privaagent_session_token = "sih_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      console.log("[Privaagent Security] Generated new per-install session token. Copy this to your .env file!");
+    }
+    chrome.storage.local.set(payload);
+  });
 });
 
 chrome.runtime.onStartup.addListener(() => {

@@ -10,7 +10,7 @@
 //     -> In-Browser Mapping Isolation -> Pre-Flight Privacy Audit -> Outbound VLM Request.
 //   - Pre-flight privacy check strictly BLOCKS request if any unredacted PII remains.
 
-import { Action, Disclosure, PageState } from "../common/types";
+import { Action, Disclosure, PageState, VisualRedactionManifest } from "../common/types";
 import { planDisclosure } from "../disclosure/disclosure-planner";
 import { parseTask, ParsedTask } from "./task-parser";
 import { solveTaskLocally, LocalSolveResult } from "./local-solver";
@@ -46,6 +46,7 @@ export interface AgentResolutionResult {
 export interface ResolverOptions extends RemoteResolutionOptions {
   forceEscalationLevel?: "L0" | "L1" | "L2" | "L3";
   sanitizedScreenshotBase64?: string;
+  sanitizedScreenshotManifest?: VisualRedactionManifest;
   resolveLiveElement?: (targetId: string) => Element | null;
   simulateUnsafeSanitization?: boolean; // For testing/demonstrating BLOCKED state in SIH demo
 }
@@ -199,6 +200,7 @@ export async function resolveTaskAction(
 
   // Step 1: On-device screenshot capture & pixel redaction (burns opaque blackouts onto canvas)
   let screenshotData = options.sanitizedScreenshotBase64;
+  let screenshotManifest = options.sanitizedScreenshotManifest;
   if (isVisualEscalation && !screenshotData) {
     try {
       const targetEl = targetCropId
@@ -208,6 +210,7 @@ export async function resolveTaskAction(
       const captureResult = await captureAndSanitizeTab(pageState, cropBox);
       // captureResult is CaptureAndSanitizeResult { dataUrl?, manifest? }
       screenshotData = captureResult.dataUrl;
+      screenshotManifest = captureResult.manifest;
     } catch (_) {
       // Graceful fallback if tab capture is unavailable in current context
     }
@@ -220,6 +223,7 @@ export async function resolveTaskAction(
     requiresVision: isVisualEscalation,
     targetCropTargetId: options.forceEscalationLevel === "L3" ? undefined : targetCropId,
     sanitizedScreenshotBase64: screenshotData,
+    sanitizedScreenshotManifest: screenshotManifest,
     resolveLiveElement: options.resolveLiveElement,
     forceLevel: options.forceEscalationLevel,
   });

@@ -1,7 +1,7 @@
 // Minimum Disclosure Planner: Implements the L0-L3 ladder to select
 // the least disclosing payload required to resolve the user task.
 
-import { Disclosure, DisclosureLevel, PageState } from "../common/types";
+import { Disclosure, DisclosureLevel, PageState, VisualRedactionManifest } from "../common/types";
 import { maskPageStateForDisclosure } from "./semantic-masker";
 import { sanitizeTaskString } from "../privacy/redactor";
 
@@ -10,6 +10,7 @@ export interface DisclosurePlanningOptions {
   requiresVision: boolean;
   targetCropTargetId?: string;
   sanitizedScreenshotBase64?: string;
+  sanitizedScreenshotManifest?: VisualRedactionManifest;
   resolveLiveElement?: (targetId: string) => Element | null;
   forceLevel?: DisclosureLevel;
 }
@@ -47,6 +48,7 @@ export function planDisclosure(
       crop_box: undefined,
       screenshot_data: options.sanitizedScreenshotBase64,
       redacted_token_count: totalRedactedTokens,
+      redaction_manifest: options.sanitizedScreenshotManifest,
     };
   }
 
@@ -86,6 +88,7 @@ export function planDisclosure(
       crop_box: targetElement?.bbox,
       screenshot_data: options.sanitizedScreenshotBase64,
       redacted_token_count: totalRedactedTokens,
+      redaction_manifest: options.sanitizedScreenshotManifest,
     };
   }
 
@@ -106,6 +109,7 @@ export function planDisclosure(
       crop_box: undefined,
       screenshot_data: options.sanitizedScreenshotBase64,
       redacted_token_count: totalRedactedTokens,
+      redaction_manifest: options.sanitizedScreenshotManifest,
     };
   }
 

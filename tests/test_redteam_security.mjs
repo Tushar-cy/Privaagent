@@ -17,6 +17,10 @@ import { sanitizeScreenshot } from "../extension/src/agent/capture-tab.ts";
 import { extractPageState } from "../extension/src/semantic/dom-extractor.ts";
 import { requestValidatedExecution } from "../extension/src/content/index.ts";
 
+// Initialize napi-rs canvas globally for Node.js image manipulation
+import canvasLib from "../extension/node_modules/@napi-rs/canvas/index.js";
+global.Image = canvasLib.Image;
+
 console.log("==================================================================");
 console.log("      PRIVAAGENT RED-TEAM SECURITY & INTEGRITY TEST SUITE         ");
 console.log("             Zero-Trust Trust Boundary Verification               ");
@@ -162,21 +166,55 @@ await runAsyncTest("8. Screenshot sanitizer failure strictly fails closed (0 byt
 });
 
 await runAsyncTest("9. Screenshot redaction coordinates at DPR 1 (standard DPI)", async () => {
-  const { createCanvas, Image } = await import("../extension/node_modules/@napi-rs/canvas/index.js");
-  global.Image = Image;
+  const { createCanvas } = canvasLib;
+  
+  // Bridge document.createElement for sanitizeScreenshot to use napi-rs
+  global.document = {
+    createElement: (tag) => {
+      if (tag.toLowerCase() === "canvas") return createCanvas(400, 200);
+      throw new Error(`Unsupported tag: ${tag}`);
+    }
+  };
+
   const canvas = createCanvas(400, 200);
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, 400, 200);
   const rawData = canvas.toDataURL("image/png");
 
-  const result = await sanitizeScreenshot(rawData, [[20, 20, 100, 50]]);
-  assert.strictEqual(typeof result.dataUrl, "string", "Sanitize screenshot returned valid string type");
+  const result = await sanitizeScreenshot(rawData, [[20, 20, 100, 50]], undefined, { width: 400, height: 200 });
+  
+
+  const img = new Image();
+  await new Promise((resolve) => { img.onload = resolve; img.src = result.dataUrl; });
+  const outCanvas = createCanvas(400, 200);
+  const outCtx = outCanvas.getContext("2d");
+  outCtx.drawImage(img, 0, 0);
+  const data = outCtx.getImageData(0, 0, 400, 200).data;
+  
+  // Inside redaction (box is 20,20 to 120,70). Point: 25, 25 (avoiding white text)
+  const idxIn = (25 * 400 + 25) * 4;
+  assert.strictEqual(data[idxIn], 15, "Redacted pixel R mismatch");
+  assert.strictEqual(data[idxIn + 1], 23, "Redacted pixel G mismatch");
+  assert.strictEqual(data[idxIn + 2], 42, "Redacted pixel B mismatch");
+  
+  // Outside redaction. Point: 10, 10
+  const idxOut = (10 * 400 + 10) * 4;
+  assert.strictEqual(data[idxOut], 255, "Unredacted pixel R mismatch");
+  assert.strictEqual(data[idxOut + 1], 255, "Unredacted pixel G mismatch");
+  assert.strictEqual(data[idxOut + 2], 255, "Unredacted pixel B mismatch");
 });
 
 await runAsyncTest("10. Screenshot redaction coordinates at DPR 2 (HiDPI / Retina)", async () => {
-  const { createCanvas, Image } = await import("../extension/node_modules/@napi-rs/canvas/index.js");
-  global.Image = Image;
+  const { createCanvas } = canvasLib;
+  
+  global.document = {
+    createElement: (tag) => {
+      if (tag.toLowerCase() === "canvas") return createCanvas(800, 400);
+      throw new Error(`Unsupported tag: ${tag}`);
+    }
+  };
+
   const canvas = createCanvas(800, 400); // 2x device pixels
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#ffffff";
@@ -184,12 +222,35 @@ await runAsyncTest("10. Screenshot redaction coordinates at DPR 2 (HiDPI / Retin
   const rawData = canvas.toDataURL("image/png");
 
   const result = await sanitizeScreenshot(rawData, [[20, 20, 100, 50]], undefined, { width: 400, height: 200 });
-  assert.strictEqual(typeof result.dataUrl, "string", "Sanitize screenshot handled DPR 2 scaling");
+
+  const img = new Image();
+  await new Promise((resolve) => { img.onload = resolve; img.src = result.dataUrl; });
+  const outCanvas = createCanvas(800, 400);
+  const outCtx = outCanvas.getContext("2d");
+  outCtx.drawImage(img, 0, 0);
+  const data = outCtx.getImageData(0, 0, 800, 400).data;
+  
+  // Inside redaction (box is 40,40 to 240,140). Point: 45, 45 (avoiding white text)
+  const idxIn = (45 * 800 + 45) * 4;
+  assert.strictEqual(data[idxIn], 15, "DPR2: Redacted pixel R mismatch");
+  assert.strictEqual(data[idxIn + 1], 23, "DPR2: Redacted pixel G mismatch");
+  assert.strictEqual(data[idxIn + 2], 42, "DPR2: Redacted pixel B mismatch");
+  
+  // Outside redaction. Point: 20, 20
+  const idxOut = (20 * 800 + 20) * 4;
+  assert.strictEqual(data[idxOut], 255, "DPR2: Unredacted pixel R mismatch");
 });
 
 await runAsyncTest("11. Screenshot redaction coordinates at DPR 3 (Ultra-HiDPI)", async () => {
-  const { createCanvas, Image } = await import("../extension/node_modules/@napi-rs/canvas/index.js");
-  global.Image = Image;
+  const { createCanvas } = canvasLib;
+  
+  global.document = {
+    createElement: (tag) => {
+      if (tag.toLowerCase() === "canvas") return createCanvas(1200, 600);
+      throw new Error(`Unsupported tag: ${tag}`);
+    }
+  };
+
   const canvas = createCanvas(1200, 600); // 3x device pixels
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#ffffff";
@@ -197,7 +258,23 @@ await runAsyncTest("11. Screenshot redaction coordinates at DPR 3 (Ultra-HiDPI)"
   const rawData = canvas.toDataURL("image/png");
 
   const result = await sanitizeScreenshot(rawData, [[10, 10, 50, 50]], undefined, { width: 400, height: 200 });
-  assert.strictEqual(typeof result.dataUrl, "string", "Sanitize screenshot handled DPR 3 scaling");
+  
+  const img = new Image();
+  await new Promise((resolve) => { img.onload = resolve; img.src = result.dataUrl; });
+  const outCanvas = createCanvas(1200, 600);
+  const outCtx = outCanvas.getContext("2d");
+  outCtx.drawImage(img, 0, 0);
+  const data = outCtx.getImageData(0, 0, 1200, 600).data;
+  
+  // Inside redaction (box is 30,30 to 180,180). Point: 35, 35 (avoiding white text)
+  const idxIn = (35 * 1200 + 35) * 4;
+  assert.strictEqual(data[idxIn], 15, "DPR3: Redacted pixel R mismatch");
+  assert.strictEqual(data[idxIn + 1], 23, "DPR3: Redacted pixel G mismatch");
+  assert.strictEqual(data[idxIn + 2], 42, "DPR3: Redacted pixel B mismatch");
+  
+  // Outside redaction. Point: 20, 20
+  const idxOut = (20 * 1200 + 20) * 4;
+  assert.strictEqual(data[idxOut], 255, "DPR3: Unredacted pixel R mismatch");
 });
 
 // ==================================================================
