@@ -1,5 +1,6 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import status as http_status
 from app.config import settings
 from app.schemas.disclosure import Disclosure
 from app.schemas.action import Action
@@ -21,12 +22,12 @@ async def verify_session_token(
             token = authorization.split("Bearer ", 1)[1].strip()
         if token != settings.SESSION_TOKEN:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=http_status.HTTP_401_UNAUTHORIZED,
                 detail="Unauthorized: invalid or missing Privaagent session authentication token.",
             )
 
 
-@router.get("/health", status_code=status.HTTP_200_OK)
+@router.get("/health", status_code=http_status.HTTP_200_OK)
 async def health_check():
     return {
         "status": "ok",
@@ -38,7 +39,7 @@ async def health_check():
 @router.post(
     "/resolve-action",
     response_model=Action,
-    status_code=status.HTTP_200_OK,
+    status_code=http_status.HTTP_200_OK,
     dependencies=[Depends(verify_session_token)],
 )
 async def resolve_action(disclosure: Disclosure):
@@ -51,7 +52,7 @@ async def resolve_action(disclosure: Disclosure):
     # 1. Structural validation
     if not disclosure.elements and disclosure.level != "L0":
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Disclosure payload contains no candidate elements to act upon.",
         )
 
@@ -64,6 +65,6 @@ async def resolve_action(disclosure: Disclosure):
         return action
     except Exception as err:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"VLM reasoning engine failed: {str(err)}",
         )

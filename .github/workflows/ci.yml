@@ -10,6 +10,10 @@ jobs:
   test-and-verify:
     runs-on: ubuntu-latest
 
+    env:
+      SESSION_TOKEN: ci-test-token-privaagent
+      VLM_PROVIDER: mock
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -17,14 +21,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: 'npm'
           cache-dependency-path: extension/package-lock.json
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
           cache: 'pip'
           cache-dependency-path: server/requirements.txt
 
@@ -38,7 +42,7 @@ jobs:
           cd server
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio httpx
+          pip install pytest pytest-asyncio httpx httpx2
 
       - name: Compile TypeScript Verification
         run: |
@@ -62,7 +66,7 @@ jobs:
       - name: Run FastAPI Backend Pytest Suite
         run: |
           cd server
-          pytest -p no:cacheprovider ../tests/test_backend_api.py ../tests/test_contracts.py
+          python -m pytest -p no:cacheprovider ../tests/test_backend_api.py ../tests/test_contracts.py -v
 
       - name: Run Internal 5-Metric Benchmark Smoke Test
         run: |

@@ -5,7 +5,8 @@ Validates that incoming Disclosure payloads NEVER contain raw, unredacted PII.
 
 import re
 from typing import List, Tuple
-from fastapi import HTTPException, status
+from fastapi import HTTPException
+from fastapi import status as http_status
 from app.schemas.disclosure import Disclosure
 
 # Sensitive patterns that must never cross the trust boundary unredacted
@@ -50,7 +51,7 @@ def verify_disclosure_sanitization(disclosure: Disclosure) -> None:
                     continue
 
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=(
                         f"Defense-in-depth violation: Unredacted {pii_type} pattern "
                         f"detected in field '{field_name}' ('{matched_str[:4]}...'). "

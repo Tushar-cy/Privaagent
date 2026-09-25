@@ -173,9 +173,9 @@ Evaluated against the **265-item comprehensive dataset** using real CPU/memory p
 | **1. Visual Context Accuracy** | **25%** | 1 / 5 visual elements matched · 4 bars detected by CV pixel-contrast; 1 face via chrominance | **20.00%** (Score: 5.00) |
 | **2. PII Detection Precision & Recall** | **20%** | 265 labeled snippets · 100% F1 (precision 1.0, recall 1.0) | **100.00%** (Score: 20.00) |
 | **3. Redaction Precision & Quality** | **20%** | **0 raw leaks** across all outbound payloads; 100% context retention | **100.00%** (Score: 20.00) |
-| **4. Client-Side Resource Utilization** | **20%** | Avg DOM latency **5.70 ms** (< 50 ms); Heap **70.33 MB** (< 150 MB budget) | **97.00%** (Score: 19.40) |
-| **5. End-to-End Task Latency** | **15%** | Local fast-path **4.68 ms** (< 15 ms target); **10 / 10** tasks passed | **100.00%** (Score: 15.00) |
-| **COMPOSITE SCORE** | **100%** | *Reproducible — run the harness yourself* | **79.40 / 100.00** |
+| **4. Client-Side Resource Utilization** | **20%** | Avg DOM latency **3.06 ms** (< 50 ms); Heap **70.51 MB** (< 150 MB budget) | **97.73%** (Score: 19.55) |
+| **5. End-to-End Task Latency** | **15%** | Local fast-path **2.92 ms** (< 15 ms target); **10 / 10** tasks passed | **100.00%** (Score: 15.00) |
+| **COMPOSITE SCORE** | **100%** | *Reproducible — run the harness yourself* | **79.55 / 100.00** |
 
 ---
 
@@ -278,7 +278,7 @@ Open `http://localhost:8000/demo/index.html` in Chrome:
 ---
 
 ### Step 6: Run the Complete Automated Test & Benchmark Suite
-Privaagent includes 13 automated verification suites:
+Privaagent includes 13 automated verification suites plus a **36-invariant red-team security suite**:
 
 ```powershell
 # From the project root:

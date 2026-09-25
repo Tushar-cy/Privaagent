@@ -11,6 +11,9 @@ from app.main import app
 
 client = TestClient(app)
 
+# The token we configured above — sent on all protected requests
+AUTH_HEADERS = {"X-Privaagent-Session-Token": "ci-test-token-privaagent"}
+
 
 def test_health_check():
     response = client.get("/health")
@@ -23,6 +26,56 @@ def test_health_check():
     api_data = api_resp.json()
     assert api_data["status"] == "ok"
     assert "Privaagent" in api_data["service"]
+
+
+def test_resolve_action_rejects_missing_auth():
+    """P0: /api/resolve-action must return 401 when no session token is supplied."""
+    payload = {
+        "level": "L1",
+        "reason": "No token test",
+        "task": "Click submit",
+        "elements": [
+            {
+                "target_id": "el_0001",
+                "role": "button",
+                "label": "Submit",
+                "bounds": [10.0, 10.0, 50.0, 20.0],
+            }
+        ],
+        "redacted_token_count": 0,
+    }
+    response = client.post("/api/resolve-action", json=payload)
+    assert response.status_code == 401, (
+        f"Expected 401 for missing auth, got {response.status_code}: {response.text}"
+    )
+    assert "Unauthorized" in response.json()["detail"]
+
+
+def test_resolve_action_rejects_wrong_token():
+    """P0: /api/resolve-action must return 401 when an incorrect session token is supplied."""
+    payload = {
+        "level": "L1",
+        "reason": "Wrong token test",
+        "task": "Click submit",
+        "elements": [
+            {
+                "target_id": "el_0001",
+                "role": "button",
+                "label": "Submit",
+                "bounds": [10.0, 10.0, 50.0, 20.0],
+            }
+        ],
+        "redacted_token_count": 0,
+    }
+    response = client.post(
+        "/api/resolve-action",
+        json=payload,
+        headers={"X-Privaagent-Session-Token": "totally-wrong-token"},
+    )
+    assert response.status_code == 401, (
+        f"Expected 401 for wrong token, got {response.status_code}: {response.text}"
+    )
+    assert "Unauthorized" in response.json()["detail"]
 
 
 def test_resolve_action_valid_disclosure(monkeypatch):
@@ -49,7 +102,7 @@ def test_resolve_action_valid_disclosure(monkeypatch):
         "redacted_token_count": 2,
     }
 
-    response = client.post("/api/resolve-action", json=valid_payload)
+    response = client.post("/api/resolve-action", json=valid_payload, headers=AUTH_HEADERS)
     assert response.status_code == 200
     data = response.json()
     assert data["action"] in ["click", "type", "scroll", "navigate", "wait", "finish"]
@@ -73,7 +126,7 @@ def test_defense_in_depth_rejects_pan_leak():
         "redacted_token_count": 0,
     }
 
-    response = client.post("/api/resolve-action", json=leaked_payload)
+    response = client.post("/api/resolve-action", json=leaked_payload, headers=AUTH_HEADERS)
     assert response.status_code == 422
     assert "Defense-in-depth violation" in response.json()["detail"]
     assert "PAN" in response.json()["detail"]
@@ -95,7 +148,7 @@ def test_defense_in_depth_rejects_email_leak():
         "redacted_token_count": 0,
     }
 
-    response = client.post("/api/resolve-action", json=leaked_payload)
+    response = client.post("/api/resolve-action", json=leaked_payload, headers=AUTH_HEADERS)
     assert response.status_code == 422
     assert "Defense-in-depth violation" in response.json()["detail"]
     assert "EMAIL" in response.json()["detail"]
@@ -117,7 +170,7 @@ def test_defense_in_depth_rejects_secret_leak():
         "redacted_token_count": 0,
     }
 
-    response = client.post("/api/resolve-action", json=leaked_payload)
+    response = client.post("/api/resolve-action", json=leaked_payload, headers=AUTH_HEADERS)
     assert response.status_code == 422
     assert "Defense-in-depth violation" in response.json()["detail"]
     assert "SECRET_KEY" in response.json()["detail"]
