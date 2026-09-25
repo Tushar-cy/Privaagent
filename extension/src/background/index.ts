@@ -79,6 +79,11 @@ interface StoredTabBudget {
   cumulativeBytesSent: number;
   remoteCallsMade: number;
   stepsExecuted: number;
+  limits?: {
+    maxCumulativeBytes?: number;
+    maxRemoteCalls?: number;
+    maxSteps?: number;
+  };
 }
 
 const tabBudgetQueues = new Map<number, Promise<unknown>>();
@@ -113,6 +118,7 @@ function normalizeStoredBudget(value: unknown): StoredTabBudget {
     cumulativeBytesSent: Number.isFinite(candidate.cumulativeBytesSent) ? Math.max(0, Number(candidate.cumulativeBytesSent)) : 0,
     remoteCallsMade: Number.isFinite(candidate.remoteCallsMade) ? Math.max(0, Number(candidate.remoteCallsMade)) : 0,
     stepsExecuted: Number.isFinite(candidate.stepsExecuted) ? Math.max(0, Number(candidate.stepsExecuted)) : 0,
+    limits: candidate.limits,
   };
 }
 
@@ -122,9 +128,9 @@ function budgetStatus(budget: StoredTabBudget, reason?: string) {
     cumulativeBytesSent: budget.cumulativeBytesSent,
     remoteCallsMade: budget.remoteCallsMade,
     stepsExecuted: budget.stepsExecuted,
-    maxCumulativeBytes: PRIVACY_BUDGET_LIMITS.maxCumulativeBytes,
-    maxRemoteCalls: PRIVACY_BUDGET_LIMITS.maxRemoteCalls,
-    maxSteps: PRIVACY_BUDGET_LIMITS.maxSteps,
+    maxCumulativeBytes: budget.limits?.maxCumulativeBytes ?? PRIVACY_BUDGET_LIMITS.maxCumulativeBytes,
+    maxRemoteCalls: budget.limits?.maxRemoteCalls ?? PRIVACY_BUDGET_LIMITS.maxRemoteCalls,
+    maxSteps: budget.limits?.maxSteps ?? PRIVACY_BUDGET_LIMITS.maxSteps,
     reason,
   };
 }
@@ -141,21 +147,31 @@ async function updateTabBudget(
     const key = sessionBudgetKey(tabId);
     const stored = await readSessionStorage(key);
     const budget = normalizeStoredBudget(stored[key]);
+    if (budgetLimits) {
+      budget.limits = budget.limits || {};
+      if (budgetLimits.maxCumulativeBytes !== undefined) budget.limits.maxCumulativeBytes = budgetLimits.maxCumulativeBytes;
+      if (budgetLimits.maxRemoteCalls !== undefined) budget.limits.maxRemoteCalls = budgetLimits.maxRemoteCalls;
+      if (budgetLimits.maxSteps !== undefined) budget.limits.maxSteps = budgetLimits.maxSteps;
+    }
+    const maxSteps = budget.limits?.maxSteps ?? PRIVACY_BUDGET_LIMITS.maxSteps;
+    const maxRemoteCalls = budget.limits?.maxRemoteCalls ?? PRIVACY_BUDGET_LIMITS.maxRemoteCalls;
+    const maxCumulativeBytes = budget.limits?.maxCumulativeBytes ?? PRIVACY_BUDGET_LIMITS.maxCumulativeBytes;
+
     let reason: string | undefined;
 
     if (operation === "step") {
-      if (budget.stepsExecuted >= PRIVACY_BUDGET_LIMITS.maxSteps) {
-        reason = `Tab session step limit reached (${budget.stepsExecuted}/${PRIVACY_BUDGET_LIMITS.maxSteps}).`;
+      if (budget.stepsExecuted >= maxSteps) {
+        reason = `Tab session step limit reached (${budget.stepsExecuted}/${maxSteps}).`;
       } else {
         budget.stepsExecuted++;
       }
     } else if (operation === "remote") {
       if (!Number.isSafeInteger(estimatedBytes) || estimatedBytes < 0) {
         reason = "Invalid outbound byte estimate; request was not sent.";
-      } else if (budget.remoteCallsMade >= PRIVACY_BUDGET_LIMITS.maxRemoteCalls) {
-        reason = `Tab session remote-call limit reached (${budget.remoteCallsMade}/${PRIVACY_BUDGET_LIMITS.maxRemoteCalls}).`;
-      } else if (budget.cumulativeBytesSent + estimatedBytes > PRIVACY_BUDGET_LIMITS.maxCumulativeBytes) {
-        reason = `Tab session privacy budget would exceed ${PRIVACY_BUDGET_LIMITS.maxCumulativeBytes} bytes.`;
+      } else if (budget.remoteCallsMade >= maxRemoteCalls) {
+        reason = `Tab session remote-call limit reached (${budget.remoteCallsMade}/${maxRemoteCalls}).`;
+      } else if (budget.cumulativeBytesSent + estimatedBytes > maxCumulativeBytes) {
+        reason = `Tab session privacy budget would exceed ${maxCumulativeBytes} bytes.`;
       } else {
         budget.remoteCallsMade++;
         budget.cumulativeBytesSent += estimatedBytes;
