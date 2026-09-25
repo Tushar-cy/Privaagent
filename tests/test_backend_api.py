@@ -174,3 +174,47 @@ def test_defense_in_depth_rejects_secret_leak():
     assert response.status_code == 422
     assert "Defense-in-depth violation" in response.json()["detail"]
     assert "SECRET_KEY" in response.json()["detail"]
+
+
+def test_token_status_enforced():
+    """Test that /api/token-status correctly reports 'enforced' mode."""
+    response = client.get("/api/token-status")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["auth_mode"] == "enforced"
+    assert data["paired"] is True
+
+
+def test_demo_mode_allows_request(monkeypatch):
+    """Test that when SESSION_TOKEN is the sentinel, requests without auth are allowed (demo mode)."""
+    # Override settings.SESSION_TOKEN for this test
+    from app.config import settings
+    monkeypatch.setattr(settings, "SESSION_TOKEN", "change-this-for-local-evaluation")
+    
+    # Also mock VLM client so we get a real response, not just a 401/422
+    from app.api import routes
+    monkeypatch.setattr(routes.vlm_client, "provider", "mock")
+    
+    response = client.get("/api/token-status")
+    assert response.status_code == 200
+    assert response.json()["auth_mode"] == "demo"
+    assert response.json()["paired"] is False
+
+    valid_payload = {
+        "level": "L1",
+        "reason": "Demo mode test",
+        "task": "Click submit",
+        "elements": [
+            {
+                "target_id": "el_0001",
+                "role": "button",
+                "label": "Submit",
+                "bounds": [10.0, 10.0, 50.0, 20.0],
+            }
+        ],
+        "redacted_token_count": 0,
+    }
+
+    # No AUTH_HEADERS sent!
+    response = client.post("/api/resolve-action", json=valid_payload)
+    assert response.status_code == 200  # Should be allowed in demo mode

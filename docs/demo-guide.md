@@ -93,10 +93,10 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
 ---
 
 ### Workflow 7: Enterprise DPDP Act 2023 Compliance & Cryptographic Audit Portal
-1. **Scenario**: Enterprise compliance officer requests an immutable audit trail verifying zero citizen data leaks under the Indian Digital Personal Data Protection (DPDP) Act 2023 and GDPR Article 25.
+1. **Scenario**: Enterprise compliance officer requests a tamper-evident audit trail verifying zero citizen data leaks under the Indian Digital Personal Data Protection (DPDP) Act 2023 and GDPR Article 25.
 2. **Execution**:
    - **Cryptographic Chaining**: Every action, disclosure level, masked entity, and payload is hashed with SHA-256 and chained to the previous transaction's hash (`0000000000000000` &rarr; `hash_1` &rarr; `hash_2`).
-   - **Tamper Detection**: An immutable ledger integrity validator confirms 0 blocks have been altered or back-dated.
+   - **Tamper Detection**: A cryptographic ledger integrity validator confirms 0 blocks have been altered or back-dated.
    - **Differential Privacy**: Supports dual-mode protection—standard visual masking (`🔒 [REDACTED_AADHAAR]`) and format-preserving synthetic surrogates (Verhoeff-valid Aadhaar, CBDT-valid PAN, Luhn-valid credit card).
    - **Exportable audit summary**: Single-click export of a `PrivacyAuditSummary` JSON and interactive printable HTML portal (`extension/report/compliance-dashboard.html`).
 3. **What Judges See**:
@@ -115,6 +115,6 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
 | **Visual Context Accuracy** | 25% | 1/5 elements matched · CV detected 4 bars (generic labels); Tesseract read value text (`$12k`–`$28k`), not Q-labels (12px font — OCR limitation) · 1 face via chrominance | **20.00%** |
 | **PII Detection Accuracy (F1)** | 20% | 265 labeled snippets · 220 TP, 0 FP, 0 FN, 45 TN · **100% F1** | **100.00%** |
 | **Redaction Precision & Quality** | 20% | 0 raw leaks across all outbound payloads; 100% context retention | **100.00%** |
-| **Client Resource Utilization** | 20% | Avg DOM latency **5.70 ms** (< 50 ms); Heap **70.33 MB** (< 150 MB budget) | **96.998%** |
-| **End-to-End Task Latency** | 15% | Local fast-path **4.68 ms** (< 15 ms target); **10/10** tasks passed | **100.00%** |
-| **COMPOSITE SCORE** | **100%** | Internal self-evaluation · canvas-backed real pixel rendering | **79.40 / 100.00** |
+| **Client Resource Utilization** | 20% | Avg DOM latency **3.06 ms** (< 50 ms); Heap **70.51 MB** (< 150 MB budget) | **97.73%** |
+| **End-to-End Task Latency** | 15% | Local fast-path **2.92 ms** (< 15 ms target); **10/10** tasks passed | **100.00%** |
+| **COMPOSITE SCORE** | **100%** | Internal self-evaluation · canvas-backed real pixel rendering | **79.55 / 100.00** |

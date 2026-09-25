@@ -1,11 +1,18 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi import status as http_status
+import logging
 from app.config import settings
 from app.schemas.disclosure import Disclosure
 from app.schemas.action import Action
 from app.security.sanitizer_check import verify_disclosure_sanitization
 from app.vlm.client import VLMClient
+
+logger = logging.getLogger("privaagent.auth")
+
+# Sentinel value: when SESSION_TOKEN equals this string the server is in demo/dev mode.
+# A real crypto token (sih_<uuid>) can never accidentally match this.
+_DEMO_SENTINEL = "change-this-for-local-evaluation"
 
 router = APIRouter()
 vlm_client = VLMClient()
@@ -15,16 +22,32 @@ async def verify_session_token(
     x_privaagent_session_token: Optional[str] = Header(default=None),
     authorization: Optional[str] = Header(default=None),
 ):
-    """Enforces session bearer authentication when SESSION_TOKEN is configured."""
-    if settings.SESSION_TOKEN:
-        token = x_privaagent_session_token
-        if not token and authorization and authorization.startswith("Bearer "):
-            token = authorization.split("Bearer ", 1)[1].strip()
-        if token != settings.SESSION_TOKEN:
-            raise HTTPException(
-                status_code=http_status.HTTP_401_UNAUTHORIZED,
-                detail="Unauthorized: invalid or missing Privaagent session authentication token.",
-            )
+    """Enforces session bearer authentication.
+
+    Two modes:
+    - DEMO mode  (SESSION_TOKEN == sentinel): requests are allowed; a warning is logged.
+      Copy the extension's token from its DevTools console to server/.env to enable enforcement.
+    - ENFORCED mode (SESSION_TOKEN is a real token): token must match exactly or 401 is raised.
+    """
+    configured_token = settings.SESSION_TOKEN
+
+    if configured_token == _DEMO_SENTINEL:
+        # Demo/dev mode — allow the request but warn loudly so it's visible in server logs
+        logger.warning(
+            "[Privaagent Auth] Running in DEMO MODE — SESSION_TOKEN is the default sentinel. "
+            "Copy your extension's generated token to server/.env to enforce authentication."
+        )
+        return  # allow
+
+    # Enforced mode — require exact token match
+    token = x_privaagent_session_token
+    if not token and authorization and authorization.startswith("Bearer "):
+        token = authorization.split("Bearer ", 1)[1].strip()
+    if token != configured_token:
+        raise HTTPException(
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized: invalid or missing Privaagent session authentication token.",
+        )
 
 
 @router.get("/health", status_code=http_status.HTTP_200_OK)
@@ -33,6 +56,23 @@ async def health_check():
         "status": "ok",
         "service": "Privaagent Minimum-Disclosure Core",
         "version": "0.1.0",
+    }
+
+
+@router.get("/token-status", status_code=http_status.HTTP_200_OK)
+async def token_status():
+    """Returns the current session authentication mode without revealing the token value.
+    The extension popup calls this to show pairing state to SIH judges.
+    """
+    is_demo = settings.SESSION_TOKEN == _DEMO_SENTINEL
+    return {
+        "auth_mode": "demo" if is_demo else "enforced",
+        "paired": not is_demo,
+        "instructions": (
+            "Demo mode: any extension token is accepted. "
+            "Copy your extension token from DevTools → Application → Local Storage → privaagent_session_token "
+            "to server/.env as SESSION_TOKEN= to enable enforced pairing."
+        ) if is_demo else "Enforced mode: only the configured extension token is accepted.",
     }
 
 
