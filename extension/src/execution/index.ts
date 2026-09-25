@@ -95,7 +95,7 @@ export async function executeAction(
     };
   }
 
-  if (valResult.verdict === "CONFIRM" && !context?.userConfirmed && !(validAction as any).user_confirmed) {
+  if (valResult.verdict === "CONFIRM" && context?.userConfirmed !== true && (validAction as any).user_confirmed !== true) {
     return {
       success: false,
       target_id: validAction.target_id,

@@ -175,10 +175,15 @@ export function verifyOutgoingDisclosure(disclosure: Disclosure): PrivacyGuardRe
           snippet: "Missing VisualRedactionManifest for screenshot payload",
           field: "redaction_manifest",
         });
-      } else if (manifest.redactedBoxCount !== manifest.sourceSensitiveBoxCount) {
+      } else if (
+        manifest.intersectingBoxCount > manifest.sourceSensitiveBoxCount ||
+        manifest.redactedBoxCount !== manifest.intersectingBoxCount ||
+        !Array.isArray(manifest.redactedBoxes) ||
+        manifest.redactedBoxCount !== manifest.redactedBoxes.length
+      ) {
         detectedLeaks.push({
           type: "VISUAL_CONTRACT_VIOLATION",
-          snippet: `Manifest mismatch: ${manifest.sourceSensitiveBoxCount} sensitive boxes required, but only ${manifest.redactedBoxCount} redacted`,
+          snippet: "Manifest mismatch: every sensitive box intersecting the disclosed image must be redacted",
           field: "redaction_manifest",
         });
       }

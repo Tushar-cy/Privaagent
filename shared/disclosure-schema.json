@@ -65,7 +65,7 @@
   "$defs": {
     "RedactionManifest": {
       "type": "object",
-      "description": "For L2/L3, redactedBoxCount must equal sourceSensitiveBoxCount and the number of redactedBoxes.",
+      "description": "For L2/L3, sourceSensitiveBoxCount counts source sensitive regions; intersectingBoxCount counts those overlapping the transmitted image; redactedBoxCount must equal intersectingBoxCount and the number of redactedBoxes. L2 crops need not include unrelated off-crop regions.",
       "required": [
         "sourceSensitiveBoxCount",
         "intersectingBoxCount",

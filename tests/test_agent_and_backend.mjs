@@ -217,6 +217,7 @@ for (const secret of rawSensitiveStrings) {
 console.log("\n[TEST 6] Testing L3 Full-Page Sanitized Disclosure Escalation...");
 const l3Result = await resolveTaskAction("Analyze entire visual page layout", pageState, {
   forceEscalationLevel: "L3",
+  maxDisclosureLevel: "L3",
   sanitizedScreenshotBase64,
   sanitizedScreenshotManifest,
   fetchFn: mockFetch,

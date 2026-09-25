@@ -21,7 +21,8 @@ $suites = @(
     @{ Name = "11. Zero-Trust Red-Team Security & Invariants Suite"; Cmd = "npx.cmd tsx ..\tests\test_redteam_security.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "12. Internal 5-Metric Benchmark Harness"; Cmd = "npx.cmd tsx ..\benchmark\scripts\run-benchmark.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "13. FastAPI Backend Pytest Suite"; Cmd = ".\venv\Scripts\python.exe -m pytest -p no:cacheprovider ..\tests\test_backend_api.py ..\tests\test_backend_visual_contract.py ..\tests\test_request_size_limit.py ..\tests\test_contracts.py"; Dir = "$ROOT\server" },
-    @{ Name = "14. Audit Dashboard Cryptographic Verification"; Cmd = "npx.cmd tsx ..\tests\test_audit_dashboard.mjs"; Dir = "$ROOT\extension" }
+    @{ Name = "14. Audit Dashboard Cryptographic Verification"; Cmd = "npx.cmd tsx ..\tests\test_audit_dashboard.mjs"; Dir = "$ROOT\extension" },
+    @{ Name = "15. Screenshot Redaction Pixel Assertions"; Cmd = "node .\test-redaction-pixels.mjs"; Dir = "$ROOT\extension" }
 )
 
 $passed = 0

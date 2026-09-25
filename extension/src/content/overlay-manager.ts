@@ -166,7 +166,7 @@ export class OverlayManager {
   private computeLabel(type: string, isSecret: boolean): string {
     if (this.mode === "SYNTHETIC") {
       const surrogate = generateSyntheticSurrogate(type);
-      return `${synthSvg} ${surrogate}`;
+      return `⬡ ${surrogate}`;
     }
 
     if (isSecret) return "⬛ [SECRET]";
@@ -185,7 +185,7 @@ export class OverlayManager {
       case "VOTER_ID": return "🗳️ [VOTER ID]";
       case "UPI_ID": return "💸 [UPI]";
       case "IFSC": return "🏦 [IFSC]";
-      case "PERSON": return `${shieldSvg} [NAME]`;
+      case "PERSON": return "🛡️ [NAME]";
       case "PASSWORD": return "🔑 [PASSWORD]";
       default: return "🔒 [REDACTED]";
     }
@@ -337,7 +337,7 @@ export class OverlayManager {
           badge.style.background = "rgba(10, 15, 29, 0.95)";
         }
 
-        badge.innerHTML = entry.label;
+        badge.textContent = String(entry.label).slice(0, 128);
         overlay.appendChild(badge);
 
         container.appendChild(overlay);

@@ -39,6 +39,8 @@ class RedactionManifest(BaseModel):
             raise ValueError("redactedBoxCount must equal the number of redactedBoxes")
         if self.intersecting_box_count != self.redacted_box_count:
             raise ValueError("intersectingBoxCount must equal redactedBoxCount")
+        if self.intersecting_box_count > self.source_sensitive_box_count:
+            raise ValueError("intersectingBoxCount cannot exceed sourceSensitiveBoxCount")
         return self
 
 
@@ -222,11 +224,4 @@ class Disclosure(BaseModel):
                 raise ValueError("L2/L3 disclosure requires screenshot_data")
             if self.redaction_manifest is None:
                 raise ValueError("L2/L3 disclosure requires redaction_manifest")
-            if (
-                self.redaction_manifest.redacted_box_count
-                != self.redaction_manifest.source_sensitive_box_count
-            ):
-                raise ValueError(
-                    "redaction_manifest redactedBoxCount must equal sourceSensitiveBoxCount"
-                )
         return self

@@ -320,7 +320,7 @@ await runAsyncTest("13. L2/L3 with screenshot but missing manifest is BLOCKED", 
   );
 });
 
-await runAsyncTest("14. L2/L3 with mismatched manifest (not all boxes redacted) is BLOCKED", async () => {
+await runAsyncTest("14. L2/L3 with a redaction/intersection mismatch is BLOCKED", async () => {
   const { createCanvas } = canvasLib;
   const canvas = createCanvas(100, 100);
   canvas.getContext("2d").fillRect(0, 0, 100, 100);
@@ -334,10 +334,10 @@ await runAsyncTest("14. L2/L3 with mismatched manifest (not all boxes redacted) 
     redacted_task: "[PERSON_1] open invoice",
     screenshot_data: fakeScreenshot,
     redaction_manifest: {
-      sourceSensitiveBoxCount: 3, // 3 sensitive boxes found
-      intersectingBoxCount: 3,
-      redactedBoxCount: 2,         // but only 2 were redacted — mismatch!
-      redactedBoxes: [],
+      sourceSensitiveBoxCount: 3,
+      intersectingBoxCount: 2,
+      redactedBoxCount: 1,
+      redactedBoxes: [[10, 10, 20, 20]],
       sanitizationTimestamp: Date.now(),
     },
   };
@@ -347,6 +347,27 @@ await runAsyncTest("14. L2/L3 with mismatched manifest (not all boxes redacted) 
     result.detectedLeaks.some((l) => l.type === "VISUAL_CONTRACT_VIOLATION"),
     "Must report VISUAL_CONTRACT_VIOLATION"
   );
+});
+
+await runAsyncTest("14b. L2 crop may omit sensitive boxes outside the disclosed region", async () => {
+  const { createCanvas } = canvasLib;
+  const screenshot = createCanvas(100, 100).toDataURL("image/png");
+  const result = verifyOutgoingDisclosure({
+    level: "L2",
+    reason: "Sanitized crop disclosure",
+    task: "Open report",
+    elements: [],
+    redacted_token_count: 0,
+    screenshot_data: screenshot,
+    redaction_manifest: {
+      sourceSensitiveBoxCount: 3,
+      intersectingBoxCount: 1,
+      redactedBoxCount: 1,
+      redactedBoxes: [[10, 10, 20, 20]],
+      sanitizationTimestamp: Date.now(),
+    },
+  });
+  assert.strictEqual(result.passed, true, "L2 should require redaction of crop intersections, not off-crop page boxes");
 });
 
 // ==================================================================
@@ -665,7 +686,7 @@ runTest("36. Audit ledger restores and verifies from persistent storage array", 
 console.log("\n==================================================================");
 console.log(` RED-TEAM SECURITY AUDIT SUMMARY: ${totalPassed} / ${totalPassed + totalFailed} TESTS PASSED`);
 if (totalFailed === 0) {
-  console.log(" >>> ALL 36 ZERO-TRUST SECURITY INVARIANTS FULLY VERIFIED! <<<");
+console.log(" >>> ALL 37 ZERO-TRUST SECURITY INVARIANTS FULLY VERIFIED! <<<");
 } else {
   console.log(` >>> ${totalFailed} TEST(S) FAILED — REVIEW SECURITY CONTROLS! <<<`);
 }

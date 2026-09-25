@@ -9,6 +9,7 @@ import { annotatePageStateSensitivity } from "../extension/src/privacy/sensitivi
 import { OverlayManager } from "../extension/src/content/overlay-manager.ts";
 import { resolveTaskAction } from "../extension/src/agent/target-resolver.ts";
 import { validateAction } from "../extension/src/validator/action-validator.ts";
+import { dispatchUserApprovedAction } from "../extension/popup/confirmation.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const htmlPath = path.resolve(__dirname, "../benchmark/pages/test-page-1.html");
@@ -86,6 +87,31 @@ if (!hudEl.textContent.includes(hudPayload) || hudEl.querySelector("img") || doc
 overlayMgr.updateHUD("L0", "Local Reasoning Mode");
 console.log("✓ Runtime HUD text is inserted as inert text, not parsed HTML.");
 
+const popupDom = new JSDOM(fs.readFileSync(path.resolve(__dirname, "../extension/popup/index.html"), "utf-8"));
+if (!popupDom.window.document.getElementById("confirmation-approve")
+  || !popupDom.window.document.getElementById("confirmation-cancel")
+  || !popupDom.window.document.getElementById("confirmation-panel")?.hidden) {
+  throw new Error("Popup must provide initially hidden Approve and Cancel controls for pending actions.");
+}
+
+let approvalMessage;
+let approvalResponse;
+dispatchUserApprovedAction(
+  (_tabId, message, callback) => {
+    approvalMessage = message;
+    callback?.({ success: true });
+  },
+  7,
+  { action: "click", target_id: "el_0001" },
+  (response) => { approvalResponse = response; },
+  "L2"
+);
+if (approvalMessage?.type !== "EXECUTE_ACTION" || approvalMessage.userConfirmed !== true || approvalMessage.disclosureLevel !== "L2") {
+  throw new Error("Popup approval must send an explicit confirmation through EXECUTE_ACTION.");
+}
+if (approvalResponse?.success !== true) throw new Error("Popup approval dispatch did not receive the execution result.");
+console.log("✓ Explicit popup approval dispatch includes userConfirmed=true and preserves the disclosure level.");
+
 // ----------------------------------------------------
 // TEST 2: Live Non-Mutating Viewport Redaction Overlays
 // ----------------------------------------------------
@@ -118,6 +144,16 @@ if (!container) throw new Error("Redaction overlay root container missing!");
 if (container.children.length !== renderedCount || renderedCount === 0) {
   throw new Error(`Expected >0 overlays in root container, got ${container.children.length}`);
 }
+
+const originalComputeLabel = overlayMgr.computeLabel.bind(overlayMgr);
+overlayMgr.computeLabel = () => `<img src=x onerror="document.body.dataset.overlayXss='executed'">`;
+overlayMgr.renderRedactionOverlays(sensitiveState);
+if (container.querySelector("img") || doc.body.dataset.overlayXss || !container.textContent.includes("onerror")) {
+  throw new Error("Overlay labels must remain inert text and must never be parsed as HTML.");
+}
+overlayMgr.computeLabel = originalComputeLabel;
+overlayMgr.renderRedactionOverlays(sensitiveState);
+console.log("✓ Overlay labels are rendered as text without HTML parsing.");
 
 // BLUR mode adds a separate viewport overlay and keeps sensitive source text intact.
 const rawPanEl = doc.getElementById("user-pan");
@@ -156,27 +192,35 @@ console.log("✓ GHOST mode temporarily applies and removes its masking class.")
 // ----------------------------------------------------
 console.log("\n[TEST 4] Testing User Policy Ceiling Enforcement...");
 
-// Task that requires visual escalation (L2)
+// A visual-only task must be blocked before its L2 disclosure reaches fetch.
 const visualTaskStr = "Click the bar representing Q4";
-const resolution = await resolveTaskAction(visualTaskStr, sensitiveState, {
-  fetchFn: async () => ({
+const ceilingState = {
+  ...sensitiveState,
+  elements: sensitiveState.elements.map((element) => ({ ...element, sensitive: false })),
+};
+let ceilingRequestMade = false;
+const resolution = await resolveTaskAction(visualTaskStr, ceilingState, {
+  maxDisclosureLevel: "L0",
+  sanitizedScreenshotBase64: "data:image/png;base64,AA==",
+  sanitizedScreenshotManifest: {
+    sourceSensitiveBoxCount: 0,
+    intersectingBoxCount: 0,
+    redactedBoxCount: 0,
+    redactedBoxes: [],
+  },
+  fetchFn: async () => {
+    ceilingRequestMade = true;
+    return ({
     ok: true,
     json: async () => ({ action: "click", target_id: "revenue-chart", reason: "Chart click", confidence: 0.9 }),
-  }),
+    });
+  },
 });
 
-console.log(`  - Task resolved to disclosure level: ${resolution.disclosure.level}`);
-
-// Test ceiling check logic: if user sets ceiling to L0, L2 should be blocked
-const levelOrder = { L0: 0, L1: 1, L2: 2, L3: 3 };
-const taskLevel = resolution.disclosure.level;
-const strictUserCeiling = "L0";
-
-const ceilingViolation = levelOrder[taskLevel] > levelOrder[strictUserCeiling];
-if (!ceilingViolation) {
-  throw new Error("Ceiling check failed: L2 should exceed L0 ceiling!");
+if (!resolution.ceilingExceeded || resolution.processingPath !== "BLOCKED" || ceilingRequestMade) {
+  throw new Error("The L0 ceiling must block an L2 task before the remote request is made.");
 }
-console.log(`✓ User Policy Ceiling enforced: ${taskLevel} blocked when ceiling is ${strictUserCeiling}.`);
+console.log(`✓ User policy ceiling blocked ${resolution.disclosure.level} before the remote request.`);
 
 // ----------------------------------------------------
 // TEST 5: Clean Teardown

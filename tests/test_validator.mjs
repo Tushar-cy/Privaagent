@@ -288,6 +288,10 @@ const pausedTyping = await executeAction(passwordAction, { pageState: passwordSt
 if (pausedTyping.success || !pausedTyping.error?.includes("Confirmation required")) {
   throw new Error("Sensitive typing must pause at the execution gate until the user confirms.");
 }
+const forgedConfirmation = await executeAction(passwordAction, { pageState: passwordState, doc, userConfirmed: "true" });
+if (forgedConfirmation.success || !forgedConfirmation.error?.includes("Confirmation required")) {
+  throw new Error("Only the boolean userConfirmed=true may release the execution confirmation gate.");
+}
 const confirmedTyping = await executeAction(passwordAction, { pageState: passwordState, doc, userConfirmed: true });
 if (!confirmedTyping.success || passwordInput.value !== "synthetic test") {
   throw new Error("Explicitly confirmed sensitive typing did not execute.");

@@ -2,7 +2,7 @@
 // Implements on-device DOM perception, privacy annotation, visual redaction HUD,
 // pre-execution action validation, and agent task dispatch.
 
-import { PageState } from "../common/types";
+import { DisclosureLevel, PageState } from "../common/types";
 import { extractPageState, resolveElementByTargetId } from "../semantic/dom-extractor";
 import { startObservingDOM, stopObservingDOM } from "../semantic/mutation-observer";
 import { annotatePageStateSensitivity } from "../privacy/sensitivity";
@@ -42,6 +42,12 @@ let latestPageState: PageState | null = null;
 let latestDurationMs: number = 0;
 let shieldEnabled: boolean = true; // Runtime state; restored from storage on init
 const overlayManager = new OverlayManager();
+
+function normalizeDisclosureLevel(value: unknown): DisclosureLevel {
+  return value === "L0" || value === "L1" || value === "L2" || value === "L3"
+    ? value
+    : "L0";
+}
 if (typeof window !== "undefined") {
   window.__privaagent_overlay_manager = overlayManager;
 
@@ -122,7 +128,7 @@ export async function requestValidatedExecution(
       error: `Execution strictly BLOCKED by security validator: ${valResult.error || "Policy violation"}`,
     };
   }
-  if (valResult.verdict === "CONFIRM" && !options?.userConfirmed && !action.user_confirmed) {
+  if (valResult.verdict === "CONFIRM" && options?.userConfirmed !== true && action.user_confirmed !== true) {
     return {
       success: false,
       target_id: action.target_id || "unknown",
@@ -307,19 +313,41 @@ if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
   }
 
   if (message?.type === "EXECUTE_ACTION") {
-    requestValidatedExecution(message.action, { userConfirmed: message.userConfirmed }).then((res) => sendResponse(res));
+    const explicitlyConfirmed = message.userConfirmed === true;
+    requestValidatedExecution(message.action, { userConfirmed: explicitlyConfirmed }).then((res) => {
+      if (explicitlyConfirmed) {
+        const action = message.action || {};
+        PrivacyAuditVault.getInstance().record({
+          goal: "User-approved action",
+          subtask: "Approved action revalidated against current page state",
+          disclosureLevel: normalizeDisclosureLevel(message.disclosureLevel),
+          entitiesMasked: extractSensitiveEntityTypes(latestPageState),
+          outboundBytes: 0,
+          action: String(action.action || "unknown"),
+          targetId: String(action.target_id || "unknown"),
+          riskVerdict: res.success ? "CONFIRM" : "BLOCK",
+          policyApplied: res.success ? "User approved; current-state validation passed" : (res.error || "Current-state validation blocked the action"),
+          isLocal: true,
+        });
+      }
+      sendResponse(res);
+    }).catch((err) => sendResponse({
+      success: false,
+      target_id: message.action?.target_id || "unknown",
+      error: err?.message || "Approved action could not be executed.",
+    }));
     return true;
   }
 
   if (message?.type === "RUN_TASK") {
-    handleRunTaskMessage(message.task, message.maxLevel, message.simulateUnsafeSanitization)
+    handleRunTaskMessage(message.task, normalizeDisclosureLevel(message.maxLevel ?? "L2"), message.simulateUnsafeSanitization)
       .then((res) => sendResponse(res))
       .catch((err) => sendResponse({ success: false, error: err.message }));
     return true;
   }
 
   if (message?.type === "RUN_GOAL") {
-    handleRunGoalMessage(message.goal, message.budgetLimits, message.maxLevel)
+    handleRunGoalMessage(message.goal, message.budgetLimits, normalizeDisclosureLevel(message.maxLevel ?? "L2"))
       .then((res) => sendResponse(res))
       .catch((err) => sendResponse({ success: false, error: err.message }));
     return true;
@@ -419,7 +447,7 @@ function maskValue(raw: string, type: string): string {
 async function handleRunGoalMessage(
   goalStr: string,
   budgetLimits?: any,
-  maxLevel: string = "L2"
+  maxLevel: DisclosureLevel = "L2"
 ): Promise<MultiTurnGoalResult> {
   if (!latestPageState) runPerception();
   overlayManager.updateHUD("Multi-Turn", `Decomposing: "${goalStr.slice(0, 20)}..."`);
@@ -440,7 +468,7 @@ async function handleRunGoalMessage(
 
 async function handleRunTaskMessage(
   taskStr: string,
-  maxLevel: string = "L2",
+  maxLevel: DisclosureLevel = "L2",
   simulateUnsafeSanitization: boolean = false
 ): Promise<{
   success: boolean;
@@ -455,11 +483,16 @@ async function handleRunTaskMessage(
   overlayManager.updateHUD("Thinking...", `Reasoning: "${taskStr.slice(0, 20)}..."`);
   const resolution = await resolveTaskAction(taskStr, latestPageState, {
     simulateUnsafeSanitization,
+    maxDisclosureLevel: maxLevel,
   });
 
   // Check if Pre-Flight Privacy Guard blocked the request
   if (resolution.processingPath === "BLOCKED") {
-    overlayManager.updateHUD("BLOCKED", "Pre-flight privacy guard triggered");
+    overlayManager.updateHUD(
+      "BLOCKED",
+      resolution.ceilingExceeded ? "Disclosure ceiling blocked request" :
+        resolution.budgetExceeded ? "Privacy budget blocked request" : "Pre-flight privacy guard triggered"
+    );
     PrivacyAuditVault.getInstance().record({
       goal: taskStr,
       subtask: taskStr,

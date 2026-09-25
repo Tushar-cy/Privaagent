@@ -327,6 +327,47 @@ hybridResult.history.forEach((step, idx) => {
 console.log("✓ Hybrid multi-turn goal succeeded with exact disclosure ladder tracking!");
 
 // ----------------------------------------------------
+// TEST 4b: Disclosure Ceiling Is Enforced Before Remote Transmission
+// ----------------------------------------------------
+console.log("\n[TEST 4b] Verifying the multi-turn disclosure ceiling blocks before VLM transmission...");
+mockVlmCalled = false;
+const cappedResult = await runMultiTurnAgent(hybridGoal, page1CombinedState, {
+  doc: domPage1.window.document,
+  fetchFn: mockFetch,
+  sanitizedScreenshotBase64: visualScreenshot,
+  sanitizedScreenshotManifest: visualRedactionManifest,
+  maxDisclosureLevel: "L1",
+  budgetLimits: { maxCumulativeBytes: 50000, maxSteps: 5, maxRemoteCalls: 3 },
+});
+if (cappedResult.status !== "FAILED" || mockVlmCalled) {
+  throw new Error("A multi-turn L1 ceiling must block the L2 step before the mock VLM is called.");
+}
+if (!cappedResult.history.some((step) => step.error?.includes("Disclosure ceiling exceeded"))) {
+  throw new Error("Expected the capped multi-turn history to explain the disclosure ceiling block.");
+}
+console.log("✓ Multi-turn disclosure ceiling stopped the request before fetch.");
+
+// ----------------------------------------------------
+// TEST 4c: Privacy Budget Is Enforced Before Remote Transmission
+// ----------------------------------------------------
+console.log("\n[TEST 4c] Verifying exhausted privacy byte budget prevents VLM transmission...");
+mockVlmCalled = false;
+const budgetGatedResult = await runMultiTurnAgent("Click the bar representing Q4", page1CombinedState, {
+  doc: domPage1.window.document,
+  fetchFn: mockFetch,
+  sanitizedScreenshotBase64: visualScreenshot,
+  sanitizedScreenshotManifest: visualRedactionManifest,
+  budgetLimits: { maxCumulativeBytes: 1, maxSteps: 5, maxRemoteCalls: 3 },
+});
+if (budgetGatedResult.status !== "BUDGET_EXCEEDED" || mockVlmCalled) {
+  throw new Error("An exhausted privacy byte budget must stop before the mock VLM is called.");
+}
+if (budgetGatedResult.cumulativeBytesSent !== 0) {
+  throw new Error("A preflight budget rejection must report zero transmitted bytes.");
+}
+console.log("✓ Privacy budget rejected the outbound disclosure before fetch (0 bytes sent).");
+
+// ----------------------------------------------------
 // TEST 5: Security Confirmation Pause on High-Risk Action
 // ----------------------------------------------------
 console.log("\n[TEST 5] Testing Security Policy Pause on High-Risk Financial Action...");

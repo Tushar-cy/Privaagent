@@ -10,7 +10,7 @@
 //     -> In-Browser Mapping Isolation -> Pre-Flight Privacy Audit -> Outbound VLM Request.
 //   - Pre-flight privacy check strictly BLOCKS request if any unredacted PII remains.
 
-import { Action, Disclosure, PageState, VisualRedactionManifest } from "../common/types";
+import { Action, Disclosure, DisclosureLevel, PageState, VisualRedactionManifest } from "../common/types";
 import { planDisclosure } from "../disclosure/disclosure-planner";
 import { parseTask, ParsedTask } from "./task-parser";
 import { solveTaskLocally, LocalSolveResult } from "./local-solver";
@@ -40,11 +40,15 @@ export interface AgentResolutionResult {
   detectedEntities: Array<{ type: string; placeholder: string }>;
   privacyVerificationPassed: boolean;
   externalRequestMade: boolean;
+  budgetExceeded?: boolean;
+  ceilingExceeded?: boolean;
   blockReason?: string;
 }
 
 export interface ResolverOptions extends RemoteResolutionOptions {
   forceEscalationLevel?: "L0" | "L1" | "L2" | "L3";
+  maxDisclosureLevel?: DisclosureLevel;
+  beforeRemoteRequest?: (disclosure: Disclosure, outboundBytes: number) => boolean;
   sanitizedScreenshotBase64?: string;
   sanitizedScreenshotManifest?: VisualRedactionManifest;
   resolveLiveElement?: (targetId: string) => Element | null;
@@ -285,8 +289,47 @@ export async function resolveTaskAction(
     };
   }
 
-  // Step 4: Outbound Network Request to VLM with Sanitized Payload
-  const outboundBytes = JSON.stringify(disclosure).length;
+  // Step 4: Enforce all outbound policy before the first network request.
+  const serializedDisclosure = JSON.stringify(disclosure);
+  const outboundBytes = new TextEncoder().encode(serializedDisclosure).byteLength;
+  const levelOrder: Record<DisclosureLevel, number> = { L0: 0, L1: 1, L2: 2, L3: 3 };
+  const configuredCeiling = options.maxDisclosureLevel ?? "L2";
+  const ceilingRank = levelOrder[configuredCeiling] ?? levelOrder.L0;
+  const exceedsCeiling = Boolean(
+    levelOrder[disclosure.level] > ceilingRank
+  );
+  const budgetAllowsRequest = !options.beforeRemoteRequest || options.beforeRemoteRequest(disclosure, outboundBytes);
+
+  if (exceedsCeiling || !budgetAllowsRequest) {
+    const budgetExceeded = !exceedsCeiling && !budgetAllowsRequest;
+    const blockReason = exceedsCeiling
+      ? `Disclosure ceiling exceeded: request requires ${disclosure.level}, maximum allowed is ${configuredCeiling}. Request was not sent.`
+      : "Session privacy budget would be exceeded by this disclosure. Request was not sent.";
+    const totalLatencyMs = Number((performance.now() - overallStartTime).toFixed(2));
+    return {
+      action: { action: "click", target_id: "none", reason: blockReason, confidence: 0 },
+      processingPath: "BLOCKED",
+      modelUsed: "PrivaAgent Outbound Policy Gate",
+      executionBackend: "On-Device Security Kernel (Request Not Sent)",
+      localLatencyMs,
+      sanitizationLatencyMs,
+      vlmLatencyMs: 0,
+      totalLatencyMs,
+      latencyMs: totalLatencyMs,
+      isLocal: true,
+      disclosure,
+      parsedTask,
+      networkBytesSent: 0,
+      detectedEntities,
+      privacyVerificationPassed: true,
+      externalRequestMade: false,
+      budgetExceeded,
+      ceilingExceeded: exceedsCeiling,
+      blockReason,
+    };
+  }
+
+  // The byte estimate matches the serialized disclosure body sent by action-planner.
   const vlmStart = performance.now();
 
   try {

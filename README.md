@@ -246,9 +246,10 @@ start-privaagent.bat
 > For a hardened production deployment, switch to **ENFORCED MODE**:
 > 1. Open `chrome://extensions/`, find Privaagent, and click **Service worker → Inspect**.
 > 2. In that extension DevTools console, run `chrome.storage.local.get("privaagent_session_token", ({ privaagent_session_token }) => console.log(privaagent_session_token))`.
-> 3. Set the returned value in `server/.env` as `SESSION_TOKEN=...` and restart the backend. The token is stored in extension storage, not webpage Local Storage.
+> 3. Set that exact generated value as `SESSION_TOKEN` in `server/.env` and restart the backend. The token is stored in extension storage, not webpage Local Storage.
+> 4. Set `ALLOWED_EXTENSION_ID` to the exact 32-character ID shown for this extension in `chrome://extensions/`. Leaving it empty permits requests from any Chrome extension origin.
 > 
-> Once enforced, the backend strictly rejects any request with a missing or mismatched token via HTTP 401 Unauthorized.
+> Do not expose the backend to untrusted networks while the demo sentinel is active or `ALLOWED_EXTENSION_ID` is empty. Enforced mode rejects a missing or mismatched token with HTTP 401 Unauthorized.
 
 ---
 

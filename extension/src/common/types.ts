@@ -93,6 +93,25 @@ export const VisualRedactionManifestSchema = z.object({
   redactedBoxCount: z.number().int().nonnegative(),
   redactedBoxes: z.array(BoundingBoxSchema),
   sanitizationTimestamp: z.number().optional(),
+}).superRefine((manifest, context) => {
+  if (manifest.intersectingBoxCount > manifest.sourceSensitiveBoxCount) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "intersectingBoxCount cannot exceed sourceSensitiveBoxCount",
+    });
+  }
+  if (manifest.redactedBoxCount !== manifest.intersectingBoxCount) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "redactedBoxCount must equal intersectingBoxCount",
+    });
+  }
+  if (manifest.redactedBoxCount !== manifest.redactedBoxes.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "redactedBoxCount must equal the number of redactedBoxes",
+    });
+  }
 });
 export type VisualRedactionManifest = z.infer<typeof VisualRedactionManifestSchema>;
 

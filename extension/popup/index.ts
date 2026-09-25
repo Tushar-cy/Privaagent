@@ -4,6 +4,7 @@ import { detectStructuredPII } from "../src/privacy/pii-detector";
 import { detectSecrets } from "../src/privacy/secret-detector";
 import { verifyOutgoingDisclosure } from "../src/privacy/privacy-guard";
 import { PrivacyAuditVault } from "../src/privacy/audit-vault";
+import { dispatchUserApprovedAction } from "./confirmation";
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -39,6 +40,10 @@ document.addEventListener("DOMContentLoaded", () => {
       addShape("path", { d: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" });
       addShape("line", { x1: "12", y1: "9", x2: "12", y2: "13" });
       addShape("line", { x1: "12", y1: "17", x2: "12.01", y2: "17" });
+    } else if (state === "confirm") {
+      title.textContent = "Action needs approval";
+      desc.textContent = "Review the action below. It will be checked against the current page before it runs.";
+      addShape("path", { d: "M12 8v4m0 4h.01M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.41 0Z" });
     } else if (state === "empty") {
       title.textContent = "Protection paused";
       desc.textContent = "Turn protection on to resume local page checks.";
@@ -102,9 +107,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const healthModeEl      = document.getElementById("health-mode") as HTMLSpanElement;
   const healthTimestampEl = document.getElementById("health-timestamp") as HTMLSpanElement;
   const btnExportHealthEl = document.getElementById("btn-export-health") as HTMLButtonElement;
+  const confirmationPanelEl = document.getElementById("confirmation-panel") as HTMLDivElement;
+  const confirmationMessageEl = document.getElementById("confirmation-message") as HTMLParagraphElement;
+  const confirmationApproveEl = document.getElementById("confirmation-approve") as HTMLButtonElement;
+  const confirmationCancelEl = document.getElementById("confirmation-cancel") as HTMLButtonElement;
 
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let lastHealthData: Record<string, unknown> | null = null;
+  let pendingApproval: { tabId: number; action: any; isCompound: boolean; disclosureLevel: string } | null = null;
 
   // ─── Toast System (replaces alert) ──────────────────────────────────────
   function showToast(msg: string, type: "error" | "success" | "warning" = "error", durationMs = 3500) {
@@ -158,6 +168,87 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch {
       if (callback) callback(null);
     }
+  }
+
+  function renderConfirmation(res: any, isCompound: boolean, tabId: number) {
+    pendingApproval = null;
+    if (confirmationPanelEl) confirmationPanelEl.hidden = true;
+
+    const lastStep = Array.isArray(res?.history) ? res.history[res.history.length - 1] : null;
+    const confirmedStep = isCompound && res?.status === "PAUSED_CONFIRMATION" && lastStep?.verdict === "CONFIRM"
+      ? lastStep
+      : null;
+    const requiresConfirmation = confirmedStep !== null || (!isCompound && res?.validation?.verdict === "CONFIRM");
+    const action = confirmedStep?.action || res?.resolution?.action;
+    if (!requiresConfirmation || !action || typeof action.action !== "string" || typeof action.target_id !== "string") return;
+
+    pendingApproval = {
+      tabId,
+      action,
+      isCompound,
+      disclosureLevel: String(confirmedStep?.level || res?.resolution?.disclosure?.level || "L0"),
+    };
+    const reason = String(
+      confirmedStep?.error ||
+      res?.validation?.policyResult?.requiredUserConfirmation ||
+      res?.error ||
+      "This action requires explicit approval."
+    ).slice(0, 240);
+    const actionSummary = action.action === "type"
+      ? `Type into ${action.target_id}; the value is withheld in this prompt.`
+      : `${action.action} target ${action.target_id}`;
+    const continuationNote = isCompound
+      ? " Approving executes this action only; remaining goal steps stay paused."
+      : " The page will be revalidated before execution.";
+
+    if (confirmationMessageEl) {
+      confirmationMessageEl.textContent = `${reason} Action: ${actionSummary}.${continuationNote}`;
+    }
+    if (confirmationApproveEl) confirmationApproveEl.disabled = false;
+    if (confirmationCancelEl) confirmationCancelEl.disabled = false;
+    if (confirmationPanelEl) confirmationPanelEl.hidden = false;
+  }
+
+  if (confirmationApproveEl) {
+    confirmationApproveEl.addEventListener("click", () => {
+      const approval = pendingApproval;
+      if (!approval) return;
+      pendingApproval = null;
+      confirmationApproveEl.disabled = true;
+      if (confirmationCancelEl) confirmationCancelEl.disabled = true;
+      if (confirmationMessageEl) confirmationMessageEl.textContent = "Revalidating the current page and executing the approved action…";
+
+      dispatchUserApprovedAction(sendTabMsg, approval.tabId, approval.action, (response) => {
+        if (confirmationPanelEl) confirmationPanelEl.hidden = true;
+        const success = response?.success === true;
+        if (lVerdictEl) {
+          lVerdictEl.textContent = success ? "APPROVED · EXECUTED" : "NOT EXECUTED";
+          setTone(lVerdictEl, success ? "success" : "danger");
+        }
+        const resultMessage = success
+          ? approval.isCompound
+            ? "Approved action executed. Remaining goal steps stayed paused; run the remaining task when ready."
+            : "Approved action executed after current-page revalidation."
+          : String(response?.error || "The action could not be revalidated and was not executed.");
+        if (lReasonEl) lReasonEl.textContent = resultMessage;
+        showToast(resultMessage, success ? "success" : "warning", 4500);
+        setPopupState(success ? "active" : "error");
+        refreshPageState();
+      }, approval.disclosureLevel);
+    });
+  }
+
+  if (confirmationCancelEl) {
+    confirmationCancelEl.addEventListener("click", () => {
+      pendingApproval = null;
+      if (confirmationPanelEl) confirmationPanelEl.hidden = true;
+      if (lVerdictEl) {
+        lVerdictEl.textContent = "CANCELLED";
+        setTone(lVerdictEl, "neutral");
+      }
+      if (lReasonEl) lReasonEl.textContent = "Cancelled. The paused action was not executed.";
+      showToast("Action cancelled; nothing was executed.", "warning", 2500);
+    });
   }
 
   // ─── Active Tab Query ────────────────────────────────────────────────────
@@ -402,6 +493,8 @@ document.addEventListener("DOMContentLoaded", () => {
       setPopupState("loading");
     }
     if (ledgerBoxEl) ledgerBoxEl.classList.remove("show");
+    pendingApproval = null;
+    if (confirmationPanelEl) confirmationPanelEl.hidden = true;
 
     const simulateUnsafeSanitization =
       task.toLowerCase().includes("unsafe") ||
@@ -424,8 +517,9 @@ document.addEventListener("DOMContentLoaded", () => {
           return;
         }
 
-        showLedger(res, isCompound, task);
-          setPopupState(res.success ? "active" : "error");
+        showLedger(res, isCompound, tabId);
+        const needsApproval = res.status === "PAUSED_CONFIRMATION" || res.validation?.verdict === "CONFIRM";
+        setPopupState(needsApproval ? "confirm" : res.success === true || res.status === "SUCCESS" ? "active" : "error");
         refreshPageState();
       });
     });
@@ -435,7 +529,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (taskInputEl) taskInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") runTask(); });
 
   // ─── Show Ledger Card & Two-Layer Inspector ──────────────────────────────
-  function showLedger(res: any, isCompound: boolean, task: string) {
+  function showLedger(res: any, isCompound: boolean, tabId: number) {
     if (!ledgerBoxEl) return;
     ledgerBoxEl.classList.add("show");
 
@@ -470,6 +564,7 @@ document.addEventListener("DOMContentLoaded", () => {
           .map((h: any) => `Step ${h.stepIndex}: [${h.level}] ${h.action.action.toUpperCase()} → ${h.action.target_id} (${h.verdict}, ${h.bytesSent}B)`)
           .join("\n") || res.error || "Completed.";
       }
+      renderConfirmation(res, isCompound, tabId);
       return;
     }
 
@@ -556,6 +651,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (res.success) {
       showToast("✅ Action executed successfully", "success", 2000);
     }
+    renderConfirmation(res, isCompound, tabId);
   }
 
   function setLedgerLevel(level: string, label: string) {

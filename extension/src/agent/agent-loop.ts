@@ -2,7 +2,7 @@
 // Decomposes compound procedural goals, coordinates step-by-step perception and execution,
 // enforces the session privacy budget, and halts upon security risk.
 
-import { Action, PageState, VisualRedactionManifest } from "../common/types";
+import { Action, DisclosureLevel, PageState, VisualRedactionManifest } from "../common/types";
 import { decomposeGoal, DecomposedGoal } from "./goal-decomposer";
 import { SessionPrivacyBudget, BudgetLimits } from "./privacy-budget";
 import { resolveTaskAction, AgentResolutionResult } from "./target-resolver";
@@ -46,7 +46,7 @@ export interface MultiTurnGoalResult {
 
 export interface AgentLoopOptions {
   budgetLimits?: BudgetLimits;
-  maxDisclosureLevel?: string;
+  maxDisclosureLevel?: DisclosureLevel;
   doc?: Document;
   delayBetweenStepsMs?: number;
   fetchFn?: typeof fetch;
@@ -123,20 +123,44 @@ export async function runMultiTurnAgent(
       sanitizedScreenshotBase64: options.sanitizedScreenshotBase64,
       sanitizedScreenshotManifest: options.sanitizedScreenshotManifest,
       resolveLiveElement: options.resolveLiveElement,
+      maxDisclosureLevel: options.maxDisclosureLevel,
+      beforeRemoteRequest: (_disclosure, outboundBytes) => budget.canEscalate(outboundBytes),
     });
 
-    // Enforce budget on remote calls
-    if (!resolution.isLocal && !budget.canEscalate(resolution.networkBytesSent)) {
+    // The resolver checks byte and call limits before sending. A rejected
+    // request must stop here so it cannot be misreported as a privacy BLOCK.
+    if (resolution.budgetExceeded) {
+      const blockReason = resolution.blockReason || "Session privacy budget is exhausted; outbound request was not sent.";
+      PrivacyAuditVault.getInstance().record({
+        goal: goalStr,
+        subtask,
+        disclosureLevel: resolution.disclosure.level,
+        entitiesMasked: extractSensitiveEntityTypes(currentState),
+        outboundBytes: 0,
+        action: "block",
+        targetId: "none",
+        riskVerdict: "BLOCK",
+        policyApplied: blockReason,
+        isLocal: true,
+      });
       return {
         goal: goalStr,
         decomposed,
         status: "BUDGET_EXCEEDED",
         totalSteps: history.length,
-        cumulativeBytesSent: budgetStatus.cumulativeBytesSent,
+        cumulativeBytesSent: budget.getStatus().cumulativeBytesSent,
         history,
-        error: `Subtask "${subtask}" requires remote escalation, but session privacy budget is exhausted.`,
+        error: blockReason,
       };
     }
+
+    // Account for the request immediately after it returns, including remote
+    // responses that are later paused or rejected by action validation.
+    budget.recordStep(
+      resolution.externalRequestMade ? resolution.networkBytesSent : 0,
+      resolution.externalRequestMade
+    );
+    const postResolutionBudget = budget.getStatus();
 
     // 3b. Pre-flight Security Block Check (e.g., global prompt injection detected)
     if (resolution.processingPath === "BLOCKED") {
@@ -172,7 +196,7 @@ export async function runMultiTurnAgent(
         decomposed,
         status: "FAILED",
         totalSteps: history.length,
-        cumulativeBytesSent: budgetStatus.cumulativeBytesSent,
+        cumulativeBytesSent: postResolutionBudget.cumulativeBytesSent,
         history,
         error: `Security Policy BLOCKED subtask "${subtask}": ${blockMsg}`,
       };
@@ -215,7 +239,7 @@ export async function runMultiTurnAgent(
         decomposed,
         status: "FAILED",
         totalSteps: history.length,
-        cumulativeBytesSent: budgetStatus.cumulativeBytesSent,
+        cumulativeBytesSent: postResolutionBudget.cumulativeBytesSent,
         history,
         error: `Security Policy BLOCKED subtask "${subtask}": ${validation.error}`,
       };
@@ -253,7 +277,7 @@ export async function runMultiTurnAgent(
         decomposed,
         status: "PAUSED_CONFIRMATION",
         totalSteps: history.length,
-        cumulativeBytesSent: budgetStatus.cumulativeBytesSent,
+        cumulativeBytesSent: postResolutionBudget.cumulativeBytesSent,
         history,
         error: validation.policyResult?.requiredUserConfirmation || "Action requires user confirmation.",
       };
@@ -264,9 +288,8 @@ export async function runMultiTurnAgent(
       ? await executeAction(resolution.action, { pageState: currentState, doc, userConfirmed: false })
       : { success: true, target_id: resolution.action.target_id };
 
-    // Record in budget and trajectory
-    budget.recordStep(resolution.networkBytesSent, !resolution.isLocal);
-
+    // Record the action trajectory; network accounting was finalized directly
+    // after resolution so rejected/confirmation-paused remote calls count too.
     history.push({
       stepIndex: stepNum,
       subtask,

@@ -84,6 +84,8 @@ The Minimum Disclosure ladder dictates the minimal amount of information permitt
 - **`L2` (Sanitized Visual Crop)**: Used only when DOM context is insufficient (e.g. `<canvas>` charts). Only the bounding box crop of the target region is transmitted, with faces, PII, and credentials blurred/redacted on an offscreen canvas before transmission.
 - **`L3` (Sanitized Full Screen)**: Absolute last resort. Full page screenshot with all sensitive regions redacted.
 
+For either visual level, `sourceSensitiveBoxCount` records the source regions considered, while `intersectingBoxCount` records how many overlap the transmitted image. The contract requires `redactedBoxCount === intersectingBoxCount === redactedBoxes.length`, and `intersectingBoxCount` cannot exceed the source count. An L2 crop may therefore report fewer redacted regions than the full source count when unrelated sensitive regions lie outside the crop.
+
 ### Schema Structure
 ```json
 {

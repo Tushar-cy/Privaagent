@@ -149,6 +149,14 @@
             <div class="ledger-row"><span class="k">Outbound payload</span><span class="v" id="l-bytes">—</span></div>
             <div class="ledger-row"><span class="k">Pre-flight check</span><span class="v" id="l-privacy-guard">—</span></div>
             <p class="ledger-reason" id="l-reason"></p>
+            <section class="confirmation-panel" id="confirmation-panel" aria-label="Action confirmation" aria-live="polite" hidden>
+              <strong>Approval required</strong>
+              <p id="confirmation-message"></p>
+              <div class="confirmation-actions">
+                <button class="btn btn-primary btn-small" id="confirmation-approve" type="button">Approve this action</button>
+                <button class="btn btn-secondary btn-small" id="confirmation-cancel" type="button">Cancel</button>
+              </div>
+            </section>
           </section>
         </div>
       </details>

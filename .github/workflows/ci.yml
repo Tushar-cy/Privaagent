@@ -69,6 +69,11 @@ jobs:
           cd extension
           npx tsx ../tests/test_local_vision.mjs
 
+      - name: Extension Test - Screenshot Redaction Pixels
+        run: |
+          cd extension
+          node ./test-redaction-pixels.mjs
+
       - name: Extension Test - Agent and Backend
         run: |
           cd extension

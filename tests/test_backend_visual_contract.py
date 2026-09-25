@@ -80,6 +80,42 @@ def test_visual_disclosure_rejects_manifest_count_mismatch(level):
         level,
         redaction_manifest=_manifest(
             source_count=2,
+            intersecting_count=2,
+            redacted_count=1,
+            boxes=[[10, 20, 30, 40]],
+        ),
+    )
+
+    response = client.post("/api/resolve-action", json=payload, headers=AUTH_HEADERS)
+
+    assert response.status_code == 422
+
+
+def test_l2_crop_accepts_unrelated_sensitive_boxes_outside_crop(monkeypatch):
+    from app.api import routes
+
+    monkeypatch.setattr(routes.vlm_client, "provider", "mock")
+    payload = _visual_payload(
+        "L2",
+        redaction_manifest=_manifest(
+            source_count=2,
+            intersecting_count=1,
+            redacted_count=1,
+            boxes=[[10, 20, 30, 40]],
+        ),
+    )
+
+    response = client.post("/api/resolve-action", json=payload, headers=AUTH_HEADERS)
+
+    assert response.status_code == 200, response.text
+    assert response.json()["target_id"] == "report-button"
+
+
+def test_visual_disclosure_rejects_more_intersections_than_source_boxes():
+    payload = _visual_payload(
+        "L2",
+        redaction_manifest=_manifest(
+            source_count=0,
             intersecting_count=1,
             redacted_count=1,
             boxes=[[10, 20, 30, 40]],

@@ -11,8 +11,8 @@
  * Pass criteria:
  *   - Every pixel inside a redacted box must be the blackout color (#0f172a = R15 G23 B42)
  *   - At least one pixel outside all redacted boxes must NOT be that color
- *   - manifest.redactedBoxCount === sensitiveBoxes.length
- *   - manifest.sourceSensitiveBoxCount === sensitiveBoxes.length
+ *   - manifest.redactedBoxCount === sensitiveBoxes intersecting the disclosed image
+ *   - manifest.sourceSensitiveBoxCount === all source sensitive boxes
  */
 
 import { createCanvas } from "@napi-rs/canvas";
@@ -259,6 +259,19 @@ runTest("Crop mode (L2): box outside crop region does NOT appear in manifest bur
   assert.equal(manifest.redactedBoxCount, 0,
     `Expected 0 burned (box is outside crop), got ${manifest.redactedBoxCount}`);
   assert.equal(manifest.sourceSensitiveBoxCount, 1);
+});
+
+runTest("Crop mode (L2): unrelated off-crop PII stays counted as source but does not block", () => {
+  const src = makeSyntheticCanvas(400, 300);
+  const cropBox = [100, 100, 150, 100];
+  const inCrop = [120, 110, 40, 30];
+  const outsideCrop = [300, 220, 40, 30];
+  const { manifest } = applyRedaction(src, [inCrop, outsideCrop], cropBox);
+
+  assert.equal(manifest.sourceSensitiveBoxCount, 2);
+  assert.equal(manifest.intersectingBoxCount, 1);
+  assert.equal(manifest.redactedBoxCount, 1);
+  assert.deepEqual(manifest.redactedBoxes, [inCrop]);
 });
 
 // ─── Test 8: Manifest has sanitizationTimestamp ───────────────────────────────
