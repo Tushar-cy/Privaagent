@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { JSDOM } from "../extension/node_modules/jsdom/lib/api.js";
+import { createCanvas } from "../extension/node_modules/@napi-rs/canvas/index.js";
 
 import {
   decomposeGoal,
@@ -11,6 +12,7 @@ import {
 } from "../extension/src/agent/index.ts";
 import { extractPageState } from "../extension/src/semantic/dom-extractor.ts";
 import { processVisualRegion } from "../extension/src/perception/index.ts";
+import { annotatePageStateSensitivity } from "../extension/src/privacy/sensitivity.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const page1Path = path.resolve(__dirname, "../benchmark/pages/test-page-1.html");
@@ -253,8 +255,19 @@ let page1CombinedState = page1Extraction.pageState;
 const canvasEl = domPage1.window.document.getElementById("revenue-chart");
 if (canvasEl) {
   const fusion = await processVisualRegion("revenue-chart", canvasEl, page1Extraction.pageState);
-  page1CombinedState = fusion.updatedState;
+  page1CombinedState = fusion.pageState;
 }
+page1CombinedState = annotatePageStateSensitivity(page1CombinedState);
+const visualRedactedBoxes = page1CombinedState.elements
+  .filter((element) => element.sensitive)
+  .map((element) => element.bbox);
+const visualScreenshot = createCanvas(1, 1).toDataURL("image/png");
+const visualRedactionManifest = {
+  sourceSensitiveBoxCount: visualRedactedBoxes.length,
+  intersectingBoxCount: visualRedactedBoxes.length,
+  redactedBoxCount: visualRedactedBoxes.length,
+  redactedBoxes: visualRedactedBoxes,
+};
 
 // Mock remote VLM fetch
 let mockVlmCalled = false;
@@ -281,6 +294,8 @@ const hybridGoal = "Open Rahul's invoice then click the bar representing Q4";
 const hybridResult = await runMultiTurnAgent(hybridGoal, page1CombinedState, {
   doc: domPage1.window.document,
   fetchFn: mockFetch,
+  sanitizedScreenshotBase64: visualScreenshot,
+  sanitizedScreenshotManifest: visualRedactionManifest,
   budgetLimits: { maxCumulativeBytes: 50000, maxSteps: 5, maxRemoteCalls: 3 },
 });
 

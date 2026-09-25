@@ -2,7 +2,7 @@
 // Decomposes compound procedural goals, coordinates step-by-step perception and execution,
 // enforces the session privacy budget, and halts upon security risk.
 
-import { Action, PageState } from "../common/types";
+import { Action, PageState, VisualRedactionManifest } from "../common/types";
 import { decomposeGoal, DecomposedGoal } from "./goal-decomposer";
 import { SessionPrivacyBudget, BudgetLimits } from "./privacy-budget";
 import { resolveTaskAction, AgentResolutionResult } from "./target-resolver";
@@ -50,6 +50,9 @@ export interface AgentLoopOptions {
   doc?: Document;
   delayBetweenStepsMs?: number;
   fetchFn?: typeof fetch;
+  sanitizedScreenshotBase64?: string;
+  sanitizedScreenshotManifest?: VisualRedactionManifest;
+  resolveLiveElement?: (targetId: string) => Element | null;
 }
 
 /**
@@ -117,6 +120,9 @@ export async function runMultiTurnAgent(
     // 3. Resolve action for current subtask
     const resolution: AgentResolutionResult = await resolveTaskAction(subtask, currentState, {
       fetchFn: options.fetchFn,
+      sanitizedScreenshotBase64: options.sanitizedScreenshotBase64,
+      sanitizedScreenshotManifest: options.sanitizedScreenshotManifest,
+      resolveLiveElement: options.resolveLiveElement,
     });
 
     // Enforce budget on remote calls

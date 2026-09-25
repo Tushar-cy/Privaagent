@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { JSDOM } from "../extension/node_modules/jsdom/lib/api.js";
+import { createCanvas } from "../extension/node_modules/@napi-rs/canvas/index.js";
 
 import { extractPageState } from "../extension/src/semantic/dom-extractor.ts";
 import { processVisualRegion } from "../extension/src/perception/index.ts";
@@ -12,10 +13,12 @@ import {
   resolveTaskAction,
 } from "../extension/src/agent/index.ts";
 import { planDisclosure } from "../extension/src/disclosure/disclosure-planner.ts";
+import { annotatePageStateSensitivity } from "../extension/src/privacy/sensitivity.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const htmlPath = path.resolve(__dirname, "../benchmark/pages/test-page-1.html");
 const htmlContent = fs.readFileSync(htmlPath, "utf-8");
+const sanitizedScreenshotBase64 = createCanvas(1, 1).toDataURL("image/png");
 
 console.log("==================================================");
 console.log("   PRIVAAGENT AGENT & REASONING PIPELINE TESTS   ");
@@ -105,6 +108,14 @@ if (canvasEl) {
   const fusion = await processVisualRegion("revenue-chart", canvasEl, pageState);
   pageState = fusion.pageState;
 }
+pageState = annotatePageStateSensitivity(pageState);
+const redactedBoxes = pageState.elements.filter((element) => element.sensitive).map((element) => element.bbox);
+const sanitizedScreenshotManifest = {
+  sourceSensitiveBoxCount: redactedBoxes.length,
+  intersectingBoxCount: redactedBoxes.length,
+  redactedBoxCount: redactedBoxes.length,
+  redactedBoxes,
+};
 console.log(`✓ PageState extracted: ${pageState.elements.length} elements (DOM + Visual)`);
 
 // ----------------------------------------------------
@@ -159,6 +170,8 @@ const mockFetch = async (url, options) => {
 };
 
 const visualResult = await resolveTaskAction("Click the bar representing Q4", pageState, {
+  sanitizedScreenshotBase64,
+  sanitizedScreenshotManifest,
   fetchFn: mockFetch,
 });
 
@@ -170,6 +183,9 @@ console.log(`  - Intercepted Disclosed Elements: ${interceptedOutboundPayload?.e
 
 if (visualResult.isLocal) {
   throw new Error("Expected visual task to escalate to remote fallback!");
+}
+if (!interceptedOutboundPayload?.redaction_manifest) {
+  throw new Error("Expected visual fallback payload to include its redaction manifest!");
 }
 const visualCandidate = pageState.elements.find((e) => e.target_id === visualResult.action.target_id);
 if (!visualCandidate) {
@@ -200,13 +216,15 @@ for (const secret of rawSensitiveStrings) {
 console.log("\n[TEST 6] Testing L3 Full-Page Sanitized Disclosure Escalation...");
 const l3Result = await resolveTaskAction("Analyze entire visual page layout", pageState, {
   forceEscalationLevel: "L3",
-  sanitizedScreenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  sanitizedScreenshotBase64,
+  sanitizedScreenshotManifest,
   fetchFn: mockFetch,
 });
 
 console.log(`  - Disclosure Level: ${l3Result.disclosure.level}`);
 console.log(`  - Crop Box: ${l3Result.disclosure.crop_box}`);
 console.log(`  - Has Screenshot Data: ${Boolean(l3Result.disclosure.screenshot_data)}`);
+console.log(`  - Privacy Gate: ${l3Result.privacyVerificationPassed ? "passed" : l3Result.blockReason}`);
 
 if (l3Result.disclosure.level !== "L3") {
   throw new Error(`Expected disclosure level L3, got ${l3Result.disclosure.level}`);
@@ -217,9 +235,11 @@ if (l3Result.disclosure.crop_box !== undefined) {
 if (!l3Result.disclosure.screenshot_data) {
   throw new Error("Expected L3 disclosure to include sanitized full screenshot data!");
 }
+if (l3Result.isLocal || !interceptedOutboundPayload?.redaction_manifest) {
+  throw new Error("Expected valid L3 visual disclosure to pass the local contract and reach the backend!");
+}
 console.log("✓ L3 escalation verified: full sanitized viewport screenshot without localized crop box.");
 
 console.log("\n--------------------------------------------------");
 console.log("[ALL TESTS PASSED] Prompt 4 Agent & Backend Pipeline successfully verified!");
 process.exit(0);
-
