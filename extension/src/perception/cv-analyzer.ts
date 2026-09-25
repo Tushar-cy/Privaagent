@@ -9,7 +9,7 @@ export interface VisualComponent {
   id: string;
   role: "chart_bar" | "chart_axis" | "button" | "card" | "visual_element";
   bbox: BoundingBox; // [x, y, width, height] in absolute viewport space
-  confidence: number;
+  score: number;
   label: string;
 }
 
@@ -135,7 +135,7 @@ export function analyzeCanvasPixels(
             id: `visual_comp_${compIdx}`,
             role: "chart_bar",
             bbox: [absX, absY, Math.round(segW), Math.round(segH)],
-            confidence: 0.92,
+            score: 0.92,
             label: `Visual Column/Bar ${compIdx} [${Math.round(segW)}x${Math.round(segH)}]`,
           });
         }
@@ -167,7 +167,7 @@ export function analyzeCanvasPixels(
           id: `visual_comp_${compIdx}`,
           role: "chart_bar",
           bbox: [Math.round(offsetX + segStartX), Math.round(offsetY + minY), Math.round(segW), Math.round(segH)],
-          confidence: 0.90,
+          score: 0.90,
           label: `Visual Column/Bar ${compIdx} [${Math.round(segW)}x${Math.round(segH)}]`,
         });
       }

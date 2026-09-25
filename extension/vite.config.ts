@@ -67,7 +67,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: resolve(__dirname, "popup/index.html"),
-        compliance: resolve(__dirname, "report/compliance-dashboard.html"),
+        audit: resolve(__dirname, "report/audit-dashboard.html"),
         background: resolve(__dirname, "src/background/index.ts"),
       },
       output: {

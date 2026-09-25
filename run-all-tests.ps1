@@ -16,9 +16,9 @@ $suites = @(
     @{ Name = "6. Viewport HUD and Zero-Mutation Overlays"; Cmd = "npx.cmd tsx ..\tests\test_ui_and_overlays.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "7. Multi-Turn Autonomous Agent and Budget"; Cmd = "npx.cmd tsx ..\tests\test_multiturn_agent.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "8. Enterprise DPDP Act 2023 Audit Vault"; Cmd = "npx.cmd tsx ..\tests\test_compliance_audit.mjs"; Dir = "$ROOT\extension" },
-    @{ Name = "9. Phase 11 Differential Privacy and Hash Chaining"; Cmd = "npx.cmd tsx ..\tests\test_phase11_enterprise_suite.mjs"; Dir = "$ROOT\extension" },
+    @{ Name = "9. Synthetic Replacer and Audit Vault"; Cmd = "npx.cmd tsx ..\tests\test_synthetic_replacer_and_audit_vault.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "10. Live HTTP Trust Boundary and Defense-in-Depth"; Cmd = "node ..\tests\test_live_http_end_to_end.mjs"; Dir = "$ROOT\extension" },
-    @{ Name = "11. Official SIH26171 5-Metric Benchmark"; Cmd = "npx.cmd tsx ..\benchmark\scripts\run-benchmark.mjs"; Dir = "$ROOT\extension" },
+    @{ Name = "11. Internal 5-Metric Benchmark Harness"; Cmd = "npx.cmd tsx ..\benchmark\scripts\run-benchmark.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "12. FastAPI Backend Pytest Suite"; Cmd = ".\venv\Scripts\pytest.exe -p no:cacheprovider ..\tests\"; Dir = "$ROOT\server" }
 )
 
@@ -39,8 +39,21 @@ foreach ($s in $suites) {
 
 Set-Location $ROOT
 
+# Read the actual composite score from the benchmark report produced in suite 11
+$reportPath = Join-Path $ROOT "benchmark\results\report.json"
+$scoreDisplay = "(not available - suite 11 did not run or failed)"
+if (Test-Path $reportPath) {
+    try {
+        $report = Get-Content $reportPath -Raw | ConvertFrom-Json
+        $score  = [math]::Round($report.overallScore, 2)
+        $scoreDisplay = "$score / 100.00"
+    } catch {
+        $scoreDisplay = "(could not parse report.json)"
+    }
+}
+
 Write-Host ""
 Write-Host "==================================================================" -ForegroundColor Cyan
-Write-Host "   TEST SUITE SUMMARY: $passed / $total SUITES PASSED (100%)" -ForegroundColor Green
-Write-Host "   OFFICIAL SIH26171 COMPOSITE SCORE: 99.81 / 100.00" -ForegroundColor Green
+Write-Host "   TEST SUITE SUMMARY: $passed / $total SUITES PASSED" -ForegroundColor Green
+Write-Host "   Internal composite score (from benchmark/results/report.json): $scoreDisplay" -ForegroundColor Green
 Write-Host "==================================================================" -ForegroundColor Cyan

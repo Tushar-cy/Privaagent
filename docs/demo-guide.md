@@ -98,12 +98,11 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
    - **Cryptographic Chaining**: Every action, disclosure level, masked entity, and payload is hashed with SHA-64 and chained to the previous transaction's hash (`0000000000000000` &rarr; `hash_1` &rarr; `hash_2`).
    - **Tamper Detection**: An immutable ledger integrity validator confirms 0 blocks have been altered or back-dated.
    - **Differential Privacy**: Supports dual-mode protection—standard visual masking (`🔒 [REDACTED_AADHAAR]`) and format-preserving synthetic surrogates (Verhoeff-valid Aadhaar, CBDT-valid PAN, Luhn-valid credit card).
-   - **Exportable Certificate**: Single-click export of a signed audit certificate and interactive printable HTML portal (`extension/report/compliance-dashboard.html`).
+   - **Exportable audit summary**: Single-click export of a `PrivacyAuditSummary` JSON and interactive printable HTML portal (`extension/report/compliance-dashboard.html`).
 3. **What Judges See**:
-   - 100% compliance rating under DPDP Act 2023 Section 8/9.
-   - Zero-network local execution ratio: **> 75%** (85.7% measured).
+   - Zero-network local execution ratio: **> 75%** (measured via `onDeviceRatio` field in the audit summary).
    - Cumulative bandwidth saved: **> 99.8%** vs. screenshot capture baselines.
-   - Certified Root Hash ensuring complete mathematical proof of privacy preservation.
+   - Cryptographic hash chain verifies ledger integrity — every action block chains to the previous via SHA-256.
 
 ---
 

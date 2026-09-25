@@ -106,7 +106,7 @@ for (const q of qBars) {
   if (!bar) {
     throw new Error(`Bar for ${q} was not identified by Florence-2!`);
   }
-  console.log(`  ✓ Identified ${q} bar at bbox: [${bar.bbox.join(", ")}] (conf: ${bar.confidence})`);
+  console.log(`  ✓ Identified ${q} bar at bbox: [${bar.bbox.join(", ")}] (score: ${bar.score})`);
 }
 
 // ----------------------------------------------------
@@ -143,7 +143,7 @@ if (faceRes.faces.length !== 1) {
 }
 
 const face = faceRes.faces[0];
-console.log(`  ✓ Face detected at bbox: [${face.bbox.join(", ")}] (conf: ${face.confidence})`);
+console.log(`  ✓ Face detected at bbox: [${face.bbox.join(", ")}] (score: ${face.score})`);
 console.log(`  ✓ Facial landmarks mapped: ${face.landmarks?.length} points`);
 
 // ----------------------------------------------------

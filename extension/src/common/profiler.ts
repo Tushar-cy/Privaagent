@@ -1,6 +1,6 @@
 // Real Performance Profiler & Resource Monitor
 // Tracks high-resolution wall-clock latency, client heap memory utilization,
-// DOM node complexity, bandwidth reduction ratios, and SIH SLA compliance.
+// DOM node complexity, bandwidth reduction ratios, and SLA verification.
 
 export type PipelineStage =
   | "dom_extraction"
@@ -214,7 +214,7 @@ export class PerformanceProfiler {
   }
 
   /**
-   * Verifies all stages against the official SIH26171 SLA constraints.
+   * Verifies all stages against the benchmark SLA constraints.
    */
   public checkSLA(doc?: Document): SLACheck {
     const violations: string[] = [];

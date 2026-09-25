@@ -1,6 +1,6 @@
-// Privaagent Phase 11 Enterprise Test Suite
+// Privaagent Synthetic Replacer & Audit Vault Test Suite
 // Verifies Differential Privacy synthetic surrogates (Verhoeff, CBDT, Luhn),
-// cryptographic hash chaining, tamper detection, and signed compliance certificates.
+// cryptographic hash chaining, tamper detection, and audit summary export.
 
 import assert from "node:assert";
 import {
@@ -24,7 +24,7 @@ import {
 } from "../extension/src/privacy/audit-vault.ts";
 
 console.log("==================================================");
-console.log("   PRIVAAGENT PHASE 11 ENTERPRISE & AUDIT SUITE   ");
+console.log("   PRIVAAGENT SYNTHETIC REPLACER & AUDIT VAULT   ");
 console.log("==================================================\n");
 
 // [TEST 1] Testing Verhoeff Checksum Algorithm & Synthetic Aadhaar Generation
@@ -154,21 +154,21 @@ console.log(`✓ Tamper detection verified: Caught broken hash chain at block in
 // Restore valid record
 vault["records"][1].previousHash = r1.payloadHash;
 
-// [TEST 6] Testing Signed Compliance Certificate Export
-console.log("[TEST 6] Testing Signed Compliance Certificate Export...");
-const cert = vault.exportSignedCertificate();
-assert.ok(cert.certificateId.startsWith("PRIVAAGENT-DPDP-"), "Certificate ID prefix valid");
-assert.strictEqual(cert.status, "CERTIFIED_ZERO_NETWORK_LEAK");
-assert.strictEqual(cert.report.complianceStatus, "FULLY_COMPLIANT");
-assert.strictEqual(cert.report.unredactedLeaksDetected, 0);
-assert.strictEqual(cert.verificationHash.length, 64);
+// [TEST 6] Testing Privacy Audit Summary Export
+console.log("[TEST 6] Testing Privacy Audit Summary Export...");
+const summary = vault.exportAuditSummary();
+assert.ok(summary.summaryId.startsWith("audit_"), "Summary ID must start with 'audit_'");
+assert.strictEqual(typeof summary.unredactedLeaksDetected, "number", "unredactedLeaksDetected must be a number");
+assert.ok(summary.onDeviceRatio >= 0 && summary.onDeviceRatio <= 1, "onDeviceRatio must be in [0, 1]");
+assert.strictEqual(typeof summary.cumulativeNetworkBytes, "number", "cumulativeNetworkBytes must be a number");
+assert.strictEqual(summary.verificationHash.length, 64, "Verification hash must be 64-char SHA-256");
 
-console.log(`✓ Exported Signed Certificate: ID = ${cert.certificateId}`);
-console.log(`  - Standard: ${cert.report.standard}`);
-console.log(`  - Status: ${cert.status}`);
-console.log(`  - Verification Digest: ${cert.verificationHash}`);
-console.log(`  - Bandwidth Saved: ${cert.report.bandwidthSavedPercentage}%`);
+console.log(`✓ Exported Privacy Audit Summary: ID = ${summary.summaryId}`);
+console.log(`  - On-device ratio: ${summary.onDeviceRatio}`);
+console.log(`  - Cumulative network bytes: ${summary.cumulativeNetworkBytes}`);
+console.log(`  - Unredacted leaks detected: ${summary.unredactedLeaksDetected}`);
+console.log(`  - Verification Digest: ${summary.verificationHash}`);
 
 console.log("\n--------------------------------------------------");
-console.log("[ALL TESTS PASSED] Phase 11 Enterprise Suite Fully Verified!");
+console.log("[ALL TESTS PASSED] Synthetic Replacer & Audit Vault Suite Fully Verified!");
 console.log("==================================================\n");

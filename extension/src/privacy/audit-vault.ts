@@ -1,5 +1,5 @@
-// Privacy Audit Vault & DPDP Act 2023 / GDPR Compliance Ledger
-// Maintains a verifiable, tamper-evident cryptographic hash-chained record of all on-device masking,
+// Privacy Audit Vault
+// Maintains a tamper-evident cryptographic hash-chained record of all on-device masking,
 // outbound disclosures, risk policy verdicts, and payload integrity.
 
 export interface AuditRecord {
@@ -19,30 +19,28 @@ export interface AuditRecord {
   isLocal: boolean;
 }
 
-export interface DPDPComplianceReport {
+export interface AuditReport {
   generatedAt: string;
-  standard: "DPDP_ACT_2023_INDIA" | "GDPR_ARTICLE_25_DATA_MINIMIZATION";
   totalTransactions: number;
   totalSensitiveEntitiesProtected: number;
-  onDeviceZeroNetworkRatio: number; // Percentage of tasks resolved with 0 network bytes
+  onDeviceRatio: number; // Fraction (0–1) of tasks resolved with 0 network bytes
   cumulativeNetworkBytes: number;
   bandwidthSavedPercentage: number;
-  unredactedLeaksDetected: number; // Must strictly be 0
-  complianceStatus: "FULLY_COMPLIANT" | "NON_COMPLIANT";
+  unredactedLeaksDetected: number;
   cryptographicRootHash: string;
   ledgerIntegrity: "VERIFIED_UNBROKEN" | "COMPROMISED";
   auditRecords: AuditRecord[];
 }
 
-export interface SignedCertificate {
-  certificateId: string;
-  issuedAt: string;
-  jurisdiction: "Republic of India (DPDP Act 2023) & EU (GDPR Art. 25)";
-  status: "CERTIFIED_ZERO_NETWORK_LEAK";
+export interface PrivacyAuditSummary {
+  summaryId: string;
+  generatedAt: string;
   verificationHash: string;
   totalAuditedSteps: number;
-  dataMinimizationRatio: string;
-  report: DPDPComplianceReport;
+  unredactedLeaksDetected: number;
+  onDeviceRatio: number;
+  cumulativeNetworkBytes: number;
+  report: AuditReport;
 }
 
 export const GENESIS_PREVIOUS_HASH = "0".repeat(64);
@@ -281,18 +279,22 @@ export class PrivacyAuditVault {
   }
 
   /**
-   * Generates a formal DPDP Act 2023 compliance verification report.
+   * Generates a factual audit report summarising the session ledger.
    */
-  public generateComplianceReport(): DPDPComplianceReport {
+  public generatePrivacyAuditSummary(): AuditReport {
     const totalTransactions = this.records.length;
     let totalSensitiveEntitiesProtected = 0;
     let localZeroNetworkCount = 0;
     let cumulativeNetworkBytes = 0;
+    let unredactedLeaksDetected = 0;
 
     for (const r of this.records) {
       totalSensitiveEntitiesProtected += r.entitiesMasked.length;
       if (r.outboundBytes === 0) {
         localZeroNetworkCount++;
+      } else if (r.entitiesMasked.length === 0 && r.outboundBytes > 0) {
+        // Count outbound records that carried no masked entities as potential leaks
+        unredactedLeaksDetected++;
       }
       cumulativeNetworkBytes += r.outboundBytes;
     }
@@ -303,21 +305,19 @@ export class PrivacyAuditVault {
         ? 100
         : Math.max(0, 100 - (cumulativeNetworkBytes / baselineScreenshotBytes) * 100);
 
-    const onDeviceZeroNetworkRatio =
-      totalTransactions === 0 ? 100 : (localZeroNetworkCount / totalTransactions) * 100;
+    const onDeviceRatio =
+      totalTransactions === 0 ? 1.0 : localZeroNetworkCount / totalTransactions;
 
     const integrity = this.verifyLedgerIntegrity();
 
     return {
       generatedAt: new Date().toISOString(),
-      standard: "DPDP_ACT_2023_INDIA",
       totalTransactions,
       totalSensitiveEntitiesProtected,
-      onDeviceZeroNetworkRatio: Number(onDeviceZeroNetworkRatio.toFixed(1)),
+      onDeviceRatio: Number(onDeviceRatio.toFixed(4)),
       cumulativeNetworkBytes,
       bandwidthSavedPercentage: Number(bandwidthSavedPercentage.toFixed(2)),
-      unredactedLeaksDetected: 0,
-      complianceStatus: "FULLY_COMPLIANT",
+      unredactedLeaksDetected,
       cryptographicRootHash: integrity.rootHash,
       ledgerIntegrity: integrity.valid ? "VERIFIED_UNBROKEN" : "COMPROMISED",
       auditRecords: [...this.records],
@@ -325,22 +325,22 @@ export class PrivacyAuditVault {
   }
 
   /**
-   * Exports an official digitally signed compliance certificate for presentation and regulatory review.
+   * Exports a privacy audit summary for the current session ledger.
    */
-  public exportSignedCertificate(): SignedCertificate {
-    const report = this.generateComplianceReport();
+  public exportAuditSummary(): PrivacyAuditSummary {
+    const report = this.generatePrivacyAuditSummary();
     const verificationHash = computePayloadHash(
-      `${report.standard}|${report.generatedAt}|${report.cryptographicRootHash}|${report.totalTransactions}`
+      `${report.generatedAt}|${report.cryptographicRootHash}|${report.totalTransactions}`
     );
 
     return {
-      certificateId: `PRIVAAGENT-DPDP-${Date.now().toString(36).toUpperCase()}-${verificationHash.slice(0, 6).toUpperCase()}`,
-      issuedAt: report.generatedAt,
-      jurisdiction: "Republic of India (DPDP Act 2023) & EU (GDPR Art. 25)",
-      status: "CERTIFIED_ZERO_NETWORK_LEAK",
+      summaryId: `audit_${Date.now().toString(36)}_${verificationHash.slice(0, 6)}`,
+      generatedAt: report.generatedAt,
       verificationHash,
       totalAuditedSteps: report.totalTransactions,
-      dataMinimizationRatio: `${report.bandwidthSavedPercentage}% Bandwidth Saved`,
+      unredactedLeaksDetected: report.unredactedLeaksDetected,
+      onDeviceRatio: report.onDeviceRatio,
+      cumulativeNetworkBytes: report.cumulativeNetworkBytes,
       report,
     };
   }

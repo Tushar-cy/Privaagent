@@ -8,7 +8,7 @@ import { PixelCrop } from "./browser-state";
 
 export interface FaceDetection {
   bbox: BoundingBox;
-  confidence: number;
+  score: number;
   landmarks?: Array<[number, number]>;
 }
 
@@ -180,7 +180,7 @@ function detectFaceInVectorGraphics(
 
     return {
       bbox: [faceX, faceY, faceW, faceH],
-      confidence: Math.min(0.99, 0.75 + featureScore),
+      score: Math.min(0.99, 0.75 + featureScore),
       landmarks,
     };
   } catch (_) {
@@ -246,7 +246,7 @@ export async function detectFacesInCrop(
 
           faces.push({
             bbox: [absX, absY, faceW, faceH],
-            confidence: Math.min(0.99, 0.7 + (skinPixelCount / sampledPixels) * 0.5),
+            score: Math.min(0.99, 0.7 + (skinPixelCount / sampledPixels) * 0.5),
             landmarks: [
               [Math.round(absX + faceW * 0.35), Math.round(absY + faceH * 0.38)],
               [Math.round(absX + faceW * 0.65), Math.round(absY + faceH * 0.38)],
@@ -271,32 +271,7 @@ export async function detectFacesInCrop(
     }
   }
 
-  // -------------------------------------------------------------------------
-  // 3. Fallback: Morphological Facial Bounds from Crop Aspect Geometry
-  // -------------------------------------------------------------------------
-  if (faces.length === 0 && cropW >= 24 && cropH >= 24 && cropW <= 300 && cropH <= 300) {
-    const aspect = cropH / cropW;
-    // Square or portrait avatar proportions
-    if (aspect >= 0.8 && aspect <= 1.3) {
-      const padX = Math.round(cropW * 0.1);
-      const padY = Math.round(cropH * 0.1);
-      const fw = cropW - padX * 2;
-      const fh = cropH - padY * 2;
-      const fx = cropX + padX;
-      const fy = cropY + padY;
-
-      faces.push({
-        bbox: [fx, fy, fw, fh],
-        confidence: 0.88,
-        landmarks: [
-          [Math.round(fx + fw * 0.35), Math.round(fy + fh * 0.38)],
-          [Math.round(fx + fw * 0.65), Math.round(fy + fh * 0.38)],
-          [Math.round(fx + fw * 0.50), Math.round(fy + fh * 0.55)],
-          [Math.round(fx + fw * 0.50), Math.round(fy + fh * 0.72)],
-        ],
-      });
-    }
-  }
+  // Fallback removed to prevent fabricated false positives on blank squares
 
   const inferenceTimeMs = performance.now() - start;
 

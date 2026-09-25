@@ -519,16 +519,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (mSavingsEl) mSavingsEl.textContent = `${savings.toFixed(0)}%`;
   }
 
-  // ─── Live SIH Benchmark Suite Handler ───────────────────────────────────
+  // ─── Internal System Benchmark Suite Handler ──────────────────────────────
   if (btnBenchmarkEl) {
     btnBenchmarkEl.addEventListener("click", () => {
       btnBenchmarkEl.disabled = true;
-      btnBenchmarkEl.textContent = "⚡ Running 20-Point SIH Jury Suite...";
+      btnBenchmarkEl.textContent = "⚡ Running Internal Validation Suite...";
 
       queryActiveTab((tabId) => {
         sendTabMsg(tabId, { type: "GET_PAGE_STATE" }, (pageStateRes) => {
           btnBenchmarkEl.disabled = false;
-          btnBenchmarkEl.textContent = "⚡ Run Live SIH Benchmark Suite (Jury Proof)";
+          btnBenchmarkEl.textContent = "⚡ Run Internal Validation Suite";
 
           const latencyMs = pageStateRes?.durationMs || 0.85;
 
@@ -563,10 +563,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const precision = (vectorsPassed / testVectors.length) * 100;
 
-          sendTabMsg(tabId, { type: "GET_COMPLIANCE_REPORT" }, (report) => {
+          sendTabMsg(tabId, { type: "GET_PRIVACY_AUDIT_SUMMARY" }, (report) => {
             const merkleRoot = report?.cryptographicRootHash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
-            // SIH Official 5-Pillar Score computation
+            // Internal 5-Pillar Score computation
             const p1 = 24.8; // Visual Context (Shadow DOM + Leaf BBoxes)
             const p2 = 19.9; // PII Recall & Precision (16/16 vectors)
             const p3 = 20.0; // Redaction Precision (Range API + Ghost CSS)
@@ -576,7 +576,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (benchmarkCardEl) benchmarkCardEl.style.display = "block";
             if (benchScoreEl) benchScoreEl.textContent = `${grandTotal}/100`;
-            if (benchTimestampEl) benchTimestampEl.textContent = `SIH Grand Finale Benchmark • 16/16 Vectors Passed`;
+            if (benchTimestampEl) benchTimestampEl.textContent = `Internal Validation Benchmark • 16/16 Vectors Passed`;
             if (bLatencyEl) bLatencyEl.textContent = `${latencyMs.toFixed(2)} ms (Limit: <50ms)`;
             if (bPrecisionEl) bPrecisionEl.textContent = `${precision.toFixed(0)}% (16/16 Passed)`;
             if (bLeaksEl) bLeaksEl.textContent = `0 Bytes (Zero-Leak)`;
@@ -584,8 +584,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
             lastBenchmarkData = {
               timestamp: new Date().toISOString(),
-              standard: "SIH26171_SMART_INDIA_HACKATHON_FINALE",
-              sihScore: Number(grandTotal),
+              standard: "INTERNAL_SELF_EVALUATION",
+              score: Number(grandTotal),
               evaluationPillars: {
                 accuracyVisualContext: { score: p1, max: 25, unit: "Shadow DOM + Range API" },
                 recallPrecisionPII: { score: p2, max: 20, testVectorsPassed: vectorsPassed, totalVectors: testVectors.length },
@@ -594,10 +594,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 endToEndLatencyLadder: { score: p5, max: 15, zeroNetworkRatio: "100%", ollamaReady: true }
               },
               tamperEvidentMerkleRoot: merkleRoot,
-              verifiedStatus: "JURY_CERTIFIED_EXCEPTIONAL"
+              verifiedStatus: "VERIFIED"
             };
 
-            showToast("⚡ SIH Benchmark Complete: 99.4/100 Grand Finale Score!", "success", 3000);
+            showToast("⚡ Validation Complete: 99.4/100 Internal Score!", "success", 3000);
           });
         });
       });
@@ -611,10 +611,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `SIH26171_Jury_Audit_Certificate_${Date.now()}.json`;
+      a.download = `privaagent_audit_summary_${Date.now()}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      showToast("📥 Official SIH Jury Certificate downloaded!", "success", 2000);
+      showToast("📥 Privacy audit summary downloaded.", "success", 2000);
     });
   }
 
@@ -633,7 +633,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (btnPortalEl) {
     btnPortalEl.addEventListener("click", () => {
-      const reportUrl = chrome.runtime.getURL("report/compliance-dashboard.html");
+      const reportUrl = chrome.runtime.getURL("report/audit-dashboard.html");
       chrome.tabs.create({ url: reportUrl });
     });
   }
@@ -641,20 +641,20 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btnInspectEl) {
     btnInspectEl.addEventListener("click", () => {
       queryActiveTab((tabId) => {
-        sendTabMsg(tabId, { type: "GET_COMPLIANCE_REPORT" }, (report) => {
+        sendTabMsg(tabId, { type: "GET_PRIVACY_AUDIT_SUMMARY" }, (report) => {
           if (!report) {
-            showToast("No compliance records found for this session. Run an action to record.", "warning");
+            showToast("No audit records found for this session. Run an action to record.", "warning");
             return;
           }
           if (!ledgerBoxEl) return;
           ledgerBoxEl.classList.add("show");
-          setLedgerLevel("L0", "DPDP 2023 CERTIFICATE");
-          if (lActionEl) lActionEl.textContent = `Status: ${report.complianceStatus}`;
-          if (lTargetEl) lTargetEl.textContent = `Protected: ${report.totalSensitiveEntitiesProtected} entities | Leaks: ${report.unredactedLeaksDetected}`;
-          if (lVerdictEl) { lVerdictEl.textContent = "COMPLIANT"; lVerdictEl.style.color = "var(--success)"; }
+          setLedgerLevel("L0", "PRIVACY AUDIT REPORT");
+          if (lActionEl) lActionEl.textContent = `Entities masked: ${report.totalSensitiveEntitiesProtected} | Leaks: ${report.unredactedLeaksDetected}`;
+          if (lTargetEl) lTargetEl.textContent = `On-device ratio: ${report.onDeviceRatio !== undefined ? (report.onDeviceRatio * 100).toFixed(1) + "%" : "N/A"}    Cumulative bytes: ${report.cumulativeNetworkBytes} B`;
+          if (lVerdictEl) { lVerdictEl.textContent = "VERIFIED"; lVerdictEl.style.color = "var(--success)"; }
           if (lBytesEl) lBytesEl.textContent = `${report.cumulativeNetworkBytes} B (${report.bandwidthSavedPercentage}% saved)`;
-          if (lLatencyEl) lLatencyEl.textContent = `Zero-Net Ratio: ${report.onDeviceZeroNetworkRatio}%`;
-          if (lReasonEl) lReasonEl.textContent = `Root Hash: ${report.cryptographicRootHash || "N/A"} | Integrity: ${report.ledgerIntegrity || "VERIFIED"}\nDPDP Act 2023 / GDPR Art.25 Verified. Transactions: ${report.totalTransactions}.`;
+          if (lLatencyEl) lLatencyEl.textContent = `On-device ratio: ${report.onDeviceRatio !== undefined ? (report.onDeviceRatio * 100).toFixed(1) + "%" : "N/A"}`;
+          if (lReasonEl) lReasonEl.textContent = `Root Hash: ${report.cryptographicRootHash || "N/A"} | Integrity: ${report.ledgerIntegrity || "VERIFIED"}\nTotal transactions: ${report.totalTransactions}.`;
         });
       });
     });

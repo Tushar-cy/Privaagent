@@ -23,7 +23,7 @@ export interface ValidatorOptions {
 /**
  * Re-locates the target element on the current live DOM using multiple strategies.
  */
-function locateLiveElement(targetId: string, doc: Document = document): Element | null {
+export function locateLiveElement(targetId: string, doc: Document = document): Element | null {
   // Strategy 1: Direct ID lookup
   const byId = doc.getElementById(targetId);
   if (byId) return byId;

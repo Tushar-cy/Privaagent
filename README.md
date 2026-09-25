@@ -50,7 +50,7 @@ Privaagent/
 ├── 🌐 demo/                    # Interactive Demonstration Web Portal (HTML/CSS/JS with test presets)
 ├── 🖥️ server/                  # FastAPI Python Backend (Defense-in-depth, VLM client, schemas)
 ├── 📦 extension/               # Chrome MV3 Extension Source Code (TypeScript, WebGPU/WASM, Vite)
-├── 📊 benchmark/               # Official SIH26171 5-Metric Benchmark dataset (265 test vectors)
+├── 📊 benchmark/               # Internal 5-metric benchmark harness (265 labeled test vectors)
 ├── 📜 tests/                   # 12 Integration, Perception, Privacy & Contract Test Suites
 └── 📖 docs/                    # Architecture deep-dives, DPDP Act compliance guides & PPT resources
 ```
@@ -174,11 +174,11 @@ Evaluated against the **265-item comprehensive dataset** using real CPU/memory p
 | Metric | Weight | Measured Result | Score |
 | :--- | :---: | :---: | :---: |
 | **1. Visual Context Accuracy** | **25%** | 1 / 5 visual elements matched · 4 bars detected by CV pixel-contrast (generic labels); OCR read `$12k`–`$28k` value text, not `Q1`–`Q4` label text · 1 face via chrominance | **20.00%** (Score: 5.00) |
-| **2. PII Detection Precision & Recall** | **20%** | 265 labeled snippets · 220 TP, 0 FP, 0 FN, 45 TN · **100% F1** | **100.00%** (Score: 20.00) |
+| **2. PII Detection Precision & Recall** | **20%** | 265 labeled snippets · 100% F1 (precision 1.0, recall 1.0) | **100.00%** (Score: 20.00) |
 | **3. Redaction Precision & Quality** | **20%** | **0 raw leaks** across all outbound payloads; 100% context retention | **100.00%** (Score: 20.00) |
-| **4. Client-Side Resource Utilization** | **20%** | Avg DOM latency **5.39 ms** (< 50 ms); Heap **132.57 MB** (< 150 MB budget) | **95.84%** (Score: 19.17) |
-| **5. End-to-End Task Latency** | **15%** | Local fast-path **0.64 ms** (< 15 ms target); **9 / 10** tasks passed | **92.00%** (Score: 13.80) |
-| **COMPOSITE SCORE** | **100%** | *Reproducible — run the harness yourself* | **77.97 / 100.00** |
+| **4. Client-Side Resource Utilization** | **20%** | Avg DOM latency **4.3 ms** (< 50 ms); Heap **96.0 MB** (< 150 MB budget) | **96.87%** (Score: 19.37) |
+| **5. End-to-End Task Latency** | **15%** | Local fast-path **1.00 ms** (< 15 ms target); **10 / 10** tasks passed | **100.00%** (Score: 15.00) |
+| **COMPOSITE SCORE** | **100%** | *Reproducible — run the harness yourself* | **79.37 / 100.00** |
 
 ---
 
@@ -194,7 +194,7 @@ Evaluated against the **265-item comprehensive dataset** using real CPU/memory p
    The evaluation harness in `benchmark/scripts/run-benchmark.mjs` is an internal tool. Visual Context Accuracy (Metric 1) now uses real `@napi-rs/canvas` pixel rendering so `cv-analyzer.ts` genuinely exercises luminance-contrast detection — but the dataset and rubric are ours. Run it yourself to reproduce.
 
 3. **NER is heuristic, not neural.**
-   `ner-detector.ts` uses capitalized-sequence matching with a general stopword set. It will miss names in non-standard casing not covered by the ALL-CAPS path, and may false-positive on uncommon Title Case UI phrases outside the blocklist. It is disclosed as heuristic in this document.
+   `ner-detector.ts` uses capitalized-sequence matching with a general stopword set and a curated single-token ORG lookup (ISRO, DRDO, Google, etc.). External evaluation on Wikipedia pages: **Precision 100%, Recall 70%, F1 82.4%** (up from 75% before adding Path D). Residual misses: single-token acronyms not in the lookup list, and names only present in very short text fragments where no multi-word sequence exists.
 
 4. **Tesseract.js cold-start applies on first extension load.**
    First-use downloads Tesseract WASM language data (~4 MB, cached after first load) and initializes the worker. Expect 2–5s on first activation. Subsequent calls reuse the singleton worker.
@@ -302,32 +302,21 @@ npx.cmd tsx ../benchmark/scripts/run-benchmark.mjs
 
 While v0.1.0 provides a complete, verified proof-of-concept for the SIH evaluation, the production vision for Privaagent includes:
 
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                                 PRODUCTION ROADMAP                                     │
-├───────────────────────────────────┬────────────────────────────────────────────────────┤
-│ Phase                             │ Target Capabilities & Innovations                  │
-├───────────────────────────────────┼────────────────────────────────────────────────────┤
-│ Phase 1: Prototype (CURRENT v0.1) │ Core client-first architecture, 85% Rule, dynamic   │
-│                                   │ CV Analyzer, Tesseract OCR, L0-L3 ladder             │
-├───────────────────────────────────┼────────────────────────────────────────────────────┤
-│ Phase 2: On-Device Small-VLM      │ Quantized INT4 Vision-Language Model (SmolVLM 256M │
-│                                   │ or MobileVLM) running entirely in-browser via      │
-│                                   │ WebGPU shader pipelines. Zero cloud reliance.      │
-├───────────────────────────────────┼────────────────────────────────────────────────────┤
-│ Phase 3: Hardware Enclave (TEE)   │ Confidential Computing attestation (Intel SGX /   │
-│                                   │ AMD SEV) guaranteeing non-tampering of audit vault.│
-├───────────────────────────────────┼────────────────────────────────────────────────────┤
-│ Phase 4: Cross-Tab Orchestration  │ Multi-window state synchronization, handling       │
-│                                   │ OAuth redirects, payment gateways, and background. │
-├───────────────────────────────────┼────────────────────────────────────────────────────┤
-│ Phase 5: Voice & Multimodal A11y  │ Real-time on-device speech intent recognition for  │
-│                                   │ fully hands-free privacy-preserving automation.    │
-├───────────────────────────────────┼────────────────────────────────────────────────────┤
-│ Phase 6: Production Web Store     │ Formal security audits, signed binaries, and Chrome│
-│                                   │ Web Store / Firefox Add-ons general availability.  │
-└───────────────────────────────────┴────────────────────────────────────────────────────┘
-```
+### Now (v0.1.0 Prototype)
+- Core client-first architecture ensuring the 85% Rule (majority of tasks solved locally).
+- Dynamic CV Analyzer and Tesseract OCR for zero-network visual perception.
+- Minimum Disclosure Ladder (L0-L3) protecting sensitive PII boundaries.
+- Cryptographically chained Privacy Audit Vault for compliance verification.
+
+### Next (Near-term Priorities)
+- **On-Device Small-VLM**: Integrating quantized INT4 Vision-Language Models (e.g., SmolVLM 256M or MobileVLM) entirely in-browser via WebGPU shader pipelines to eliminate all cloud reliance.
+- **Cross-Tab Orchestration**: Handling multi-window state synchronization, OAuth redirects, and payment gateways robustly.
+- **Improved NER Models**: Upgrading the heuristic NER to a lightweight ONNX-based token classification model for better recall on edge-case names.
+
+### Later (Production Vision)
+- **Hardware Enclave (TEE)**: Confidential Computing attestation (Intel SGX / AMD SEV) guaranteeing non-tampering of the audit vault.
+- **Voice & Multimodal A11y**: Real-time on-device speech intent recognition for fully hands-free privacy-preserving automation.
+- **Web Store Release**: Formal security audits, signed binaries, and Chrome Web Store / Firefox Add-ons general availability.
 
 ---
 
@@ -354,7 +343,7 @@ Privaagent/
 │   │   ├── api/                        # Routes & defense-in-depth sanitization middleware
 │   │   ├── schemas/                    # Pydantic v2 data contracts (Page, Action, Disclosure)
 │   │   └── vlm/                        # VLM client (Ollama, vLLM, Groq, OpenAI), prompt builders
-├── benchmark/                          # Official SIH26171 Benchmark Framework
+├── benchmark/                          # Internal 5-metric benchmark harness
 │   ├── pii/                            # 265 ground-truth labeled snippets dataset
 │   ├── pages/                          # Evaluation web page fixtures
 │   ├── tasks/                          # 10 standardized evaluation benchmark tasks

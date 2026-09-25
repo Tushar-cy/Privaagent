@@ -14,4 +14,4 @@ The SIH26171 evaluation criteria allocate 100% of score across five specific dim
 
 ## 2. Benchmark Artifacts
 - `benchmark/pages/test-page-1.html`: Base customer dashboard fixture with PII, invoice, API key, and Canvas chart.
-- `benchmark/scripts/run_benchmarks.py`: Automated test runner aggregating per-stage timing and precision numbers into `benchmark/results/report.json`.
+- `benchmark/scripts/run-benchmark.mjs`: Automated test runner aggregating per-stage timing and precision numbers into `benchmark/results/report.json`. Run from the `extension/` directory: `npx tsx ../benchmark/scripts/run-benchmark.mjs`.

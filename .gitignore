@@ -28,7 +28,7 @@ Thumbs.db
 *.swp
 *.swo
 
-# Antigravity & AI logs / scratch
+# Local scratch files
 scratch/
 *.log
 

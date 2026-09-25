@@ -12,7 +12,7 @@ Privaagent is an adaptive, minimum-disclosure browser agent built upon the funda
 |  [ User Task ]                                                          |
 |        │                                                                |
 |        ▼                                                                |
-|  [ Local Perception ] ──► [ DOM + A11y + Florence-2 / OCR / CV ]        |
+|  [ Local Perception ] ──► [ DOM + A11y + OCR (Tesseract) / Classical CV ]  |
 |        │                                                                |
 |        ▼                                                                |
 |  [ Semantic Page State ]                                                |
@@ -52,12 +52,17 @@ Privaagent is an adaptive, minimum-disclosure browser agent built upon the funda
 +-------------------------------------------------------------------------+
 ```
 
-## 2. Component Ownership & Team Responsibilities
+## 2. Module Layout
 
-- **Prompt 0 (Bootstrap & Contracts)**: Shared JSON schemas, Zod/Pydantic mirrors, skeleton services, benchmark fixture.
-- **Person 1 (DOM & A11y Perception)**: `extension/src/content/`, `semantic/`, `execution/`
-- **Person 2 (Privacy Engine & Disclosure)**: `extension/src/privacy/`, `disclosure/`
-- **Person 3 (Local Vision & Perception)**: `extension/src/perception/` (Florence-2, Tesseract.js, BlazeFace)
-- **Person 4 (Backend & VLM Integration)**: `server/`, `extension/src/agent/`
-- **Person 5 (Validator & Evaluation Harness)**: `extension/src/validator/`, `benchmark/`
-- **Polish / UI**: `extension/popup/` (React Privacy Ledger), on-page visual redaction overlay.
+| Top-level folder | Responsibility |
+| :--- | :--- |
+| `extension/src/content/` | DOM walking, `MutationObserver` wiring, content-script entry point |
+| `extension/src/semantic/` | DOM extraction, page-state serialisation, A11y-tree traversal |
+| `extension/src/privacy/` | PII detection (regex + NER), redaction, synthetic surrogate generation, audit vault |
+| `extension/src/perception/` | Visual perception pipeline — classical CV (luminance/contrast) + Tesseract.js OCR are the active paths; the Florence-2 integration is a documented no-op in this environment (see README Known Limitations) |
+| `extension/src/agent/` | Task parsing, local solver, two-layer resolver (local → sanitised VLM fallback), disclosure planner |
+| `extension/src/disclosure/` | Minimum-disclosure ladder (L0–L3), placeholder tokenisation, outgoing payload auditing |
+| `extension/src/validator/` | Pre-execution action validation, prompt-injection scanner, risk policy engine |
+| `server/` | FastAPI backend: schema validation, open-weight VLM gateway (Qwen2-VL / LLaVA-OneVision), action emission |
+| `extension/src/common/` | Shared TypeScript types, profiler, utility helpers |
+| `extension/src/background/` | MV3 service-worker entry, chrome.storage bridge, message routing |

@@ -6,6 +6,9 @@
 //   It will miss names in ALL-CAPS government form text unless the ALL-CAPS
 //   pre-filter path is active, and may false-positive on uncommon Title Case
 //   UI phrases not covered by the stopword set below.
+//   Single-token names without a preceding honorific are not detected to avoid
+//   false positives on common capitalized words.  Single-token ORGs are only
+//   detected when they appear in the curated KNOWN_SINGLE_TOKEN_ORGS list.
 
 export interface NERSpan {
   type: "PERSON" | "ORG" | "LOCATION";
@@ -28,6 +31,25 @@ const ORG_SUFFIXES = [
   "gmbh", "bank", "technologies", "services", "solutions", "systems",
   "enterprises", "group", "holdings", "foundation", "trust", "institute",
 ];
+
+/**
+ * Curated list of well-known single-token organization names.
+ * Used in Path D to catch common ORGs that the multi-token regex misses.
+ * Only include names that are unambiguously organizations when standalone
+ * (i.e., they would never appear as a common English word in UI text).
+ */
+const KNOWN_SINGLE_TOKEN_ORGS = new Set([
+  // Indian space / defence
+  "ISRO", "DRDO", "NASSCOM", "SEBI", "UIDAI", "NPCI",
+  // Indian tech industry
+  "Infosys", "Wipro", "TCS", "HCL", "Cognizant",
+  // Global tech
+  "Google", "Alphabet", "Microsoft", "Apple", "Meta", "Amazon",
+  "Netflix", "Uber", "Airbnb", "Stripe", "Salesforce", "Oracle",
+  "Adobe", "Intel", "Nvidia", "Qualcomm", "Samsung",
+  // Indian finance
+  "HDFC", "ICICI", "SBI", "Zerodha", "Paytm",
+]);
 
 /**
  * General UI and document vocabulary stopwords.
@@ -229,6 +251,32 @@ export function detectNamedEntities(text: string): NERSpan[] {
         confidence: 0.88,
       });
     }
+  }
+
+  // -----------------------------------------------------------------------
+  // Path D: Well-known single-token ORGs (e.g., "Google", "ISRO", "DRDO")
+  // Only fires for entries in the curated KNOWN_SINGLE_TOKEN_ORGS list,
+  // so precision is not degraded.
+  // -----------------------------------------------------------------------
+  const singleTokenOrgRegex = /\b([A-Za-z][A-Za-z0-9]{1,20})\b/g;
+  while ((match = singleTokenOrgRegex.exec(text)) !== null) {
+    const candidate = match[0];
+    if (!KNOWN_SINGLE_TOKEN_ORGS.has(candidate)) continue;
+
+    const start = match.index;
+    const end   = start + candidate.length;
+
+    // Skip if already covered
+    const alreadyFound = results.some((r) => r.start <= start && r.end >= end);
+    if (alreadyFound) continue;
+
+    results.push({
+      type: "ORG",
+      start,
+      end,
+      text: candidate,
+      confidence: 0.92,
+    });
   }
 
   return results;

@@ -151,7 +151,7 @@ export function runLightweightVision(
         role: comp.role,
         text: comp.label,
         bbox: comp.bbox,
-        confidence: comp.confidence,
+        confidence: comp.score,
         task,
       });
     });

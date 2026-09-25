@@ -18,6 +18,8 @@ import { requestRemoteAction, RemoteResolutionOptions } from "./action-planner";
 import { captureAndSanitizeTab } from "./capture-tab";
 import { getPerformanceProfiler } from "../common/profiler";
 import { verifyOutgoingDisclosure, PrivacyGuardResult } from "../privacy/privacy-guard";
+import { locateLiveElement } from "../validator/action-validator";
+import { inspectElementForHiddenInjection } from "../validator/prompt-injection";
 
 export type ProcessingPath = "LOCAL" | "SANITIZED_VLM" | "BLOCKED";
 
@@ -59,6 +61,47 @@ export async function resolveTaskAction(
 ): Promise<AgentResolutionResult> {
   const overallStartTime = performance.now();
   const parsedTask = parseTask(taskStr);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // PRE-FLIGHT: Global Prompt Injection Scan over all candidate elements
+  // ══════════════════════════════════════════════════════════════════════════
+  if (typeof window !== "undefined") {
+    const doc = window.document;
+    for (const el of pageState.elements) {
+      const liveEl = options.resolveLiveElement ? options.resolveLiveElement(el.target_id) : locateLiveElement(el.target_id, doc);
+      if (liveEl) {
+        const injectionCheck = inspectElementForHiddenInjection(liveEl);
+        if (injectionCheck.isInjection) {
+          const l0Disclosure: Disclosure = {
+            level: "L1",
+            reason: `Task BLOCKED globally due to prompt injection in element ${el.target_id}.`,
+            task: taskStr,
+            elements: [],
+            redacted_token_count: 0,
+          };
+          return {
+            action: { type: "NONE", target_id: "" },
+            processingPath: "BLOCKED",
+            modelUsed: "Pre-Flight Injection Scanner",
+            executionBackend: "Local DOM",
+            localLatencyMs: 0,
+            sanitizationLatencyMs: 0,
+            vlmLatencyMs: 0,
+            totalLatencyMs: Number((performance.now() - overallStartTime).toFixed(2)),
+            latencyMs: Number((performance.now() - overallStartTime).toFixed(2)),
+            isLocal: true,
+            disclosure: l0Disclosure,
+            parsedTask,
+            networkBytesSent: 0,
+            detectedEntities: [],
+            privacyVerificationPassed: false,
+            externalRequestMade: false,
+            blockReason: `Global pre-execution validation BLOCKED: ${injectionCheck.reason}`,
+          };
+        }
+      }
+    }
+  }
 
   // ══════════════════════════════════════════════════════════════════════════
   // LAYER 1: On-Device Local Processing (WASM / DOM Semantic Engine)
@@ -163,7 +206,7 @@ export async function resolveTaskAction(
         ? pageState.elements.find((el) => el.target_id === targetCropId)
         : undefined;
       const cropBox = options.forceEscalationLevel === "L3" ? undefined : targetEl?.bbox;
-      screenshotData = await captureAndSanitizeTab(sensitiveBoxes, cropBox);
+      screenshotData = await captureAndSanitizeTab(pageState, cropBox);
     } catch (_) {
       // Graceful fallback if tab capture is unavailable in current context
     }

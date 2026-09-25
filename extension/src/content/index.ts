@@ -11,7 +11,7 @@ import { OverlayManager } from "./overlay-manager";
 import { resolveTaskAction, AgentResolutionResult } from "../agent/target-resolver";
 import { validateAction, ValidationResult } from "../validator/action-validator";
 import { runMultiTurnAgent, MultiTurnGoalResult, AgentLoopOptions } from "../agent/agent-loop";
-import { PrivacyAuditVault, DPDPComplianceReport } from "../privacy/audit-vault";
+import { PrivacyAuditVault, PrivacyAuditSummary } from "../privacy/audit-vault";
 
 declare global {
   interface Window {
@@ -42,6 +42,15 @@ let latestDurationMs: number = 0;
 let shieldEnabled: boolean = true; // Runtime state; restored from storage on init
 const overlayManager = new OverlayManager();
 window.__privaagent_overlay_manager = overlayManager;
+
+// Listen for OCR lazy-loading events to display honest loading states
+window.addEventListener("PRIVAAGENT_OCR_INIT_START", () => {
+  overlayManager.updateHUD("Loading", "Initializing Vision Engine (~4MB)...");
+});
+
+window.addEventListener("PRIVAAGENT_OCR_INIT_END", () => {
+  overlayManager.updateHUD("Loaded", "Vision Engine Ready");
+});
 
 function extractSensitiveEntityTypes(state: PageState | null): string[] {
   if (!state) return [];
@@ -258,8 +267,8 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
-  if (message?.type === "GET_COMPLIANCE_REPORT") {
-    sendResponse(PrivacyAuditVault.getInstance().generateComplianceReport());
+  if (message?.type === "GET_PRIVACY_AUDIT_SUMMARY") {
+    sendResponse(PrivacyAuditVault.getInstance().generatePrivacyAuditSummary());
     return false;
   }
 

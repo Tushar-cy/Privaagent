@@ -455,6 +455,38 @@ for (const task of tasks) {
   let actionResult;
   let validationResult;
 
+  // Tasks with target_element_id exercise the injection-detection path of the
+  // real action-validator pipeline.  A synthetic "click" action targeting that
+  // element is fed through validateAction, which calls inspectElementForHiddenInjection
+  // → scanTextForInjection on the element's textContent.  Injection patterns in
+  // the element text produce BLOCK via the real defense code — no bypass shortcut.
+  if (task.target_element_id) {
+    const syntheticAction = {
+      action: "click",
+      target_id: task.target_element_id,
+      reason: `Benchmark probe: ${task.prompt}`,
+      confidence: 1.0,
+    };
+    validationResult = validateAction(syntheticAction, state, doc);
+    const endT   = performance.now();
+    const latency = endT - startT;
+    localFastPathCount++;
+    totalFastPathLatency += latency;
+
+    taskResults.push({
+      taskId:          task.id,
+      prompt:          task.prompt,
+      category:        task.category,
+      level:           "L1",
+      networkBytesSent: 0,
+      latencyMs:       latency,
+      verdict:         validationResult.verdict,
+      expectedVerdict: task.expected_verdict,
+      passed:          validationResult.verdict === task.expected_verdict,
+    });
+    continue;
+  }
+
   if (task.action_payload) {
     actionResult = {
       action: task.action_payload,

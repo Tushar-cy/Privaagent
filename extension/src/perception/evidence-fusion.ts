@@ -79,7 +79,8 @@ export function fusePerceptionEvidence(
       role: "face",
       text: "Customer Portrait Face",
       bbox: face.bbox,
-      confidence: face.confidence,
+      // Fallback confidence for downstream risk policy until properly tuned
+      confidence: face.score,
       sensitive: true, // Requires immediate redaction / blurring before disclosure
       task_relevance: 0.2,
       sources: ["cv"],

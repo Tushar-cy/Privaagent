@@ -1,11 +1,11 @@
-// Automated Enterprise Compliance & DPDP Act 2023 Audit Vault Test Suite
+// Privacy Audit Vault Test Suite
 import {
   PrivacyAuditVault,
   computePayloadHash,
 } from "../extension/src/privacy/index.ts";
 
 console.log("==================================================");
-console.log("   PRIVAAGENT ENTERPRISE DPDP COMPLIANCE AUDIT    ");
+console.log("   PRIVAAGENT PRIVACY AUDIT VAULT TESTS           ");
 console.log("==================================================");
 
 // 1. Cryptographic Payload Hashing Verification
@@ -94,36 +94,34 @@ if (records.length !== 4) {
 console.log(`✓ Recorded 4 transactions with unique IDs, timestamps, and payload hashes.`);
 
 // 3. DPDP Act 2023 Formal Compliance Report Verification
-console.log("\n[TEST 3] Generating DPDP Act 2023 Compliance Report...");
-const report = vault.generateComplianceReport();
+console.log("\n[TEST 3] Generating Privacy Audit Summary...");
+const report = vault.generatePrivacyAuditSummary();
 
 console.log("--------------------------------------------------");
 console.log(`  Report Generated:          ${report.generatedAt}`);
-console.log(`  Compliance Standard:       ${report.standard}`);
-console.log(`  Compliance Status:         ${report.complianceStatus}`);
 console.log(`  Total Transactions:        ${report.totalTransactions}`);
 console.log(`  Sensitive Entities Masked: ${report.totalSensitiveEntitiesProtected}`);
-console.log(`  Zero-Network Local Ratio:  ${report.onDeviceZeroNetworkRatio}% (Target: > 75%)`);
-console.log(`  Cumulative Transmitted:    ${report.cumulativeNetworkBytes} Bytes`);
-console.log(`  Bandwidth Saved vs Capture:${report.bandwidthSavedPercentage}% (Target: > 95%)`);
+console.log(`  On-Device Ratio (0-1):     ${report.onDeviceRatio} (Target: > 0.75)`);
+console.log(`  Cumulative Network Bytes:  ${report.cumulativeNetworkBytes} B`);
+console.log(`  Bandwidth Saved:           ${report.bandwidthSavedPercentage}%`);
 console.log(`  Unredacted Leaks Detected: ${report.unredactedLeaksDetected} (Strict: 0)`);
 console.log("--------------------------------------------------");
 
-if (report.complianceStatus !== "FULLY_COMPLIANT") {
-  throw new Error(`Expected FULLY_COMPLIANT status, got: ${report.complianceStatus}`);
-}
 if (report.unredactedLeaksDetected !== 0) {
   throw new Error(`Data minimization violation: ${report.unredactedLeaksDetected} unredacted leaks detected!`);
 }
 if (report.totalSensitiveEntitiesProtected !== 6) {
   throw new Error(`Expected 6 entities protected, got: ${report.totalSensitiveEntitiesProtected}`);
 }
+if (report.onDeviceRatio < 0 || report.onDeviceRatio > 1) {
+  throw new Error(`onDeviceRatio must be in [0, 1], got: ${report.onDeviceRatio}`);
+}
 if (report.bandwidthSavedPercentage < 99) {
   throw new Error(`Expected > 99% bandwidth savings, got ${report.bandwidthSavedPercentage}%`);
 }
 
-console.log("✓ DPDP Act 2023 & GDPR Article 25 compliance requirements fully verified!");
+console.log("✓ Audit report verified: correct field values and data types.");
 
 console.log("\n--------------------------------------------------");
-console.log("[ALL TESTS PASSED] Phase 10 Enterprise Privacy Audit Vault Verified!");
+console.log("[ALL TESTS PASSED] Privacy Audit Vault Suite Verified!");
 console.log("==================================================\n");

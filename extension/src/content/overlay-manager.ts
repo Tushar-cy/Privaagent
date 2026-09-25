@@ -118,18 +118,19 @@ export class OverlayManager {
       hud.style.bottom = "16px";
       hud.style.right = "16px";
       hud.style.background = "#07090f";
-      hud.style.color = "#38bdf8";
-      hud.style.padding = "6px 12px";
-      hud.style.borderRadius = "20px";
+      hud.style.color = "#f1f5f9";
+      hud.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif';
+      hud.style.padding = "8px 14px";
+      hud.style.borderRadius = "24px";
       hud.style.fontSize = "12px";
-      hud.style.fontWeight = "600";
-      hud.style.boxShadow = "0 4px 16px rgba(0,0,0,0.5)";
-      hud.style.border = "1px solid #38bdf855";
+      hud.style.fontWeight = "500";
+      hud.style.boxShadow = "0 4px 16px rgba(0,0,0,0.6), 0 0 0 1px rgba(56,189,248,0.18)";
+      hud.style.border = "1px solid #1e2d4a";
       hud.style.zIndex = "2147483647";
       hud.style.pointerEvents = "auto";
       hud.style.display = "flex";
       hud.style.alignItems = "center";
-      hud.style.gap = "6px";
+      hud.style.gap = "8px";
       hud.style.transition = "all 0.2s ease";
       this.doc.body.appendChild(hud);
     }
@@ -137,11 +138,11 @@ export class OverlayManager {
     const modeIndicator = this.mode === "GHOST" ? "👻 GHOST" : this.mode === "SYNTHETIC" ? "🍯 SYNTH" : "🛡️ BLUR";
 
     hud.innerHTML = `
-      <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#34d399; box-shadow:0 0 6px #34d399;"></span>
-      <span style="font-weight:700;">Privaagent</span>
-      <span style="background:#0e1320; color:#38bdf8; border:1px solid #1e2d4a; padding:1px 6px; border-radius:10px; font-size:10px;">${level}</span>
-      <span style="background:rgba(56,189,248,0.15); color:#38bdf8; padding:1px 5px; border-radius:4px; font-size:9.5px; font-weight:700;">${modeIndicator}</span>
-      <span style="color:#94a3b8; font-size:11px;">${statusText}</span>
+      <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#34d399; box-shadow:0 0 6px #34d399;"></span>
+      <span style="font-weight:800; background:linear-gradient(90deg, #38bdf8, #a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; letter-spacing:-0.4px;">Privaagent</span>
+      <span style="background:#0e1320; color:#38bdf8; border:1px solid #1e2d4a; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:700;">${level}</span>
+      <span style="background:rgba(56,189,248,0.12); color:#38bdf8; padding:2px 6px; border-radius:4px; font-size:9.5px; font-weight:700;">${modeIndicator}</span>
+      <span style="color:#94a3b8; font-size:11px; margin-left:4px;">${statusText}</span>
     `;
     this.hudBadge = hud;
   }

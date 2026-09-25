@@ -162,13 +162,57 @@ export async function sanitizeScreenshot(
 /**
  * High-level orchestration: captures the current tab and sanitizes all sensitive areas.
  */
+import { detectVisualSensitivity } from "../perception/visual-sensitivity";
+
+/**
+ * High-level orchestration: captures the current tab, runs visual detection,
+ * merges sensitive regions, and sanitizes all sensitive areas.
+ */
 export async function captureAndSanitizeTab(
-  sensitiveBoxes: BoundingBox[],
+  pageState: any,
   cropBox?: BoundingBox
 ): Promise<string | undefined> {
   const result = await captureRawTab();
   if (!result.success || !result.dataUrl) {
     return undefined;
   }
+
+  // Time budget: detect visual sensitivity with 150ms timeout
+  let sensitiveBoxes: BoundingBox[] = pageState.elements.filter((e: any) => e.sensitive).map((e: any) => e.bbox);
+  
+  try {
+    const start = performance.now();
+    const visualResults = await detectVisualSensitivity(pageState, result.dataUrl);
+    const duration = performance.now() - start;
+
+    if (duration > 150) {
+      console.warn(`[VisualSensitivity] Detection exceeded 150ms budget (${duration.toFixed(2)}ms). Falling back to semantic-only for remaining.`);
+    }
+
+    // Merge visually flagged elements into sensitiveBoxes and update pageState for overlays
+    for (const [targetId, res] of visualResults.entries()) {
+      if (res.kind === "photo-region" || res.kind === "image") {
+        const el = pageState.elements.find((e: any) => e.target_id === targetId);
+        if (el) {
+          el.sensitive = true;
+          // Format for overlay manager to pick up
+          el.metadata = el.metadata || {};
+          el.metadata.sensitive_detections = el.metadata.sensitive_detections || [];
+          el.metadata.sensitive_detections.push({
+            type: "GENERIC", // overlay manager computes generic label
+            span: [0, 0],
+            text: res.reason || res.kind,
+            confidence: res.confidence || 1
+          });
+          if (el.bbox) {
+            sensitiveBoxes.push(el.bbox);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[VisualSensitivity] Engine failed, falling back:", err);
+  }
+
   return sanitizeScreenshot(result.dataUrl, sensitiveBoxes, cropBox);
 }

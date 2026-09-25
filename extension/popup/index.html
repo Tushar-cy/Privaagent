@@ -284,7 +284,7 @@
       .badge-rc      { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.3); }
       .badge-default { background: rgba(100,116,139,0.15); color: var(--text-muted); border: 1px solid var(--border); }
 
-      /* ─── SIH Benchmark Card ─── */
+      /* ─── Internal Benchmark Card ─── */
       .benchmark-card {
         background: #091220;
         border: 1px solid #10b981;
@@ -523,7 +523,7 @@
         <div class="logo" id="logo">🛡️</div>
         <div class="brand-text">
           <div class="brand-name">Privaagent</div>
-          <div class="brand-sub">SIH26171 • Privacy Command Center</div>
+          <div class="brand-sub">Privacy Command Center</div>
         </div>
       </div>
       <div class="power-row">
@@ -629,20 +629,20 @@
         </div>
       </div>
 
-      <!-- ─── SIH Live Benchmark Trigger ─── -->
+      <!-- ─── Internal Live Benchmark Trigger ─── -->
       <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border);">
         <button class="btn-benchmark" id="btn-benchmark" style="width: 100%; padding: 8px 10px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(56, 189, 248, 0.18)); border: 1px solid #10b981; color: #34d399; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
-          ⚡ Run Live SIH Benchmark Suite (Jury Proof)
+          ⚡ Run Internal Validation Suite
         </button>
       </div>
     </div>
 
-    <!-- ─── SIH Live Benchmark Results Card ───────────────── -->
+    <!-- ─── Internal Live Benchmark Results Card ───────────────── -->
     <div class="benchmark-card" id="benchmark-card" style="display: none;">
       <div class="benchmark-header">
         <div>
           <div style="font-size: 10px; font-weight: 800; color: #10b981; letter-spacing: 0.5px; text-transform: uppercase;">
-            SIH GRAND FINALE JURY EVALUATION
+            INTERNAL VALIDATION EVALUATION
           </div>
           <div style="font-size: 9px; color: var(--text-muted);" id="bench-timestamp">Passed 20 Automated Tests</div>
         </div>
@@ -668,7 +668,7 @@
       </div>
       <div style="margin-top: 8px; display: flex; gap: 6px;">
         <button id="btn-export-bench" style="flex:1; background: rgba(56, 189, 248, 0.15); border: 1px solid var(--primary); color: var(--primary); padding: 5px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; cursor: pointer;">
-          📥 Download Jury Report (JSON)
+          📥 Download Report (JSON)
         </button>
         <button id="btn-close-bench" style="background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); padding: 5px 8px; border-radius: 4px; font-size: 10px; cursor: pointer;">
           ✕ Close
@@ -717,8 +717,8 @@
 
     <!-- ─── Footer ────────────────────────────────────────── -->
     <div class="footer">
-      <div class="footer-left">SIH26171 • Adaptive Minimum-Disclosure Architecture</div>
-      <div class="footer-right">DPDP 2023 • <span class="score">L0-First</span></div>
+      <div class="footer-left">Adaptive Minimum-Disclosure Architecture</div>
+      <div class="footer-right">Local Execution • <span class="score">L0-First</span></div>
     </div>
 
     <script type="module" src="./index.ts"></script>
