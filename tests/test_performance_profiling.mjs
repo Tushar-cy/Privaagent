@@ -145,7 +145,7 @@ const resolution = await resolveTaskAction("Open Rahul's invoice", pageState);
 
 const bandwidth = profiler.recordBandwidth(
   rawHtmlBytes,
-  resolution.networkBytesSent,
+  resolution.reservedOutboundBytes,
   resolution.disclosure.redacted_token_count || 0
 );
 

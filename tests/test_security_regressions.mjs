@@ -37,7 +37,7 @@ const forcedL0 = await resolveTaskAction("Click the bar representing Q4", forced
 });
 assert.equal(forcedL0.processingPath, "BLOCKED");
 assert.equal(forcedL0.disclosure.level, "L0");
-assert.equal(forcedL0.networkBytesSent, 0);
+assert.equal(forcedL0.reservedOutboundBytes, 0);
 assert.equal(forcedL0.externalRequestMade, false);
 assert.equal(forcedL0NetworkCalls, 0);
 console.log("  ✓ Forced L0 blocks unresolved tasks without network access.");
@@ -130,7 +130,7 @@ const staleResolution = await resolveTaskAction("Find the quarterly revenue tren
 });
 assert.equal(staleResolution.processingPath, "BLOCKED");
 assert.match(staleResolution.blockReason || "", /Page content changed/);
-assert.equal(staleResolution.networkBytesSent, 0);
+assert.equal(staleResolution.reservedOutboundBytes, 0);
 assert.equal(staleResolution.externalRequestMade, false);
 assert.equal(freshnessNetworkCalls, 0);
 console.log("  ✓ A DOM mutation at the outbound boundary blocks disclosure with zero network calls.");

@@ -128,15 +128,15 @@ const localResult = await resolveTaskAction("Open Rahul's invoice", pageState);
 console.log(`  - Is Local: ${localResult.isLocal}`);
 console.log(`  - Target ID: ${localResult.action.target_id}`);
 console.log(`  - Action Type: ${localResult.action.action}`);
-console.log(`  - Network Bytes Sent: ${localResult.networkBytesSent}`);
+console.log(`  - Network Bytes Sent: ${localResult.reservedOutboundBytes}`);
 console.log(`  - Disclosure Level: ${localResult.disclosure.level}`);
 console.log(`  - Latency: ${localResult.latencyMs.toFixed(3)} ms`);
 
 if (!localResult.isLocal) {
   throw new Error("Expected task 'Open Rahul's invoice' to be resolved on-device locally!");
 }
-if (localResult.networkBytesSent !== 0) {
-  throw new Error(`Expected 0 network bytes, got ${localResult.networkBytesSent}`);
+if (localResult.reservedOutboundBytes !== 0) {
+  throw new Error(`Expected 0 network bytes, got ${localResult.reservedOutboundBytes}`);
 }
 const perceivedTarget = pageState.elements.find((element) => element.target_id === localResult.action.target_id);
 const resolvedDomEl = perceivedTarget ? resolvePerceivedElement(perceivedTarget) : null;
@@ -180,7 +180,7 @@ const visualResult = await resolveTaskAction("Click the bar representing Q4", pa
 console.log(`  - Is Local: ${visualResult.isLocal}`);
 console.log(`  - Target ID: ${visualResult.action.target_id}`);
 console.log(`  - Disclosure Level: ${visualResult.disclosure.level}`);
-console.log(`  - Network Bytes Sent: ${visualResult.networkBytesSent}`);
+console.log(`  - Network Bytes Sent: ${visualResult.reservedOutboundBytes}`);
 console.log(`  - Intercepted Disclosed Elements: ${interceptedOutboundPayload?.elements?.length}`);
 
 if (visualResult.isLocal) {
