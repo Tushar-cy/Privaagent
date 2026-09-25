@@ -238,6 +238,18 @@ start-privaagent.bat
 * Starts the FastAPI backend service
 * Launches Chrome with Privaagent pre-loaded to `http://127.0.0.1:8000/demo/index.html`
 
+> [!TIP]
+> **Authentication Modes**
+> 
+> By default, the `.env` uses `SESSION_TOKEN=change-this-for-local-evaluation`. This places the backend in **DEMO MODE**. In Demo Mode, backend authentication is intentionally bypassed to allow a seamless one-click demonstration for SIH judges. A warning is logged on the server.
+> 
+> For a hardened production deployment, switch to **ENFORCED MODE**:
+> 1. Open Chrome DevTools (F12) while the extension is loaded.
+> 2. Go to `Application` > `Local Storage` and copy your `privaagent_session_token` (e.g. `sih_1234abcd...`).
+> 3. Paste this into `server/.env` as `SESSION_TOKEN=sih_1234abcd...` and restart the backend.
+> 
+> Once enforced, the backend strictly rejects any request with a missing or mismatched token via HTTP 401 Unauthorized.
+
 ---
 
 ### 🧩 Option B: Manual Extension Loading in Chrome

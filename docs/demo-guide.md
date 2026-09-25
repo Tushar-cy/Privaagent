@@ -6,7 +6,7 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
 
 ## 🎯 Key Elevator Pitch (30 Seconds)
 
-> *"Existing browser agents send full unredacted screen captures to frontier LLMs—exposing citizen Aadhaar numbers, tax PANs, banking tokens, and enterprise secrets on every single step. **Privaagent** fundamentally flips this paradigm: **85% of evaluation criteria and actions are solved on-device within the Chrome sandbox in ~2.80 ms with 0 network bytes sent**. For visual or complex reasoning, Privaagent escalates through an adaptive Minimum Disclosure Ladder, transmitting only sanitized bounding crops, while an active defense-in-depth shield blocks leaked PII and prompt injection attacks before execution."*
+> *"Existing browser agents send full unredacted screen captures to frontier LLMs—exposing citizen Aadhaar numbers, tax PANs, banking tokens, and enterprise secrets on every single step. **Privaagent** fundamentally flips this paradigm: **~80% of evaluation criteria and actions are solved on-device within the Chrome sandbox in ~2.92 ms with 0 network bytes sent**. For visual or complex reasoning, Privaagent escalates through an adaptive Minimum Disclosure Ladder, transmitting only sanitized bounding crops, while an active defense-in-depth shield blocks leaked PII and prompt injection attacks before execution."*
 
 ---
 
