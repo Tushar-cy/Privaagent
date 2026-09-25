@@ -160,3 +160,4 @@ console.log("✓ Teardown verified: all UI nodes cleanly removed.");
 
 console.log("\n--------------------------------------------------");
 console.log("[ALL TESTS PASSED] Prompt 6 UI, Overlay & Ledger successfully verified!");
+process.exit(0);

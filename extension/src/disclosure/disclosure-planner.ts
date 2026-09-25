@@ -3,6 +3,7 @@
 
 import { Disclosure, DisclosureLevel, PageState } from "../common/types";
 import { maskPageStateForDisclosure } from "./semantic-masker";
+import { sanitizeTaskString } from "../privacy/redactor";
 
 export interface DisclosurePlanningOptions {
   isSolvableLocally: boolean;
@@ -26,7 +27,7 @@ export function planDisclosure(
     return {
       level: "L0",
       reason: "Forced L0 disclosure: strict local on-device resolution requested.",
-      task,
+      task: sanitizeTaskString(task),
       elements: [],
       redacted_token_count: 0,
     };
@@ -41,7 +42,7 @@ export function planDisclosure(
     return {
       level: "L3",
       reason: "Task requires holistic page visual context without localized crop ROI; transmitting sanitized full viewport screenshot with all PII regions masked.",
-      task,
+      task: sanitizeTaskString(task),
       elements: disclosedElements,
       crop_box: undefined,
       screenshot_data: options.sanitizedScreenshotBase64,
@@ -76,7 +77,7 @@ export function planDisclosure(
     return {
       level: "L2",
       reason: `Target element "${options.targetCropTargetId}" requires visual reasoning; transmitting sanitized visual crop ROI only.`,
-      task,
+      task: sanitizeTaskString(task),
       elements: disclosedElements.filter((el) => {
         if (el.target_id === options.targetCropTargetId) return true;
         const originalEl = pageState.elements.find((orig) => orig.target_id === el.target_id);
@@ -100,7 +101,7 @@ export function planDisclosure(
     return {
       level: "L3",
       reason: "Task requires holistic page visual context without localized crop ROI; transmitting sanitized full viewport screenshot with all PII regions masked.",
-      task,
+      task: sanitizeTaskString(task),
       elements: disclosedElements,
       crop_box: undefined,
       screenshot_data: options.sanitizedScreenshotBase64,
@@ -118,7 +119,7 @@ export function planDisclosure(
   return {
     level: "L1",
     reason: "Local solver requires remote VLM reasoning over structured semantic element tree; all sensitive spans replaced with tokens.",
-    task,
+    task: sanitizeTaskString(task),
     elements: disclosedElements,
     redacted_token_count: totalRedactedTokens,
   };

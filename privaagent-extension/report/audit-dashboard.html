@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privaagent — Privacy Audit Summary</title>
+  <link rel="stylesheet" href="../src/common/design-tokens.css" />
+  <style>
+    body {
+      padding: var(--space-32) var(--space-24);
+    }
+    
+    .container {
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+    
+    .cert-header {
+      background: var(--bg-surface);
+      border: 1px solid var(--success);
+      border-radius: var(--radius-lg);
+      padding: var(--space-24);
+      margin-bottom: var(--space-24);
+      box-shadow: var(--shadow-glow);
+    }
+    
+    .top-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; background: var(--success-tint);
+      border: 1px solid var(--success); color: var(--success);
+      border-radius: var(--radius-full); font-size: var(--text-xs);
+      font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+      margin-bottom: var(--space-12);
+    }
+    
+    h1 { font-size: 26px; font-weight: 800; margin-bottom: 6px; color: var(--text-primary); }
+    .subtitle { font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--space-16); max-width: 800px; }
+    
+    .cert-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-12); border-top: 1px solid var(--gray-800); padding-top: var(--space-16); font-size: var(--text-xs); }
+    .meta-item { display: flex; flex-direction: column; }
+    .meta-label { color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .meta-val { font-weight: 600; color: var(--text-primary); font-family: monospace; }
+    
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-16); margin-bottom: var(--space-24); }
+    .kpi-card { background: var(--bg-surface); border: 1px solid var(--gray-800); border-radius: var(--radius-md); padding: var(--space-16); }
+    .kpi-title { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: var(--space-8); }
+    .kpi-val { font-size: 28px; font-weight: 800; color: var(--text-primary); display: flex; align-items: baseline; gap: 4px; }
+    .kpi-val.green { color: var(--success); }
+    .kpi-val.purple { color: #8b5cf6; }
+    .kpi-val.amber { color: var(--warning); }
+    .kpi-sub { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+    
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-12); margin-bottom: var(--space-16); }
+    .btn-group { display: flex; gap: var(--space-8); flex-wrap: wrap; }
+    
+    .table-container { background: var(--bg-surface); border: 1px solid var(--gray-800); border-radius: var(--radius-lg); overflow-x: auto; margin-bottom: var(--space-24); }
+    table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); text-align: left; }
+    th { background: var(--gray-900); padding: var(--space-12) var(--space-16); color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--gray-800); }
+    td { padding: var(--space-12) var(--space-16); border-bottom: 1px solid var(--gray-800); color: var(--text-primary); }
+    tr:hover td { background: var(--gray-800); }
+    
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 700; font-family: monospace; }
+    .badge-l0 { background: var(--success-tint); color: var(--success); border: 1px solid var(--success); }
+    .badge-l1 { background: var(--warning-tint); color: var(--warning); border: 1px solid var(--warning); }
+    .badge-l2 { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; border: 1px solid #8b5cf6; }
+    .badge-allow { background: var(--success-tint); color: var(--success); }
+    .badge-confirm { background: var(--warning-tint); color: var(--warning); }
+    .badge-block { background: var(--danger-tint); color: var(--danger); }
+    
+    .hash-cell { font-family: monospace; font-size: 11px; color: var(--primary-500); }
+    
+    .sandbox-box { background: var(--bg-surface); border: 1px solid var(--gray-800); border-radius: var(--radius-lg); padding: var(--space-24); margin-bottom: var(--space-24); }
+    .sandbox-title { font-size: var(--text-sm); font-weight: 700; margin-bottom: var(--space-12); display: flex; align-items: center; gap: var(--space-8); }
+    .sandbox-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-16); }
+    .sandbox-card { background: var(--gray-900); border: 1px solid var(--gray-800); border-radius: var(--radius-md); padding: var(--space-16); }
+    .sandbox-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px; }
+    .sandbox-val { font-family: monospace; font-size: var(--text-sm); padding: var(--space-8) var(--space-12); background: var(--bg-surface); border: 1px solid var(--gray-700); border-radius: var(--radius-sm); word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Official Audit Header -->
+    <header class="cert-header">
+      <div class="top-badge"><svg class="icon" style="width:16px;height:16px;vertical-align:-3px;" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Internal Privacy Audit Summary</div>
+      <h1>Enterprise Privacy & Cryptographic Audit Summary</h1>
+      <p class="subtitle">
+        Official tamper-evident privacy audit record verifying zero raw citizen data leakage, on-device local execution priority (85% Rule), and deterministic cryptographic payload hashing.
+      </p>
+
+      <div class="cert-meta-grid">
+        <div class="meta-item">
+          <span class="meta-label">Audit ID</span>
+          <span class="meta-val" id="cert-id">PRIVAAGENT-AUDIT-2026</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Audit Standard</span>
+          <span class="meta-val">Internal Self-Evaluation</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Cryptographic Root Hash</span>
+          <span class="meta-val" id="root-hash">0009dab76fb675c5</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Chain Integrity</span>
+          <span class="meta-val" id="chain-status" style="color: var(--accent);">✓ VERIFIED UNBROKEN</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- KPI Summary Row -->
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-title">Zero-Network Local Ratio</div>
+        <div class="kpi-val green" id="kpi-local-ratio">85.7%</div>
+        <div class="kpi-sub">Target: &ge; 75% On-Device Resolution</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Bandwidth Saved</div>
+        <div class="kpi-val purple" id="kpi-bandwidth-saved">99.98%</div>
+        <div class="kpi-sub">vs. 1.2MB Raw Screen Capture Baseline</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Sensitive Entities Masked</div>
+        <div class="kpi-val amber" id="kpi-entities-masked">14</div>
+        <div class="kpi-sub">Aadhaar, PAN, UPI, Face, Banking Tokens</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Unredacted Network Leaks</div>
+        <div class="kpi-val green" id="kpi-leaks">0</div>
+        <div class="kpi-sub">100% Fail-Closed Boundary Enforcement</div>
+      </div>
+    </section>
+
+    <!-- Action Toolbar -->
+    <div class="toolbar">
+      <div class="btn-group">
+        <button class="btn-primary" id="btn-print">🖨️ Print / Save Audit PDF</button>
+        <button class="btn-secondary" id="btn-export">📥 Export Audit JSON</button>
+        <button class="btn-secondary" id="btn-verify">🔄 Verify Cryptographic Hashes</button>
+      </div>
+      <div id="verify-feedback" style="font-size: 12px; color: var(--accent); font-weight: 600;"></div>
+    </div>
+
+    <!-- Cryptographic Ledger Table -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Tx ID</th>
+            <th>Goal / Subtask</th>
+            <th>Level</th>
+            <th>Target</th>
+            <th>Verdict</th>
+            <th>Outbound</th>
+            <th>Previous Hash &rarr; Payload Hash</th>
+          </tr>
+        </thead>
+        <tbody id="ledger-body">
+          <!-- Populated dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Interactive Differential Privacy & Synthetic Sandbox -->
+    <div class="sandbox-box">
+      <div class="sandbox-title">
+        <span>🧪 Interactive Differential Privacy & Synthetic Surrogate Sandbox</span>
+      </div>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+        Demonstrates how Privaagent ensures 0 PII leaks: sensitive fields can either be masked with visual redact tokens or substituted on-device with mathematically valid synthetic surrogates (Verhoeff Aadhaar, CBDT PAN, Luhn Credit Card).
+      </p>
+      <div class="sandbox-grid">
+        <div class="sandbox-card">
+          <div class="sandbox-label">Sample Input (Citizen Data)</div>
+          <div class="sandbox-val">Rahul Sharma | 9876 5432 1098 | ABCDE1234F</div>
+        </div>
+        <div class="sandbox-card">
+          <div class="sandbox-label">Standard Privacy Redaction (L1/L2)</div>
+          <div class="sandbox-val" style="color: #93c5fd;">Rahul Sharma | 🔒 [REDACTED_AADHAAR] | 🔒 [REDACTED_PAN]</div>
+        </div>
+        <div class="sandbox-card">
+          <div class="sandbox-label">Differential Synthetic Surrogate</div>
+          <div class="sandbox-val" style="color: #34d399;" id="synthetic-demo-val">Generating...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./audit-dashboard.js"></script>
+</body>
+</html>

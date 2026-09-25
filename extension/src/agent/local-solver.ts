@@ -47,16 +47,19 @@ function scoreElementMatch(el: PageElement, task: ParsedTask, pageState?: PageSt
   if (task.keywords.length > 0) {
     const keywordRatio = matchedKeywords / task.keywords.length;
     score += keywordRatio * 0.45;
+    if (keywordRatio === 1.0) {
+      score += 0.05; // Full keyword match bonus
+    }
   }
 
   // 3. Role affinity
   if (task.actionType === "click") {
     if (el.role === "button" || el.role === "link") {
-      score += 0.15;
+      score += 0.20;
     }
   } else if (task.actionType === "type") {
     if (el.role === "textbox" || el.role === "input") {
-      score += 0.2;
+      score += 0.25;
     }
   }
 

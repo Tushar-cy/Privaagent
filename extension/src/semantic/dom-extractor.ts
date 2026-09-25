@@ -223,11 +223,24 @@ export function extractPageState(): ExtractionResult {
     elementRegistry.set(targetId, el);
 
     // Determine text representation
+    // Determine text representation with source-level password protection
+    const tagName = el.tagName.toLowerCase();
+    const isPassword =
+      (tagName === "input" && (el.getAttribute("type")?.toLowerCase() === "password" || (el as any).type === "password")) ||
+      (typeof HTMLInputElement !== "undefined" && el instanceof HTMLInputElement && el.type === "password");
     let text = "";
-    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
-      text = el.value || el.placeholder || "";
-    } else if (el instanceof HTMLSelectElement) {
-      text = el.selectedOptions[0]?.text || el.value || "";
+    if (isPassword) {
+      // Source-level destruction: raw password values are NEVER stored in PageElement text
+      text = "[PASSWORD]";
+    } else if (
+      tagName === "input" ||
+      tagName === "textarea" ||
+      (typeof HTMLInputElement !== "undefined" && el instanceof HTMLInputElement) ||
+      (typeof HTMLTextAreaElement !== "undefined" && el instanceof HTMLTextAreaElement)
+    ) {
+      text = (el as any).value || el.getAttribute("placeholder") || "";
+    } else if (tagName === "select" || (typeof HTMLSelectElement !== "undefined" && el instanceof HTMLSelectElement)) {
+      text = (el as any).selectedOptions?.[0]?.text || (el as any).value || "";
     } else {
       text = a11y.accessibleName || el.textContent?.trim() || "";
     }
@@ -239,7 +252,6 @@ export function extractPageState(): ExtractionResult {
     }
 
     // Role
-    const tagName = el.tagName.toLowerCase();
     const role = a11y.role && a11y.role !== "generic" ? a11y.role : tagName;
 
     const pageElement: PageElement = {
@@ -256,11 +268,15 @@ export function extractPageState(): ExtractionResult {
       // Password inputs are unconditionally sensitive regardless of their value content.
       // Generic password strings are not matched by PII regex patterns, so this explicit
       // flag ensures they are redacted before any network transmission.
-      sensitive: el instanceof HTMLInputElement && el.type === "password",
+      sensitive: isPassword,
       task_relevance: tagName === "canvas" ? 0.0 : 0.5,
       sources,
       interactable: tagName !== "p" && tagName !== "span" && !/^h[1-6]$/.test(tagName)
                     && tagName !== "div" && tagName !== "section" && tagName !== "article",
+      metadata: {
+        tagName,
+        isPassword,
+      },
     };
 
     elements.push(pageElement);

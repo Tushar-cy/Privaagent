@@ -148,3 +148,4 @@ if (!modalText || !modalText.includes("Invoice INV-2024-9042 successfully opened
 console.log(`[DOM REACTED] Modal text: "${modalText}"`);
 console.log("--------------------------------------------------");
 console.log("[ALL TESTS PASSED] Prompt 1 DOM/A11y Perception & Execution Engine verified successfully!");
+process.exit(0);

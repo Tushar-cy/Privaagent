@@ -282,3 +282,4 @@ if (precision < 0.95 || recall < 0.9) {
 }
 
 console.log("\n[ALL TESTS PASSED] Prompt 2 Local Privacy Engine completely verified!");
+process.exit(0);

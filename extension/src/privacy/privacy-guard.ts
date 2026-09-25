@@ -47,12 +47,12 @@ const PREFLIGHT_PII_PATTERNS: Array<{
   // 4. Raw Indian PAN
   {
     type: "PAN",
-    regex: /\b[A-Z]{5}[0-9]{4}[A-Z]\b/g,
+    regex: /(?<![A-Z0-9])[A-Z]{5}[0-9]{4}[A-Z](?![A-Z0-9])/g,
   },
   // 5. Raw Indian GSTIN
   {
     type: "GSTIN",
-    regex: /\b[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}\b/g,
+    regex: /(?<![A-Z0-9])[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}(?![A-Z0-9])/g,
   },
   // 6. Raw Indian Driving License
   {
@@ -106,6 +106,9 @@ export function verifyOutgoingDisclosure(disclosure: Disclosure): PrivacyGuardRe
   }
 
   for (const el of disclosure.elements) {
+    if (el.target_id) {
+      targetsToCheck.push({ field: `element:${el.target_id}:id`, text: el.target_id });
+    }
     if (el.label) {
       targetsToCheck.push({ field: `element:${el.target_id}:label`, text: el.label });
     }
@@ -140,6 +143,19 @@ export function verifyOutgoingDisclosure(disclosure: Disclosure): PrivacyGuardRe
           type: pattern.type,
           snippet: rawMatch.length > 8 ? `${rawMatch.slice(0, 4)}...${rawMatch.slice(-3)}` : "***",
           field: target.field,
+        });
+      }
+  }
+  }
+
+  // 3. Visual payload validation: L2/L3 visual disclosures must contain valid data URL
+  if (disclosure.level === "L2" || disclosure.level === "L3") {
+    if (disclosure.screenshot_data !== undefined) {
+      if (!disclosure.screenshot_data || !disclosure.screenshot_data.startsWith("data:image/")) {
+        detectedLeaks.push({
+          type: "INVALID_VISUAL_PAYLOAD",
+          snippet: "Malformatted or empty screenshot payload",
+          field: "screenshot_data",
         });
       }
     }

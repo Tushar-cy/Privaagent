@@ -172,3 +172,4 @@ console.log(`  - Verification Digest: ${summary.verificationHash}`);
 console.log("\n--------------------------------------------------");
 console.log("[ALL TESTS PASSED] Synthetic Replacer & Audit Vault Suite Fully Verified!");
 console.log("==================================================\n");
+process.exit(0);

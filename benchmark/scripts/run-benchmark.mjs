@@ -618,3 +618,4 @@ const report = {
 
 fs.writeFileSync(REPORT_PATH, JSON.stringify(report, null, 2), "utf-8");
 console.log(`✓ Report written to: ${REPORT_PATH}\n`);
+process.exit(0);

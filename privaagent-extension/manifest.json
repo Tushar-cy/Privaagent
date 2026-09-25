@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Privaagent - Adaptive Minimum-Disclosure Agent",
   "version": "0.1.0",
-  "description": "On-device visual perception and minimum-disclosure privacy preservation for browser agents (SIH26171).",
+  "description": "On-device visual perception and minimum-disclosure privacy preservation for browser agents.",
   "permissions": [
     "activeTab",
     "storage",

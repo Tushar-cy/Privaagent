@@ -41,8 +41,8 @@ export class OverlayManager {
   private lastPageState: PageState | null = null;
   private ghostTaggedElements: Set<Element> = new Set();
 
-  constructor(doc: Document = document) {
-    this.doc = doc;
+  constructor(doc?: Document) {
+    this.doc = doc || (typeof document !== "undefined" ? document : ({} as any));
   }
 
   private ensureGhostStyle(): void {

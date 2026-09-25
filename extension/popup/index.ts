@@ -7,12 +7,12 @@ import { detectSecrets } from "../src/privacy/secret-detector";
 
 document.addEventListener("DOMContentLoaded", () => {
 
-  function setPopupState(state) {
+  function setPopupState(state: string) {
     const card = document.getElementById("dynamic-status-card");
     const title = document.getElementById("status-title");
     const desc = document.getElementById("status-desc");
     const icon = document.getElementById("status-icon-svg");
-    if (!card) return;
+    if (!card || !title || !desc || !icon) return;
     
     card.className = "status-card state-" + state;
     if (state === "active") {
@@ -274,12 +274,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ─── Shield Toggle UI ────────────────────────────────────────────────────
   function applyShieldUI(enabled: boolean) {
-    if (statusLabelEl) statusLabelEl.textContent = enabled ? "Active" : "Standby";
-    setPopupState(enabled ? "active" : "empty");
-  } else {
-      shieldStatusEl.className = "shield-status off";
-      statusDotEl.className = "status-dot off";
-      statusLabelEl.textContent = "PAUSED";
+    if (enabled) {
+      if (shieldStatusEl) shieldStatusEl.className = "shield-status";
+      if (statusDotEl) statusDotEl.className = "status-dot";
+      if (statusLabelEl) statusLabelEl.textContent = "Active";
+      setPopupState("active");
+    } else {
+      if (shieldStatusEl) shieldStatusEl.className = "shield-status off";
+      if (statusDotEl) statusDotEl.className = "status-dot off";
+      if (statusLabelEl) statusLabelEl.textContent = "PAUSED";
+      setPopupState("empty");
     }
   }
 

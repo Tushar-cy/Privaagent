@@ -66,11 +66,13 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
 export async function sanitizeScreenshot(
   rawScreenshotDataUrl: string,
   sensitiveBoxes: BoundingBox[],
-  cropBox?: BoundingBox
+  cropBox?: BoundingBox,
+  viewport?: { width: number; height: number }
 ): Promise<string> {
   if (typeof document === "undefined") {
-    // Node / headless fallback
-    return rawScreenshotDataUrl;
+    // Fail-closed in headless/non-DOM environments without canvas: NEVER return raw screenshot
+    console.error("[SanitizeScreenshot] Document not defined. Failing closed: 0 bytes dispatched.");
+    return "";
   }
 
   try {
@@ -78,44 +80,74 @@ export async function sanitizeScreenshot(
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-    if (!ctx) return rawScreenshotDataUrl;
+    if (!ctx) {
+      console.error("[SanitizeScreenshot] Canvas 2D context unavailable. Failing closed: 0 bytes dispatched.");
+      return "";
+    }
+
+    const imgW = img.naturalWidth || img.width;
+    const imgH = img.naturalHeight || img.height;
+
+    // Calculate scaling factor between CSS coordinates (used by DOM element bounding boxes)
+    // and device pixels (captured by chrome.tabs.captureVisibleTab at high-DPI scaling)
+    const viewportW =
+      (typeof window !== "undefined" && window.innerWidth > 0 ? window.innerWidth : 0) ||
+      viewport?.width ||
+      imgW;
+    const viewportH =
+      (typeof window !== "undefined" && window.innerHeight > 0 ? window.innerHeight : 0) ||
+      viewport?.height ||
+      imgH;
+
+    const scaleX = viewportW > 0 ? imgW / viewportW : 1.0;
+    const scaleY = viewportH > 0 ? imgH / viewportH : 1.0;
 
     if (cropBox) {
-      // L2: Crop to ROI
+      // L2: Crop to ROI with DPR scaling
       const [cropX, cropY, cropW, cropH] = cropBox;
-      canvas.width = Math.max(1, Math.round(cropW));
-      canvas.height = Math.max(1, Math.round(cropH));
+      const sCropX = Math.round(cropX * scaleX);
+      const sCropY = Math.round(cropY * scaleY);
+      const sCropW = Math.max(1, Math.round(cropW * scaleX));
+      const sCropH = Math.max(1, Math.round(cropH * scaleY));
+
+      canvas.width = sCropW;
+      canvas.height = sCropH;
 
       // Draw cropped region from the source image
       ctx.drawImage(
         img,
-        cropX,
-        cropY,
-        cropW,
-        cropH,
+        sCropX,
+        sCropY,
+        sCropW,
+        sCropH,
         0,
         0,
         canvas.width,
         canvas.height
       );
 
-      // Mask sensitive boxes that intersect with the crop
+      // Mask sensitive boxes that intersect with the crop, scaled to device pixels
       for (const [bx, by, bw, bh] of sensitiveBoxes) {
+        const sbx = Math.round(bx * scaleX);
+        const sby = Math.round(by * scaleY);
+        const sbw = Math.round(bw * scaleX);
+        const sbh = Math.round(bh * scaleY);
+
         // Compute relative coords within crop
-        const relX = bx - cropX;
-        const relY = by - cropY;
+        const relX = sbx - sCropX;
+        const relY = sby - sCropY;
 
         // Check intersection
         if (
-          relX + bw > 0 &&
+          relX + sbw > 0 &&
           relX < canvas.width &&
-          relY + bh > 0 &&
+          relY + sbh > 0 &&
           relY < canvas.height
         ) {
           const drawX = Math.max(0, relX);
           const drawY = Math.max(0, relY);
-          const drawW = Math.min(canvas.width - drawX, bw);
-          const drawH = Math.min(canvas.height - drawY, bh);
+          const drawW = Math.min(canvas.width - drawX, sbw);
+          const drawH = Math.min(canvas.height - drawY, sbh);
 
           ctx.fillStyle = "#0f172a"; // Deep slate blackout
           ctx.fillRect(drawX, drawY, drawW, drawH);
@@ -131,31 +163,36 @@ export async function sanitizeScreenshot(
         }
       }
     } else {
-      // L3: Full Viewport Screenshot
-      canvas.width = img.naturalWidth || img.width;
-      canvas.height = img.naturalHeight || img.height;
+      // L3: Full Viewport Screenshot with DPR scaling
+      canvas.width = imgW;
+      canvas.height = imgH;
 
       ctx.drawImage(img, 0, 0);
 
-      // Mask all sensitive bounding boxes across the viewport
+      // Mask all sensitive bounding boxes across the viewport scaled to device pixels
       for (const [bx, by, bw, bh] of sensitiveBoxes) {
+        const sbx = Math.round(bx * scaleX);
+        const sby = Math.round(by * scaleY);
+        const sbw = Math.round(bw * scaleX);
+        const sbh = Math.round(bh * scaleY);
+
         ctx.fillStyle = "#0f172a";
-        ctx.fillRect(bx, by, bw, bh);
+        ctx.fillRect(sbx, sby, sbw, sbh);
 
         ctx.strokeStyle = "#ef4444";
         ctx.lineWidth = 2;
-        ctx.strokeRect(bx, by, bw, bh);
+        ctx.strokeRect(sbx, sby, sbw, sbh);
 
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 12px sans-serif";
-        ctx.fillText("[REDACTED PII]", bx + 4, by + Math.min(bh / 2 + 4, bh - 4));
+        ctx.fillText("[REDACTED PII]", sbx + 4, sby + Math.min(sbh / 2 + 4, sbh - 4));
       }
     }
 
     return canvas.toDataURL("image/png");
   } catch (err) {
-    console.warn("[SanitizeScreenshot] Error processing image, returning uncropped/raw fallback:", err);
-    return rawScreenshotDataUrl;
+    console.error("[SanitizeScreenshot] Error processing image, strictly failing closed (0 bytes):", err);
+    return "";
   }
 }
 
@@ -214,5 +251,10 @@ export async function captureAndSanitizeTab(
     console.error("[VisualSensitivity] Engine failed, falling back:", err);
   }
 
-  return sanitizeScreenshot(result.dataUrl, sensitiveBoxes, cropBox);
+  const sanitized = await sanitizeScreenshot(result.dataUrl, sensitiveBoxes, cropBox, pageState?.viewport);
+  if (!sanitized) {
+    console.error("[CaptureTab] Screenshot sanitization failed — strictly failing closed (0 bytes sent).");
+    return undefined;
+  }
+  return sanitized;
 }

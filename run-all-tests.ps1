@@ -18,8 +18,9 @@ $suites = @(
     @{ Name = "8. Enterprise DPDP Act 2023 Audit Vault"; Cmd = "npx.cmd tsx ..\tests\test_compliance_audit.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "9. Synthetic Replacer and Audit Vault"; Cmd = "npx.cmd tsx ..\tests\test_synthetic_replacer_and_audit_vault.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "10. Live HTTP Trust Boundary and Defense-in-Depth"; Cmd = "node ..\tests\test_live_http_end_to_end.mjs"; Dir = "$ROOT\extension" },
-    @{ Name = "11. Internal 5-Metric Benchmark Harness"; Cmd = "npx.cmd tsx ..\benchmark\scripts\run-benchmark.mjs"; Dir = "$ROOT\extension" },
-    @{ Name = "12. FastAPI Backend Pytest Suite"; Cmd = ".\venv\Scripts\pytest.exe -p no:cacheprovider ..\tests\"; Dir = "$ROOT\server" }
+    @{ Name = "11. Zero-Trust Red-Team Security & Invariants Suite"; Cmd = "npx.cmd tsx ..\tests\test_redteam_security.mjs"; Dir = "$ROOT\extension" },
+    @{ Name = "12. Internal 5-Metric Benchmark Harness"; Cmd = "npx.cmd tsx ..\benchmark\scripts\run-benchmark.mjs"; Dir = "$ROOT\extension" },
+    @{ Name = "13. FastAPI Backend Pytest Suite"; Cmd = ".\venv\Scripts\python.exe -m pytest -p no:cacheprovider ..\tests\test_backend_api.py ..\tests\test_contracts.py"; Dir = "$ROOT\server" }
 )
 
 $passed = 0
@@ -54,6 +55,14 @@ if (Test-Path $reportPath) {
 
 Write-Host ""
 Write-Host "==================================================================" -ForegroundColor Cyan
-Write-Host "   TEST SUITE SUMMARY: $passed / $total SUITES PASSED" -ForegroundColor Green
+if ($passed -eq $total) {
+    Write-Host "   TEST SUITE SUMMARY: $passed / $total SUITES PASSED" -ForegroundColor Green
+} else {
+    Write-Host "   TEST SUITE SUMMARY: $passed / $total SUITES PASSED" -ForegroundColor Red
+}
 Write-Host "   Internal composite score (from benchmark/results/report.json): $scoreDisplay" -ForegroundColor Green
 Write-Host "==================================================================" -ForegroundColor Cyan
+
+if ($passed -ne $total) {
+    exit 1
+}

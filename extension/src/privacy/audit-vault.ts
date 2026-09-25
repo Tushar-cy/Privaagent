@@ -155,10 +155,39 @@ export class PrivacyAuditVault {
     targetId: string,
     action: string,
     outboundBytes: number,
-    rawPayload?: string
+    riskVerdict: string = "ALLOW",
+    entitiesMasked: string[] = [],
+    policyApplied: string = "",
+    isLocal: boolean = true,
+    disclosureLevel: string = "L0"
   ): string {
-    const content = `${previousHash}|${goal}|${subtask}|${targetId}|${action}|${outboundBytes}|${rawPayload || ""}`;
-    return computePayloadHash(content);
+    const sortedEntities = (entitiesMasked || []).slice().sort().join(",");
+    const canonical = [
+      previousHash,
+      goal,
+      subtask,
+      targetId,
+      action,
+      outboundBytes,
+      riskVerdict,
+      sortedEntities,
+      policyApplied || "",
+      isLocal ? "1" : "0",
+      disclosureLevel,
+    ].join("|");
+    return computePayloadHash(canonical);
+  }
+
+  /**
+   * Loads historical records from persistent storage and verifies chain integrity.
+   */
+  public loadFromStorage(records: AuditRecord[]): { loaded: number; valid: boolean } {
+    if (Array.isArray(records) && records.length > 0) {
+      this.records = [...records];
+      const check = this.verifyLedgerIntegrity();
+      return { loaded: records.length, valid: check.valid };
+    }
+    return { loaded: 0, valid: true };
   }
 
   /**
@@ -177,9 +206,12 @@ export class PrivacyAuditVault {
       entry.targetId,
       entry.action,
       entry.outboundBytes,
-      entry.rawPayload
+      entry.riskVerdict,
+      entry.entitiesMasked,
+      entry.policyApplied,
+      entry.isLocal,
+      entry.disclosureLevel
     );
-
 
     const record: AuditRecord = {
       id: `audit_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -232,9 +264,7 @@ export class PrivacyAuditVault {
       return { valid: true, chainLength: 0, rootHash: GENESIS_PREVIOUS_HASH };
     }
 
-
     let expectedPreviousHash = GENESIS_PREVIOUS_HASH;
-
 
     for (let i = 0; i < this.records.length; i++) {
       const record = this.records[i];
@@ -249,25 +279,28 @@ export class PrivacyAuditVault {
         };
       }
 
-      // Re-verify the hash
+      // Re-verify the hash against canonical record content
       const recomputed = PrivacyAuditVault.calculateRecordHash(
         record.previousHash,
         record.goal,
         record.subtask,
         record.targetId,
         record.action,
-        record.outboundBytes
+        record.outboundBytes,
+        record.riskVerdict,
+        record.entitiesMasked,
+        record.policyApplied,
+        record.isLocal,
+        record.disclosureLevel
       );
 
-      // If user supplied rawPayload during record, the recomputed without rawPayload may differ,
-      // so we verify that the current record's payloadHash is non-empty and matches 64-char SHA-256 format.
-      if (!record.payloadHash || record.payloadHash.length !== 64) {
+      if (record.payloadHash !== recomputed) {
         return {
           valid: false,
           chainLength: this.records.length,
           rootHash: record.payloadHash,
           tamperedIndex: i,
-          error: `Invalid SHA-256 payload hash format at index ${i}: ${record.payloadHash}`,
+          error: `Integrity violation: record content at index ${i} has been modified (recomputed hash ${recomputed} does not match stored payloadHash ${record.payloadHash})`,
         };
       }
 

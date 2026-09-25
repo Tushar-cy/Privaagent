@@ -132,6 +132,46 @@ export async function runMultiTurnAgent(
       };
     }
 
+    // 3b. Pre-flight Security Block Check (e.g., global prompt injection detected)
+    if (resolution.processingPath === "BLOCKED") {
+      const blockMsg = resolution.blockReason || "Action resolution blocked by security policy.";
+      history.push({
+        stepIndex: stepNum,
+        subtask,
+        action: resolution.action,
+        isLocal: resolution.isLocal,
+        level: resolution.disclosure?.level || "L0",
+        bytesSent: resolution.networkBytesSent,
+        latencyMs: resolution.latencyMs,
+        success: false,
+        verdict: "BLOCK",
+        error: blockMsg,
+      });
+
+      PrivacyAuditVault.getInstance().record({
+        goal: goalStr,
+        subtask,
+        disclosureLevel: resolution.disclosure?.level || "L0",
+        entitiesMasked: extractSensitiveEntityTypes(currentState),
+        outboundBytes: resolution.networkBytesSent,
+        action: resolution.action.action,
+        targetId: resolution.action.target_id,
+        riskVerdict: "BLOCK",
+        policyApplied: blockMsg,
+        isLocal: resolution.isLocal,
+      });
+
+      return {
+        goal: goalStr,
+        decomposed,
+        status: "FAILED",
+        totalSteps: history.length,
+        cumulativeBytesSent: budgetStatus.cumulativeBytesSent,
+        history,
+        error: `Security Policy BLOCKED subtask "${subtask}": ${blockMsg}`,
+      };
+    }
+
     // 4. Pre-execution Safety Validation
     const validation: ValidationResult = doc
       ? validateAction(resolution.action, currentState, doc)

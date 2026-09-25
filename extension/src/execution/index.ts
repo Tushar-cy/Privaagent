@@ -35,7 +35,7 @@ export async function executeAction(action: Action): Promise<ExecutionResult> {
       return executeScroll(validAction.target_id, validAction.delta);
 
     case "navigate":
-      return executeNavigate(validAction.url);
+      return executeNavigate(validAction.url || validAction.value);
 
     case "select": {
       // Select is handled by setting select.value and triggering change

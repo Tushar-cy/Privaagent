@@ -7,8 +7,9 @@ import json
 class Settings(BaseSettings):
     HOST: str = "127.0.0.1"
     PORT: int = 8000
-    DEBUG: bool = True
+    DEBUG: bool = False
     LOG_LEVEL: str = "info"
+    SESSION_TOKEN: str = ""  # If set, clients must supply X-Privaagent-Session-Token or Bearer auth
 
     # CORS configuration - restricted to extension origins and local dev servers
     CORS_ORIGINS: List[str] = [

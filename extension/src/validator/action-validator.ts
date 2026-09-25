@@ -112,22 +112,57 @@ export function validateAction(
     }
   }
 
-  // 4. Check for layout drift if original PageState metadata is provided
+  // 4. Check for layout and semantic drift if original PageState metadata is provided
   if (pageState) {
     const recordedEl = pageState.elements.find((el) => el.target_id === action.target_id);
-    if (recordedEl && recordedEl.bbox) {
-      const [origX, origY] = recordedEl.bbox;
-      const driftX = Math.abs(rect.left - origX);
-      const driftY = Math.abs(rect.top - origY);
-
-      if (driftX > allowedDrift || driftY > allowedDrift) {
+    if (recordedEl) {
+      // 4a. Structural role / tag verification
+      const liveTag = liveEl.tagName.toLowerCase();
+      const recordedTag = (recordedEl.metadata?.tagName as string)?.toLowerCase();
+      if (recordedTag && recordedTag !== liveTag) {
         return {
           valid: false,
           verdict: "BLOCK",
           element: liveEl,
-          error: `Pre-execution drift alert: element shifted by (${driftX.toFixed(0)}px, ${driftY.toFixed(0)}px) exceeding threshold (${allowedDrift}px).`,
+          error: `Pre-execution semantic validation failed: element tag changed from <${recordedTag}> to <${liveTag}> (possible DOM manipulation/bait-and-switch).`,
           requiresReplan: true,
         };
+      }
+
+      // 4b. Text identity verification (prevent target swap / bait-and-switch)
+      const liveText = (liveEl.textContent?.trim() || "").toLowerCase();
+      const recordedText = (recordedEl.text || "").trim().toLowerCase();
+      if (
+        recordedText.length > 3 &&
+        liveText.length > 0 &&
+        !liveText.includes(recordedText) &&
+        !recordedText.includes(liveText) &&
+        recordedText !== "[password]"
+      ) {
+        return {
+          valid: false,
+          verdict: "BLOCK",
+          element: liveEl,
+          error: `Pre-execution semantic drift alert: element text changed from "${recordedEl.text}" to "${liveEl.textContent?.trim()}" (possible target mutation).`,
+          requiresReplan: true,
+        };
+      }
+
+      // 4c. Spatial layout drift
+      if (recordedEl.bbox) {
+        const [origX, origY] = recordedEl.bbox;
+        const driftX = Math.abs(rect.left - origX);
+        const driftY = Math.abs(rect.top - origY);
+
+        if (driftX > allowedDrift || driftY > allowedDrift) {
+          return {
+            valid: false,
+            verdict: "BLOCK",
+            element: liveEl,
+            error: `Pre-execution drift alert: element shifted by (${driftX.toFixed(0)}px, ${driftY.toFixed(0)}px) exceeding threshold (${allowedDrift}px).`,
+            requiresReplan: true,
+          };
+        }
       }
     }
   }

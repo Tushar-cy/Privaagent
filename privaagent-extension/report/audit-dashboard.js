@@ -1,5 +1,5 @@
-// Privaagent Compliance Dashboard & Cryptographic Audit Ledger
-// Aligned with DPDP Act 2023 / GDPR Art. 25 standards
+// Privaagent Privacy Audit Dashboard & Cryptographic Audit Ledger
+// Displays on-device audit records for internal validation.
 
 // Sample verified records for standalone certification viewing
 const DEFAULT_RECORDS = [
@@ -179,9 +179,8 @@ function exportSignedJSON() {
   const rootHashEl = document.getElementById("root-hash");
 
   const data = {
-    certificateId: certIdEl ? certIdEl.innerText : "PRIVAAGENT-DPDP-IN-2026-A109",
-    issuedAt: new Date().toISOString(),
-    standard: "DPDP_ACT_2023_INDIA",
+    summaryId: `audit_${Date.now().toString(36)}`,
+    generatedAt: new Date().toISOString(),
     rootHash: rootHashEl ? rootHashEl.innerText : "0009dab76fb675c5",
     totalRecords: currentRecords.length,
     ledger: currentRecords
@@ -190,7 +189,7 @@ function exportSignedJSON() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `privaagent_dpdp_certificate_${Date.now()}.json`;
+  a.download = `privaagent_privacy_audit_summary_${Date.now()}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

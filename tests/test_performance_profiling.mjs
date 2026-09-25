@@ -63,7 +63,12 @@ global.HTMLSelectElement = dom.window.HTMLSelectElement;
 global.HTMLCanvasElement = dom.window.HTMLCanvasElement;
 global.SVGElement = dom.window.SVGElement;
 global.XMLSerializer = dom.window.XMLSerializer;
-global.Node = dom.window.Node;
+dom.window.getComputedStyle = function (el) {
+  const display = el?.style?.display || "block";
+  const visibility = el?.style?.visibility || "visible";
+  const opacity = el?.style?.opacity || "1";
+  return { display, visibility, opacity };
+};
 global.getComputedStyle = dom.window.getComputedStyle;
 global.performance = globalThis.performance;
 

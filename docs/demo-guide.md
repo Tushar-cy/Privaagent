@@ -6,7 +6,7 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
 
 ## 🎯 Key Elevator Pitch (30 Seconds)
 
-> *"Existing browser agents send full unredacted screen captures to frontier LLMs—exposing citizen Aadhaar numbers, tax PANs, banking tokens, and enterprise secrets on every single step. **Privaagent** fundamentally flips this paradigm: **85% of evaluation criteria and actions are solved on-device within the Chrome sandbox in < 1ms with 0 network bytes sent**. For visual or complex reasoning, Privaagent escalates through an adaptive Minimum Disclosure Ladder, transmitting only sanitized bounding crops, while an active defense-in-depth shield blocks leaked PII and prompt injection attacks before execution."*
+> *"Existing browser agents send full unredacted screen captures to frontier LLMs—exposing citizen Aadhaar numbers, tax PANs, banking tokens, and enterprise secrets on every single step. **Privaagent** fundamentally flips this paradigm: **85% of evaluation criteria and actions are solved on-device within the Chrome sandbox in ~2.80 ms with 0 network bytes sent**. For visual or complex reasoning, Privaagent escalates through an adaptive Minimum Disclosure Ladder, transmitting only sanitized bounding crops, while an active defense-in-depth shield blocks leaked PII and prompt injection attacks before execution."*
 
 ---
 
@@ -20,7 +20,7 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
    - Dispatches synthesized click on `#btn-open-invoice`.
 3. **What Judges See**:
    - **Network Bytes Sent**: `0 Bytes`.
-   - **Latency**: `< 1 ms` (measured `0.21 ms`).
+   - **Latency**: `< 15 ms` (measured `2.80 ms`).
    - **Disclosure Level**: `L0 LOCAL ONLY`.
    - **Zero DOM Mutation**: The live page DOM is never mutated or corrupted.
 
@@ -45,7 +45,7 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
 1. **Scenario**: Dashboard displays customer PII (Name, Email, Mobile, PAN `ABCDE1234F`, Aadhaar `9876 5432 1098`, and Customer Avatar Face).
 2. **Execution**:
    - On-device **Privacy Engine** (regex + Shannon entropy + NER) detects all 6 sensitive fields.
-   - **BlazeFace Specialist** identifies the customer photo avatar.
+   - **Chrominance Skin-Tone Face Detector** identifies the customer photo avatar.
    - **OverlayManager** projects real-time backdrop blur masks (`backdrop-filter: blur(8px)`) directly onto the screen.
 3. **What Judges See**:
    - Sensitive text and faces appear blurred with subtle `🔒 [REDACTED]` and `🛡️ [FACE_BLURRED]` badges.
@@ -82,9 +82,9 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
 2. **Execution**:
    - **Goal Decomposer** parses sequential connectives (`then`, `after that`, `;`) into atomic subtasks: `["Open Rahul's invoice", "click the bar representing Q4"]`.
    - **Session Privacy Budget** enforces hard session bounds: max 50 KB cumulative network payload, max 4 remote escalations, max 8 steps.
-   - **Step 1**: Resolved locally on-device (`L0 LOCAL ONLY`, 0 bytes transmitted, 0.2 ms latency). Synthesizes DOM click on `#btn-open-invoice`.
+   - **Step 1**: Resolved locally on-device (`L0 LOCAL ONLY`, 0 bytes transmitted, ~2.80 ms latency). Synthesizes DOM click on `#btn-open-invoice`.
    - **DOM Perception Refresh**: Automatically updates candidate element registry without full-page reloads.
-   - **Step 2**: Visual requirement detected -> on-device Florence-2 isolates canvas bounding box, escalating strictly minimal L2 crop ROI.
+   - **Step 2**: Visual requirement detected -> on-device classical CV isolates canvas bounding box, escalating strictly minimal L2 crop ROI.
    - **Budget Tracking**: Cumulative transmitted: 1,158 Bytes (99.9% bandwidth saved vs. transmitting 2 full screenshot rounds).
 3. **What Judges See**:
    - Multi-step progress trajectory card rendered in Privacy Ledger HUD.
@@ -95,7 +95,7 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
 ### Workflow 7: Enterprise DPDP Act 2023 Compliance & Cryptographic Audit Portal
 1. **Scenario**: Enterprise compliance officer requests an immutable audit trail verifying zero citizen data leaks under the Indian Digital Personal Data Protection (DPDP) Act 2023 and GDPR Article 25.
 2. **Execution**:
-   - **Cryptographic Chaining**: Every action, disclosure level, masked entity, and payload is hashed with SHA-64 and chained to the previous transaction's hash (`0000000000000000` &rarr; `hash_1` &rarr; `hash_2`).
+   - **Cryptographic Chaining**: Every action, disclosure level, masked entity, and payload is hashed with SHA-256 and chained to the previous transaction's hash (`0000000000000000` &rarr; `hash_1` &rarr; `hash_2`).
    - **Tamper Detection**: An immutable ledger integrity validator confirms 0 blocks have been altered or back-dated.
    - **Differential Privacy**: Supports dual-mode protection—standard visual masking (`🔒 [REDACTED_AADHAAR]`) and format-preserving synthetic surrogates (Verhoeff-valid Aadhaar, CBDT-valid PAN, Luhn-valid credit card).
    - **Exportable audit summary**: Single-click export of a `PrivacyAuditSummary` JSON and interactive printable HTML portal (`extension/report/compliance-dashboard.html`).
@@ -115,6 +115,6 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
 | **Visual Context Accuracy** | 25% | 1/5 elements matched · CV detected 4 bars (generic labels); Tesseract read value text (`$12k`–`$28k`), not Q-labels (12px font — OCR limitation) · 1 face via chrominance | **20.00%** |
 | **PII Detection Accuracy (F1)** | 20% | 265 labeled snippets · 220 TP, 0 FP, 0 FN, 45 TN · **100% F1** | **100.00%** |
 | **Redaction Precision & Quality** | 20% | 0 raw leaks across all outbound payloads; 100% context retention | **100.00%** |
-| **Client Resource Utilization** | 20% | Avg DOM latency **5.39 ms** (< 50 ms); Heap **132.57 MB** (< 150 MB budget) | **95.84%** |
-| **End-to-End Task Latency** | 15% | Local fast-path **0.64 ms** (< 15 ms target); **9/10** tasks passed | **92.00%** |
-| **COMPOSITE SCORE** | **100%** | Internal self-evaluation · canvas-backed real pixel rendering | **77.97 / 100.00** |
+| **Client Resource Utilization** | 20% | Avg DOM latency **2.19 ms** (< 50 ms); Heap **70.09 MB** (< 150 MB budget) | **97.98%** |
+| **End-to-End Task Latency** | 15% | Local fast-path **3.25 ms** (< 15 ms target); **10/10** tasks passed | **100.00%** |
+| **COMPOSITE SCORE** | **100%** | Internal self-evaluation · canvas-backed real pixel rendering | **79.60 / 100.00** |

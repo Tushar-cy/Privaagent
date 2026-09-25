@@ -22,7 +22,7 @@ if (hash1 !== hash2) {
 if (hash1 === hash3) {
   throw new Error("Hash collision on modified content!");
 }
-console.log(`✓ Hash verification: SHA-64 hex = ${hash1} (Collision-resistant)`);
+console.log(`✓ Hash verification: SHA-256 (64-char hex) = ${hash1} (Collision-resistant)`);
 
 // 2. Privacy Audit Vault Transaction Recording
 console.log("\n[TEST 2] Testing Audit Vault Transaction Logging...");
@@ -125,3 +125,4 @@ console.log("✓ Audit report verified: correct field values and data types.");
 console.log("\n--------------------------------------------------");
 console.log("[ALL TESTS PASSED] Privacy Audit Vault Suite Verified!");
 console.log("==================================================\n");
+process.exit(0);

@@ -229,3 +229,4 @@ console.log("  ✓ Severe element layout drift correctly detected and blocked.")
 
 console.log("\n--------------------------------------------------");
 console.log("[ALL TESTS PASSED] Prompt 5 Action Validator & Risk Engine successfully verified!");
+process.exit(0);

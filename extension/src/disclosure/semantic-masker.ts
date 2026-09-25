@@ -33,6 +33,16 @@ export function maskPageStateForDisclosure(
         label: redacted.sanitizedText,
         bbox: el.bbox,
       });
+    } else if (el.sensitive) {
+      // Unconditional redaction for items flagged as sensitive (e.g. passwords)
+      // without specific regex span detections.
+      totalRedactedTokens += 1;
+      disclosedElements.push({
+        target_id: el.target_id,
+        role: el.role,
+        label: "[PASSWORD]",
+        bbox: el.bbox,
+      });
     } else {
       disclosedElements.push({
         target_id: el.target_id,

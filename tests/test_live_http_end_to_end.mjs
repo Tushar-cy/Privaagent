@@ -19,7 +19,10 @@ console.log("[SETUP] Spawning FastAPI Core backend server on port 8000...");
 const serverProcess = spawn(
   pythonExe,
   ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"],
-  { cwd: path.resolve(ROOT_DIR, "server") }
+  {
+    cwd: path.resolve(ROOT_DIR, "server"),
+    env: { ...process.env, VLM_PROVIDER: process.env.VLM_PROVIDER || "mock" },
+  }
 );
 
 serverProcess.stderr.on("data", (data) => {
@@ -183,5 +186,6 @@ try {
   console.log("[ALL TESTS PASSED] Live HTTP Trust Boundary & Defense-in-Depth fully verified!");
 } finally {
   console.log("\n[TEARDOWN] Stopping FastAPI server process...");
-  serverProcess.kill("SIGTERM");
+  try { serverProcess.kill("SIGTERM"); } catch (_) {}
+  process.exit(0);
 }

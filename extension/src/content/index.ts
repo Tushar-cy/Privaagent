@@ -41,16 +41,18 @@ let latestPageState: PageState | null = null;
 let latestDurationMs: number = 0;
 let shieldEnabled: boolean = true; // Runtime state; restored from storage on init
 const overlayManager = new OverlayManager();
-window.__privaagent_overlay_manager = overlayManager;
+if (typeof window !== "undefined") {
+  window.__privaagent_overlay_manager = overlayManager;
 
-// Listen for OCR lazy-loading events to display honest loading states
-window.addEventListener("PRIVAAGENT_OCR_INIT_START", () => {
-  overlayManager.updateHUD("Loading", "Initializing Vision Engine (~4MB)...");
-});
+  // Listen for OCR lazy-loading events to display honest loading states
+  window.addEventListener("PRIVAAGENT_OCR_INIT_START", () => {
+    overlayManager.updateHUD("Loading", "Initializing Vision Engine (~4MB)...");
+  });
 
-window.addEventListener("PRIVAAGENT_OCR_INIT_END", () => {
-  overlayManager.updateHUD("Loaded", "Vision Engine Ready");
-});
+  window.addEventListener("PRIVAAGENT_OCR_INIT_END", () => {
+    overlayManager.updateHUD("Loaded", "Vision Engine Ready");
+  });
+}
 
 function extractSensitiveEntityTypes(state: PageState | null): string[] {
   if (!state) return [];
@@ -95,23 +97,53 @@ function runPerception(): PageState {
   return latestPageState;
 }
 
-// Register global helpers
-window.__privaagent_extract = () => {
-  const state = runPerception();
-  return { pageState: state, durationMs: latestDurationMs };
-};
+if (typeof window !== "undefined") {
+  window.__privaagent_extract = () => {
+    const state = runPerception();
+    return { pageState: state, durationMs: latestDurationMs };
+  };
+}
 
-window.__privaagent_execute_action = (action: any) => executeAction(action);
-window.__privaagent_resolve_element = (targetId: string) => resolveElementByTargetId(targetId);
-window.__privaagent_run_goal = (goal: string, options?: AgentLoopOptions) => {
-  if (!latestPageState) runPerception();
-  return runMultiTurnAgent(goal, latestPageState || undefined, {
-    doc: document,
-    delayBetweenStepsMs: 250,
-    ...options,
-  });
-};
-window.__privaagent_audit_vault = PrivacyAuditVault.getInstance();
+/**
+ * Mandatory Execution Gatekeeper:
+ * Enforces local validation before allowing any action to reach the browser execution engine.
+ * Unvalidated or blocked actions cannot bypass the security validator.
+ */
+export async function requestValidatedExecution(
+  action: any,
+  options?: { userConfirmed?: boolean }
+): Promise<ExecutionResult> {
+  const valResult = validateAction(action, latestPageState || undefined, document);
+  if (!valResult.valid || valResult.verdict === "BLOCK") {
+    return {
+      success: false,
+      target_id: action.target_id || "unknown",
+      error: `Execution strictly BLOCKED by security validator: ${valResult.error || "Policy violation"}`,
+    };
+  }
+  if (valResult.verdict === "CONFIRM" && !options?.userConfirmed && !action.user_confirmed) {
+    return {
+      success: false,
+      target_id: action.target_id || "unknown",
+      error: `Execution paused: Confirmation required (${valResult.policyResult?.requiredUserConfirmation || "User approval required"})`,
+    };
+  }
+  return executeAction(action);
+}
+
+if (typeof window !== "undefined") {
+  window.__privaagent_execute_action = (action: any) => requestValidatedExecution(action);
+  window.__privaagent_resolve_element = (targetId: string) => resolveElementByTargetId(targetId);
+  window.__privaagent_run_goal = (goal: string, options?: AgentLoopOptions) => {
+    if (!latestPageState) runPerception();
+    return runMultiTurnAgent(goal, latestPageState || undefined, {
+      doc: typeof document !== "undefined" ? document : ({} as any),
+      delayBetweenStepsMs: 250,
+      ...options,
+    });
+  };
+  window.__privaagent_audit_vault = PrivacyAuditVault.getInstance();
+}
 
 // ─── Scroll & Resize Re-render ─────────────────────────────────────────────
 // position: fixed overlays use viewport coords from getBoundingClientRect().
@@ -188,22 +220,27 @@ function initialize(): void {
   });
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initialize);
-} else {
-  initialize();
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initialize);
+  } else {
+    initialize();
+  }
 }
 
-window.addEventListener("beforeunload", () => {
-  stopObservingDOM();
-  overlayManager.destroy();
-  if (scrollDebounceTimer) clearTimeout(scrollDebounceTimer);
-  window.removeEventListener("scroll", debouncedRerender);
-  window.removeEventListener("resize", debouncedRerender);
-});
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => {
+    stopObservingDOM();
+    overlayManager.destroy();
+    if (scrollDebounceTimer) clearTimeout(scrollDebounceTimer);
+    window.removeEventListener("scroll", debouncedRerender);
+    window.removeEventListener("resize", debouncedRerender);
+  });
+}
 
 // Chrome Extension Runtime Message Listener
-chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
+if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "GET_PAGE_STATE") {
     if (!latestPageState) runPerception();
     const sensitiveElementsCount = latestPageState?.elements.filter((e) => e.sensitive).length || 0;
@@ -249,7 +286,7 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === "EXECUTE_ACTION") {
-    executeAction(message.action).then((res) => sendResponse(res));
+    requestValidatedExecution(message.action, { userConfirmed: message.userConfirmed }).then((res) => sendResponse(res));
     return true;
   }
 
@@ -280,6 +317,7 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
 
   return false;
 });
+}
 
 /**
  * Produces a partially masked display version of a detected PII value.

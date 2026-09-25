@@ -6,6 +6,7 @@ import { Action, ActionSchema, Disclosure } from "../common/types";
 export interface RemoteResolutionOptions {
   serverBaseUrl?: string;
   fetchFn?: typeof fetch;
+  sessionToken?: string;
 }
 
 /**
@@ -17,14 +18,22 @@ export async function requestRemoteAction(
 ): Promise<Action> {
   const serverBaseUrl = options.serverBaseUrl || "http://127.0.0.1:8000";
   const fetchClient = options.fetchFn || fetch;
+  const sessionToken =
+    options.sessionToken ||
+    (typeof window !== "undefined" ? (window as any).__privaagent_session_token : undefined);
 
   const endpoint = `${serverBaseUrl}/api/resolve-action`;
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (sessionToken) {
+    headers["X-Privaagent-Session-Token"] = sessionToken;
+  }
+
   const response = await fetchClient(endpoint, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify(disclosure),
   });
 

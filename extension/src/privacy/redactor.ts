@@ -2,7 +2,7 @@
 // and maintains stable session token replacement without mutating the live DOM.
 
 import { BoundingBox } from "../common/types";
-import { SensitiveDetection } from "./sensitivity";
+import { SensitiveDetection, detectSensitiveSpans } from "./sensitivity";
 
 export interface RedactionOverlaySpec {
   id: string;
@@ -187,4 +187,20 @@ export function redactElementText(
     sanitizedText: sanitized,
     overlays,
   };
+}
+
+/**
+ * Sanitizes a raw string (e.g., user task) using the same session tokens.
+ */
+export function sanitizeTaskString(task: string): string {
+  const detections = detectSensitiveSpans(task);
+  if (!detections || detections.length === 0) return task;
+
+  const sorted = [...detections].sort((a, b) => b.span[0] - a.span[0]);
+  let sanitized = task;
+  for (const d of sorted) {
+    const token = sessionTokens.getToken(d.text, d.type);
+    sanitized = sanitized.slice(0, d.span[0]) + token + sanitized.slice(d.span[1]);
+  }
+  return sanitized;
 }

@@ -14,10 +14,8 @@
 ## 📌 Important Prototype Notice (v0.1.0 — 10% Baseline)
 
 > [!NOTE]
-> **This repository represents Phase 1: Prototype Foundation (~10% of the long-term production vision).**  
-> It establishes the core client-first architectural blueprint: on-device semantic perception, deterministic PII/secret detection, mathematical checksum validation (Verhoeff, Luhn, CBDT), dynamic pixel-level Computer Vision, minimum disclosure ladder escalation (L0 &rarr; L3), and defense-in-depth server rejection.
-> 
-> The [Future Roadmap & Improvements](#-future-roadmap--the-remaining-90) section outlines the remaining 90% planned for production-grade enterprise deployment, including on-device quantized INT4 Small-VLMs (SmolVLM/MobileVLM) running entirely over WebGPU, hardware enclave verification, and cross-tab session orchestration.
+> **This repository represents Phase 1: Prototype Foundation.**  
+> It establishes the core client-first architectural blueprint: on-device semantic perception, deterministic PII/secret detection, dynamic pixel-level Computer Vision, minimum disclosure ladder escalation (L0 &rarr; L3), and defense-in-depth server rejection.
 
 ---
 
@@ -29,13 +27,12 @@ If you are an **SIH Judge**, **Evaluator**, or **First-Time Tester**, you don't 
 |:---|:---|:---:|
 | 🚀 **Run the Full Live Demo** | Double-click [`start-privaagent.bat`](start-privaagent.bat) (or run `.\start-privaagent.ps1` in PowerShell). Boots the backend and launches Chrome with the extension pre-loaded! | **10 seconds** |
 | 🧩 **Install into Existing Chrome** | Open `chrome://extensions` &rarr; Developer Mode **ON** &rarr; **Load unpacked** &rarr; Select the [`privaagent-extension`](privaagent-extension/) folder. | **15 seconds** |
-| 🧪 **Verify All 12 Test Suites** | Run `powershell -ExecutionPolicy Bypass -File .\run-all-tests.ps1` in terminal. Validates 100% pass rate. | **60 seconds** |
-| 📊 **View SIH Scoring & Defense** | See [SIH Benchmark Scorecard](#-official-sih26171-benchmark-scorecard) & [Two-Layer Architecture](docs/TWO_LAYER_ARCHITECTURE.md). | **2 minutes** |
+| 🧪 **Verify All 13 Test Suites** | Run `powershell -ExecutionPolicy Bypass -File .\run-all-tests.ps1` in terminal. Validates 100% pass rate across all 13 suites. | **60 seconds** |
+| 📊 **View SIH Scoring & Defense** | See [SIH Benchmark Scorecard](#-internal-self-evaluation-scorecard) & [Two-Layer Architecture](docs/TWO_LAYER_ARCHITECTURE.md). | **2 minutes** |
 
 > [!TIP]
-> ### 🛡️ Foolproof Folder Selection in `chrome://extensions/`:
-> * 🌟 **Recommended:** Select the **`privaagent-extension`** folder (or simply double-click [`start-privaagent.bat`](start-privaagent.bat) to auto-boot server and auto-load the extension).
-> * 🌟 **Zero-Error Fallback:** We have included a root `manifest.json` pointing directly to the extension bundle, so even if you accidentally select the top-level **`Privaagent`** repository folder, Chrome will load smoothly without any *"Manifest file is missing or unreadable"* error!
+> ### 🛡️ Folder Selection in `chrome://extensions/`:
+> * Select the **`privaagent-extension`** folder.
 
 ---
 
@@ -46,12 +43,12 @@ Privaagent/
 ├── 🧩 privaagent-extension/    # ⭐ PRE-BUILT UNPACKED EXTENSION (Select THIS in chrome://extensions)
 ├── ⚡ start-privaagent.bat     # ⭐ 1-CLICK LAUNCHER (Auto-boots server + opens Chrome with extension)
 ├── ⚡ start-privaagent.ps1     # 1-Click Launcher for PowerShell
-├── 🧪 run-all-tests.ps1        # Automated Test Runner (Executes all 12 test suites & benchmarks)
+├── 🧪 run-all-tests.ps1        # Automated Test Runner (Executes all 13 test suites & benchmarks)
 ├── 🌐 demo/                    # Interactive Demonstration Web Portal (HTML/CSS/JS with test presets)
 ├── 🖥️ server/                  # FastAPI Python Backend (Defense-in-depth, VLM client, schemas)
 ├── 📦 extension/               # Chrome MV3 Extension Source Code (TypeScript, WebGPU/WASM, Vite)
 ├── 📊 benchmark/               # Internal 5-metric benchmark harness (265 labeled test vectors)
-├── 📜 tests/                   # 12 Integration, Perception, Privacy & Contract Test Suites
+├── 📜 tests/                   # 13 Integration, Security, Privacy & Contract Test Suites
 └── 📖 docs/                    # Architecture deep-dives, DPDP Act compliance guides & PPT resources
 ```
 
@@ -64,7 +61,7 @@ Frontier autonomous web agents suffer from a critical architectural flaw: they c
 **Privaagent fundamentally eliminates this risk through the "85% Rule":**
 > **At least 85% of everyday browser tasks and evaluation criteria are resolved entirely inside the local browser sandbox.**
 
-When a user issues a command (e.g. *"Open Rahul's invoice"*), Privaagent inspects the DOM and Accessibility tree on-device. If the confidence threshold is met ($\ge 0.75$), it executes the action locally in **0.23 ms with 0 bytes transmitted over the network**.
+When a user issues a command (e.g. *"Open Rahul's invoice"*), Privaagent inspects the DOM and Accessibility tree on-device. If the local parser can resolve the action, it executes the action locally in **~3.25 ms with 0 bytes transmitted over the network**.
 
 Only when a task requires remote visual intelligence (e.g., reading an arbitrary HTML5 `<canvas>` chart or complex spatial reasoning) does Privaagent escalate up the **Minimum Disclosure Ladder**, transmitting **only sanitized tokens and an isolated visual crop ROI** to an untrusted reasoning VLM.
 
@@ -173,12 +170,12 @@ Evaluated against the **265-item comprehensive dataset** using real CPU/memory p
 
 | Metric | Weight | Measured Result | Score |
 | :--- | :---: | :---: | :---: |
-| **1. Visual Context Accuracy** | **25%** | 1 / 5 visual elements matched · 4 bars detected by CV pixel-contrast (generic labels); OCR read `$12k`–`$28k` value text, not `Q1`–`Q4` label text · 1 face via chrominance | **20.00%** (Score: 5.00) |
+| **1. Visual Context Accuracy** | **25%** | 1 / 5 visual elements matched · 4 bars detected by CV pixel-contrast; 1 face via chrominance | **20.00%** (Score: 5.00) |
 | **2. PII Detection Precision & Recall** | **20%** | 265 labeled snippets · 100% F1 (precision 1.0, recall 1.0) | **100.00%** (Score: 20.00) |
 | **3. Redaction Precision & Quality** | **20%** | **0 raw leaks** across all outbound payloads; 100% context retention | **100.00%** (Score: 20.00) |
-| **4. Client-Side Resource Utilization** | **20%** | Avg DOM latency **4.3 ms** (< 50 ms); Heap **96.0 MB** (< 150 MB budget) | **96.87%** (Score: 19.37) |
-| **5. End-to-End Task Latency** | **15%** | Local fast-path **1.00 ms** (< 15 ms target); **10 / 10** tasks passed | **100.00%** (Score: 15.00) |
-| **COMPOSITE SCORE** | **100%** | *Reproducible — run the harness yourself* | **79.37 / 100.00** |
+| **4. Client-Side Resource Utilization** | **20%** | Avg DOM latency **5.70 ms** (< 50 ms); Heap **70.33 MB** (< 150 MB budget) | **97.00%** (Score: 19.40) |
+| **5. End-to-End Task Latency** | **15%** | Local fast-path **4.68 ms** (< 15 ms target); **10 / 10** tasks passed | **100.00%** (Score: 15.00) |
+| **COMPOSITE SCORE** | **100%** | *Reproducible — run the harness yourself* | **79.40 / 100.00** |
 
 ---
 
@@ -209,7 +206,7 @@ Evaluated against the **265-item comprehensive dataset** using real CPU/memory p
 ### Prerequisites
 * **Node.js**: v20+ or v24+
 * **Python**: 3.10+ or 3.12+
-* **Browser**: Google Chrome or Mozilla Firefox
+* **Browser**: Chrome MV3 supported; Firefox support not yet validated.
 
 ---
 
@@ -248,9 +245,7 @@ start-privaagent.bat
 2. Enable **Developer mode** (toggle switch in the top-right corner).
 3. Click the **Load unpacked** button.
 4. **CRITICAL FOLDER SELECTION**:
-   > [!IMPORTANT]
-   > In the folder selection dialog, select the **`privaagent-extension`** folder (or navigate into `extension/dist/`).  
-   > ❌ **Do NOT select the root `Privaagent` repository folder** — Chrome will show *"Manifest file is missing or unreadable"* because `manifest.json` is located inside the unpacked extension directory!
+   > In the folder selection dialog, select the **`privaagent-extension`** folder.
 5. Click **Select Folder**.
 6. Pin the **Privaagent** shield icon to your browser toolbar.
 
@@ -283,7 +278,7 @@ Open `http://localhost:8000/demo/index.html` in Chrome:
 ---
 
 ### Step 6: Run the Complete Automated Test & Benchmark Suite
-Privaagent includes 12 automated verification suites:
+Privaagent includes 13 automated verification suites:
 
 ```powershell
 # From the project root:
@@ -298,25 +293,7 @@ npx.cmd tsx ../benchmark/scripts/run-benchmark.mjs
 
 ---
 
-## 🔮 Future Roadmap & The Remaining 90%
 
-While v0.1.0 provides a complete, verified proof-of-concept for the SIH evaluation, the production vision for Privaagent includes:
-
-### Now (v0.1.0 Prototype)
-- Core client-first architecture ensuring the 85% Rule (majority of tasks solved locally).
-- Dynamic CV Analyzer and Tesseract OCR for zero-network visual perception.
-- Minimum Disclosure Ladder (L0-L3) protecting sensitive PII boundaries.
-- Cryptographically chained Privacy Audit Vault for compliance verification.
-
-### Next (Near-term Priorities)
-- **On-Device Small-VLM**: Integrating quantized INT4 Vision-Language Models (e.g., SmolVLM 256M or MobileVLM) entirely in-browser via WebGPU shader pipelines to eliminate all cloud reliance.
-- **Cross-Tab Orchestration**: Handling multi-window state synchronization, OAuth redirects, and payment gateways robustly.
-- **Improved NER Models**: Upgrading the heuristic NER to a lightweight ONNX-based token classification model for better recall on edge-case names.
-
-### Later (Production Vision)
-- **Hardware Enclave (TEE)**: Confidential Computing attestation (Intel SGX / AMD SEV) guaranteeing non-tampering of the audit vault.
-- **Voice & Multimodal A11y**: Real-time on-device speech intent recognition for fully hands-free privacy-preserving automation.
-- **Web Store Release**: Formal security audits, signed binaries, and Chrome Web Store / Firefox Add-ons general availability.
 
 ---
 
@@ -350,7 +327,7 @@ Privaagent/
 │   └── scripts/                        # run-benchmark.mjs & dataset generator
 ├── demo/                               # Interactive Live Demonstration Portal
 │   └── index.html                      # Customer profile, canvas chart, adversarial lab
-├── tests/                              # 12 Automated Verification Suites (.mjs & pytest)
+├── tests/                              # 13 Automated Verification Suites (.mjs & pytest)
 ├── run-all-tests.ps1                   # Unified test runner script
 ├── privaagent-extension.zip            # Distributable extension archive
 └── README.md                           # Documentation & specifications
@@ -358,11 +335,7 @@ Privaagent/
 
 ---
 
-## 📜 Compliance & Standards
 
-* **Digital Personal Data Protection (DPDP) Act 2023 (India)**: Compliant with purpose limitation, notice requirements, on-device data minimization, and cryptographically verified audit logging.
-* **FIPS 180-4 SHA-256**: Cryptographic hash chaining for tamper-evident compliance audit ledgers.
-* **W3C Web Content Accessibility Guidelines (WCAG 2.1)**: Uses native ARIA accessibility trees for semantic understanding without DOM mutation.
 
 ---
 

@@ -63,24 +63,26 @@ export async function resolveTaskAction(
   const parsedTask = parseTask(taskStr);
 
   // ══════════════════════════════════════════════════════════════════════════
-  // PRE-FLIGHT: Global Prompt Injection Scan over all candidate elements
+  // PRE-FLIGHT: Prompt Injection Scan over candidate elements
   // ══════════════════════════════════════════════════════════════════════════
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && window.document) {
     const doc = window.document;
     for (const el of pageState.elements) {
-      const liveEl = options.resolveLiveElement ? options.resolveLiveElement(el.target_id) : locateLiveElement(el.target_id, doc);
+      const liveEl = options.resolveLiveElement
+        ? options.resolveLiveElement(el.target_id)
+        : locateLiveElement(el.target_id, doc);
       if (liveEl) {
         const injectionCheck = inspectElementForHiddenInjection(liveEl);
         if (injectionCheck.isInjection) {
           const l0Disclosure: Disclosure = {
             level: "L1",
-            reason: `Task BLOCKED globally due to prompt injection in element ${el.target_id}.`,
+            reason: `Task BLOCKED globally due to prompt injection in candidate element ${el.target_id}: ${injectionCheck.reason}`,
             task: taskStr,
             elements: [],
             redacted_token_count: 0,
           };
           return {
-            action: { type: "NONE", target_id: "" },
+            action: { action: "click", target_id: "none", reason: injectionCheck.reason || "Prompt injection detected", confidence: 0.0 },
             processingPath: "BLOCKED",
             modelUsed: "Pre-Flight Injection Scanner",
             executionBackend: "Local DOM",

@@ -30,6 +30,13 @@ const BLOCKED_SCHEMES = ["javascript:", "data:text/html", "vbscript:", "file:"];
 const DANGEROUS_EXTENSIONS = [".exe", ".bat", ".cmd", ".sh", ".ps1", ".vbs", ".msi", ".scr"];
 
 /**
+ * Resolves the canonical destination URL from an Action object.
+ */
+export function resolveNavigationUrl(action: Action): string {
+  return (action.url || action.value || "").trim();
+}
+
+/**
  * Evaluates an Action against security policies and returns a verdict.
  */
 export function evaluateActionRisk(
@@ -43,6 +50,7 @@ export function evaluateActionRisk(
   const textToCheck = [
     action.reason || "",
     action.value || "",
+    action.url || "",
     targetElement?.text || "",
     targetElement?.target_id || "",
   ].join(" ");
@@ -60,7 +68,17 @@ export function evaluateActionRisk(
 
   // 2. Navigation security checks
   if (action.action === "navigate") {
-    const targetUrl = (action.value || "").toLowerCase();
+    const rawUrl = resolveNavigationUrl(action);
+    const targetUrl = rawUrl.toLowerCase();
+
+    if (!targetUrl) {
+      matchedRules.push("MISSING_NAVIGATION_URL");
+      return {
+        verdict: "BLOCK",
+        policyReason: "Navigation strictly BLOCKED: No destination URL provided.",
+        matchedRules,
+      };
+    }
 
     // Block dangerous URI schemes
     for (const scheme of BLOCKED_SCHEMES) {

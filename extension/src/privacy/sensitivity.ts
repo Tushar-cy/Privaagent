@@ -13,16 +13,13 @@ export interface SensitiveDetection {
   confidence: number;
 }
 
-/**
- * Analyzes a single page element and attaches sensitivity metadata.
- */
-export function annotateElementSensitivity(element: PageElement): PageElement {
-  const text = element.text;
-  if (!text || text.trim().length === 0) {
-    return element;
-  }
 
+export function detectSensitiveSpans(text: string): SensitiveDetection[] {
   const detections: SensitiveDetection[] = [];
+
+  if (!text || text.trim().length === 0) {
+    return detections;
+  }
 
   // 1. Structured PII
   const piiSpans = detectStructuredPII(text);
@@ -62,6 +59,20 @@ export function annotateElementSensitivity(element: PageElement): PageElement {
       });
     }
   }
+
+  return detections;
+}
+
+/**
+ * Analyzes a single page element and attaches sensitivity metadata.
+ */
+export function annotateElementSensitivity(element: PageElement): PageElement {
+  const text = element.text;
+  if (!text || text.trim().length === 0) {
+    return element;
+  }
+
+  const detections = detectSensitiveSpans(text);
 
   // 4. Password & Credential Input Field Protection
   // Input fields with type="password", role="password", or containing "password" in ID/name
