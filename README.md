@@ -54,14 +54,14 @@ Privaagent/
 
 ---
 
-## 📖 Executive Overview: The "85% Rule"
+## 📖 Executive Overview: The "~80% Architecture Target"
 
 Frontier autonomous web agents suffer from a critical architectural flaw: they capture full desktop or viewport screenshots and continuously transmit unredacted citizen PAN cards, Aadhaar IDs, banking secrets, and personal photos to remote cloud APIs on every action loop.
 
-**Privaagent fundamentally eliminates this risk through the "85% Rule":**
-> **At least 85% of everyday browser tasks and evaluation criteria are resolved entirely inside the local browser sandbox.**
+**Privaagent fundamentally eliminates this risk through a core design target:**
+> **As an architecture principle, we target ~80% of everyday browser tasks and evaluation criteria to be resolved entirely inside the local browser sandbox.**
 
-When a user issues a command (e.g. *"Open Rahul's invoice"*), Privaagent inspects the DOM and Accessibility tree on-device. If the local parser can resolve the action, it executes the action locally in **~3.25 ms with 0 bytes transmitted over the network**.
+When a user issues a command (e.g. *"Open Rahul's invoice"*), Privaagent inspects the DOM and Accessibility tree on-device. If the local parser can resolve the action, it executes the action locally in **~2.92 ms with 0 bytes transmitted over the network**.
 
 Only when a task requires remote visual intelligence (e.g., reading an arbitrary HTML5 `<canvas>` chart or complex spatial reasoning) does Privaagent escalate up the **Minimum Disclosure Ladder**, transmitting **only sanitized tokens and an isolated visual crop ROI** to an untrusted reasoning VLM.
 

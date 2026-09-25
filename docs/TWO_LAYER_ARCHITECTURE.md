@@ -18,9 +18,9 @@ The architecture implements two distinct processing layers:
 
 ### B. Execution Metrics
 Based on our reproducible 5-metric benchmark suite:
-- **DOM Extraction Latency**: ~1.95 ms.
-- **Local Fast-Path Resolution Latency**: ~2.80 ms.
-- **Memory Footprint**: ~103.25 MB heap.
+- **DOM Extraction Latency**: ~3.06 ms.
+- **Local Fast-Path Resolution Latency**: ~2.92 ms.
+- **Memory Footprint**: ~70.51 MB heap.
 - **Redaction Precision & Quality**: 100%.
 
 ## 3. Layer 2 — Sanitized VLM Fallback
