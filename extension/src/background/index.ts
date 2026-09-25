@@ -49,7 +49,7 @@ function sessionBudgetKey(tabId: number): string {
 }
 
 function readSessionStorage(key: string): Promise<Record<string, unknown>> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     chrome.storage.session.get(key, (result) => {
       const error = chrome.runtime.lastError;
       if (error) reject(new Error(error.message));
