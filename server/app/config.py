@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     DEBUG: bool = False
     LOG_LEVEL: str = "info"
-    SESSION_TOKEN: str = ""  # If set, clients must supply X-Privaagent-Session-Token or Bearer auth
+    SESSION_TOKEN: str = "sih_secure_session_v1"  # Mandatory session token to enforce client-server trust boundary
 
     # When set, CORS is restricted to this exact Chrome extension ID.
     # Leave empty to allow any chrome-extension:// origin (dev/CI mode only).

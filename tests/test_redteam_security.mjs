@@ -158,7 +158,7 @@ await runAsyncTest("8. Screenshot sanitizer failure strictly fails closed (0 byt
   // Pass an unparseable, malformed data URL
   const malformedDataUrl = "data:image/png;base64,THIS_IS_CORRUPT_NOT_AN_IMAGE";
   const result = await sanitizeScreenshot(malformedDataUrl, [[10, 10, 50, 50]]);
-  assert.strictEqual(result, "", "Sanitizer must return empty string (fail closed) on corrupt visual payload");
+  assert.strictEqual(result.dataUrl, "", "Sanitizer must return empty string (fail closed) on corrupt visual payload");
 });
 
 await runAsyncTest("9. Screenshot redaction coordinates at DPR 1 (standard DPI)", async () => {
@@ -171,7 +171,7 @@ await runAsyncTest("9. Screenshot redaction coordinates at DPR 1 (standard DPI)"
   const rawData = canvas.toDataURL("image/png");
 
   const result = await sanitizeScreenshot(rawData, [[20, 20, 100, 50]]);
-  assert.strictEqual(typeof result, "string", "Sanitize screenshot returned valid string type");
+  assert.strictEqual(typeof result.dataUrl, "string", "Sanitize screenshot returned valid string type");
 });
 
 await runAsyncTest("10. Screenshot redaction coordinates at DPR 2 (HiDPI / Retina)", async () => {
@@ -184,7 +184,7 @@ await runAsyncTest("10. Screenshot redaction coordinates at DPR 2 (HiDPI / Retin
   const rawData = canvas.toDataURL("image/png");
 
   const result = await sanitizeScreenshot(rawData, [[20, 20, 100, 50]], undefined, { width: 400, height: 200 });
-  assert.strictEqual(typeof result, "string", "Sanitize screenshot handled DPR 2 scaling");
+  assert.strictEqual(typeof result.dataUrl, "string", "Sanitize screenshot handled DPR 2 scaling");
 });
 
 await runAsyncTest("11. Screenshot redaction coordinates at DPR 3 (Ultra-HiDPI)", async () => {
@@ -197,7 +197,7 @@ await runAsyncTest("11. Screenshot redaction coordinates at DPR 3 (Ultra-HiDPI)"
   const rawData = canvas.toDataURL("image/png");
 
   const result = await sanitizeScreenshot(rawData, [[10, 10, 50, 50]], undefined, { width: 400, height: 200 });
-  assert.strictEqual(typeof result, "string", "Sanitize screenshot handled DPR 3 scaling");
+  assert.strictEqual(typeof result.dataUrl, "string", "Sanitize screenshot handled DPR 3 scaling");
 });
 
 // ==================================================================

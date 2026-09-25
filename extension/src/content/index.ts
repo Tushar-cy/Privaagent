@@ -23,6 +23,7 @@ declare global {
     __privaagent_overlay_manager?: OverlayManager;
     __privaagent_run_goal?: (goal: string, options?: AgentLoopOptions) => Promise<MultiTurnGoalResult>;
     __privaagent_audit_vault?: PrivacyAuditVault;
+    __privaagent_session_token?: string;
   }
 }
 
@@ -194,7 +195,7 @@ function initialize(): void {
   // Restore shield state, redaction mode, AND audit ledger from chrome.storage
   if (typeof chrome !== "undefined" && chrome.storage?.local) {
     chrome.storage.local.get(
-      ["privaagent_shield_enabled", "privaagent_redaction_mode", "privaagent_audit_ledger"],
+      ["privaagent_shield_enabled", "privaagent_redaction_mode", "privaagent_audit_ledger", "privaagent_session_token"],
       (result) => {
         const stored = result?.privaagent_shield_enabled;
         shieldEnabled = stored === undefined ? true : Boolean(stored);
@@ -210,6 +211,9 @@ function initialize(): void {
             `[Privaagent] Audit ledger restored: ${restoreResult.loaded} records, integrity=${restoreResult.valid ? "VERIFIED" : "COMPROMISED"}`
           );
         }
+
+        // Provision Mandatory Session Auth Token
+        window.__privaagent_session_token = result?.privaagent_session_token || "sih_secure_session_v1";
 
         runPerception();
       }
