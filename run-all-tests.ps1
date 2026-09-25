@@ -13,14 +13,15 @@ $suites = @(
     @{ Name = "3. Local Vision and Multimodal Fusion"; Cmd = "npx.cmd tsx ..\tests\test_local_vision.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "4. Agent Local Solver and Minimum Disclosure"; Cmd = "npx.cmd tsx ..\tests\test_agent_and_backend.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "5. Action Validator and Security Shield"; Cmd = "npx.cmd tsx ..\tests\test_validator.mjs"; Dir = "$ROOT\extension" },
-    @{ Name = "6. Viewport HUD and Zero-Mutation Overlays"; Cmd = "npx.cmd tsx ..\tests\test_ui_and_overlays.mjs"; Dir = "$ROOT\extension" },
+    @{ Name = "6. Viewport HUD and privacy overlays"; Cmd = "npx.cmd tsx ..\tests\test_ui_and_overlays.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "7. Multi-Turn Autonomous Agent and Budget"; Cmd = "npx.cmd tsx ..\tests\test_multiturn_agent.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "8. Enterprise DPDP Act 2023 Audit Vault"; Cmd = "npx.cmd tsx ..\tests\test_compliance_audit.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "9. Synthetic Replacer and Audit Vault"; Cmd = "npx.cmd tsx ..\tests\test_synthetic_replacer_and_audit_vault.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "10. Live HTTP Trust Boundary and Defense-in-Depth"; Cmd = "node ..\tests\test_live_http_end_to_end.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "11. Zero-Trust Red-Team Security & Invariants Suite"; Cmd = "npx.cmd tsx ..\tests\test_redteam_security.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "12. Internal 5-Metric Benchmark Harness"; Cmd = "npx.cmd tsx ..\benchmark\scripts\run-benchmark.mjs"; Dir = "$ROOT\extension" },
-    @{ Name = "13. FastAPI Backend Pytest Suite"; Cmd = ".\venv\Scripts\python.exe -m pytest -p no:cacheprovider ..\tests\test_backend_api.py ..\tests\test_backend_visual_contract.py ..\tests\test_request_size_limit.py ..\tests\test_contracts.py"; Dir = "$ROOT\server" }
+    @{ Name = "13. FastAPI Backend Pytest Suite"; Cmd = ".\venv\Scripts\python.exe -m pytest -p no:cacheprovider ..\tests\test_backend_api.py ..\tests\test_backend_visual_contract.py ..\tests\test_request_size_limit.py ..\tests\test_contracts.py"; Dir = "$ROOT\server" },
+    @{ Name = "14. Audit Dashboard Cryptographic Verification"; Cmd = "npx.cmd tsx ..\tests\test_audit_dashboard.mjs"; Dir = "$ROOT\extension" }
 )
 
 $passed = 0

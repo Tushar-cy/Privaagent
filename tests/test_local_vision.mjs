@@ -221,7 +221,7 @@ const basePageState = {
   timestamp: Date.now(),
   elements: [
     {
-      target_id: "revenue-chart",
+      target_id: "el_chart_parent",
       role: "canvas",
       text: "Revenue Chart Container",
       bbox: [450, 80, 380, 220],
@@ -229,6 +229,7 @@ const basePageState = {
       sensitive: false,
       task_relevance: 0.0,
       sources: ["dom"],
+      metadata: { tagName: "canvas", domId: "revenue-chart" },
     },
   ],
 };
@@ -249,6 +250,9 @@ console.log(`[TIMING] Total Fusion Latency: ${fusionResult.timing.totalFusionMs.
 const visionElement = fusionResult.pageState.elements.find((el) => el.target_id === "revenue-chart_bar_4");
 if (!visionElement || !visionElement.sources.includes("vision")) {
   throw new Error("Fused element missing 'vision' provenance!");
+}
+if (visionElement.metadata?.derived_from !== "el_chart_parent") {
+  throw new Error("Fused visual target must reference its opaque parent target id, not the page DOM id.");
 }
 console.log(`✓ Q4 Bar provenance verified: sources=[${visionElement.sources.join(", ")}], conf=${visionElement.confidence}`);
 

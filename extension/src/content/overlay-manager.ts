@@ -1,7 +1,7 @@
 // Live On-Page Privacy Overlay Layer — Tri-Mode Defense Engine
 // Modes:
 // 1. "BLUR" (Default) — Precision floating dark slate blur overlays with Range API exact sub-string bboxes.
-// 2. "GHOST" — CSS Ghost Masking directly on DOM text nodes: text becomes transparent and vaporized with text-shadow glow (unselectable, uncopyable in clipboard, unreadable in print/inspect).
+// 2. "GHOST" — Temporarily applies a masking CSS class to sensitive DOM elements.
 // 3. "SYNTHETIC" — Displays format-preserving differential privacy synthetic honeypot surrogates (Verhoeff Aadhaar, Luhn test card, valid PAN) in real-time.
 
 import { PageElement, PageState } from "../common/types";
@@ -139,15 +139,27 @@ export class OverlayManager {
       this.doc.body.appendChild(hud);
     }
 
-    const modeIndicator = this.mode === "GHOST" ? `${ghostSvg} GHOST` : this.mode === "SYNTHETIC" ? `${synthSvg} SYNTH` : `${shieldSvg} BLUR`;
+    const modeLabel = this.mode === "GHOST" ? "Ghost mask" : this.mode === "SYNTHETIC" ? "Synthetic" : "Blur overlay";
+    const dot = this.doc.createElement("span");
+    dot.style.cssText = "display:inline-block;width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#188038;";
 
-    hud.innerHTML = `
-      <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#34d399; box-shadow:0 0 6px #34d399;"></span>
-      <span style="font-weight:800; background:linear-gradient(90deg, #38bdf8, #a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; letter-spacing:-0.4px;">Privaagent</span>
-      <span style="background:#0e1320; color:#38bdf8; border:1px solid #1e2d4a; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:700;">${level}</span>
-      <span style="background:rgba(56,189,248,0.12); color:#38bdf8; padding:2px 6px; border-radius:4px; font-size:9.5px; font-weight:700;">${modeIndicator}</span>
-      <span style="color:#94a3b8; font-size:11px; margin-left:4px;">${statusText}</span>
-    `;
+    const brand = this.doc.createElement("span");
+    brand.textContent = "Privaagent";
+    brand.style.fontWeight = "700";
+
+    const levelBadge = this.doc.createElement("span");
+    levelBadge.textContent = String(level).slice(0, 24);
+    levelBadge.style.cssText = "background:#e8f0fe;color:#1a73e8;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:600;";
+
+    const modeBadge = this.doc.createElement("span");
+    modeBadge.textContent = modeLabel;
+    modeBadge.style.cssText = "background:#f1f3f4;color:#3c4043;padding:2px 6px;border-radius:5px;font-size:10px;";
+
+    const status = this.doc.createElement("span");
+    status.textContent = String(statusText).slice(0, 120);
+    status.style.cssText = "color:#5f6368;font-size:11px;margin-left:3px;";
+
+    hud.replaceChildren(dot, brand, levelBadge, modeBadge, status);
     this.hudBadge = hud;
   }
 
@@ -189,7 +201,7 @@ export class OverlayManager {
 
     const domEl = resolveElementByTargetId(el.target_id);
 
-    // If in GHOST mode, tag live DOM element to vaporize text in DOM
+    // GHOST mode temporarily applies a masking class to the live element.
     if (this.mode === "GHOST" && domEl) {
       domEl.classList.add("privaagent-ghost-redacted");
       this.ghostTaggedElements.add(domEl);

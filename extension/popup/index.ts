@@ -1,9 +1,9 @@
-// Privaagent Popup Controller — Command Center Edition (SIH Winner Grade)
-// Manages: power toggle, live threat feed, task dispatch, ledger, inline toasts,
-// Redaction Engine Mode (Blur | Ghost | Synthetic), and Live SIH Benchmark Suite.
+// Privaagent popup controller: protection status, task dispatch, and local health checks.
 
 import { detectStructuredPII } from "../src/privacy/pii-detector";
 import { detectSecrets } from "../src/privacy/secret-detector";
+import { verifyOutgoingDisclosure } from "../src/privacy/privacy-guard";
+import { PrivacyAuditVault } from "../src/privacy/audit-vault";
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -15,23 +15,36 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!card || !title || !desc || !icon) return;
     
     card.className = "status-card state-" + state;
+    const svgNs = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNs, "svg");
+    svg.setAttribute("class", "icon-lg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    const addShape = (tagName: string, attributes: Record<string, string>) => {
+      const shape = document.createElementNS(svgNs, tagName);
+      for (const [name, value] of Object.entries(attributes)) shape.setAttribute(name, value);
+      svg.appendChild(shape);
+    };
+
     if (state === "active") {
       title.textContent = "Protection Active";
-      desc.textContent = "Local AI is monitoring your session for prompt injections and outbound data leaks.";
-      icon.innerHTML = '<svg class="icon-lg" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+      desc.textContent = "This page is protected. Sensitive data is checked before any disclosure.";
+      addShape("polyline", { points: "20 6 9 17 4 12" });
     } else if (state === "loading") {
-      title.textContent = "Analyzing Context...";
-      desc.textContent = "WASM intent engine is scanning the local DOM tree.";
-      icon.innerHTML = '<svg class="icon-lg" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
+      title.textContent = "Checking this page";
+      desc.textContent = "Reading page structure locally.";
+      addShape("path", { d: "M21 12a9 9 0 1 1-6.219-8.56" });
     } else if (state === "error") {
       title.textContent = "Action Blocked";
-      desc.textContent = "Concealed prompt injection or privacy violation detected.";
-      icon.innerHTML = '<svg class="icon-lg" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+      desc.textContent = "A privacy or safety check stopped the requested action.";
+      addShape("path", { d: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" });
+      addShape("line", { x1: "12", y1: "9", x2: "12", y2: "13" });
+      addShape("line", { x1: "12", y1: "17", x2: "12.01", y2: "17" });
     } else if (state === "empty") {
-      title.textContent = "Standby";
-      desc.textContent = "Privaagent is currently disabled. Toggle active to resume local protection.";
-      icon.innerHTML = '<svg class="icon-lg" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>';
+      title.textContent = "Protection paused";
+      desc.textContent = "Turn protection on to resume local page checks.";
+      addShape("path", { d: "M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" });
     }
+    icon.replaceChildren(svg);
   }
 
   // ─── Element refs ────────────────────────────────────────────────────────
@@ -46,7 +59,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const mLatencyEl      = document.getElementById("m-latency")      as HTMLDivElement;
   const mPiiEl          = document.getElementById("m-pii")          as HTMLDivElement;
   const mSecretsEl      = document.getElementById("m-secrets")      as HTMLDivElement;
-  const mSavingsEl      = document.getElementById("m-savings")      as HTMLDivElement;
 
   const threatFeedEl    = document.getElementById("threat-feed")    as HTMLDivElement;
   const feedCountEl     = document.getElementById("feed-count")     as HTMLSpanElement;
@@ -58,6 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const toastEl         = document.getElementById("toast")          as HTMLDivElement;
   const ledgerBoxEl     = document.getElementById("ledger-box")     as HTMLDivElement;
+  const detailsPanelEl  = document.getElementById("details-panel")  as HTMLDetailsElement;
   const ledgerLevelEl   = document.getElementById("ledger-level")   as HTMLSpanElement;
   const ledgerHeadEl    = document.getElementById("ledger-head")    as HTMLDivElement;
   const lModelEl        = document.getElementById("l-model")        as HTMLSpanElement;
@@ -80,20 +93,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnInspectEl    = document.getElementById("btn-inspect")   as HTMLButtonElement;
   const btnClearEl      = document.getElementById("btn-clear")     as HTMLButtonElement;
 
-  // Benchmark elements
-  const btnBenchmarkEl   = document.getElementById("btn-benchmark")   as HTMLButtonElement;
-  const benchmarkCardEl  = document.getElementById("benchmark-card")  as HTMLDivElement;
-  const benchScoreEl     = document.getElementById("bench-score")     as HTMLDivElement;
-  const benchTimestampEl = document.getElementById("bench-timestamp") as HTMLDivElement;
-  const bLatencyEl       = document.getElementById("b-latency")       as HTMLDivElement;
-  const bPrecisionEl     = document.getElementById("b-precision")     as HTMLDivElement;
-  const bLeaksEl         = document.getElementById("b-leaks")         as HTMLDivElement;
-  const bMerkleEl        = document.getElementById("b-merkle")        as HTMLDivElement;
-  const btnExportBenchEl = document.getElementById("btn-export-bench") as HTMLButtonElement;
-  const btnCloseBenchEl  = document.getElementById("btn-close-bench")  as HTMLButtonElement;
+  const btnHealthCheckEl  = document.getElementById("btn-health-check") as HTMLButtonElement;
+  const healthResultsEl   = document.getElementById("health-results") as HTMLDivElement;
+  const healthDetectorsEl = document.getElementById("health-detectors") as HTMLSpanElement;
+  const healthOutboundEl  = document.getElementById("health-outbound") as HTMLSpanElement;
+  const healthAuditEl     = document.getElementById("health-audit") as HTMLSpanElement;
+  const healthScanEl      = document.getElementById("health-scan") as HTMLSpanElement;
+  const healthModeEl      = document.getElementById("health-mode") as HTMLSpanElement;
+  const healthTimestampEl = document.getElementById("health-timestamp") as HTMLSpanElement;
+  const btnExportHealthEl = document.getElementById("btn-export-health") as HTMLButtonElement;
 
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
-  let lastBenchmarkData: any = null;
+  let lastHealthData: Record<string, unknown> | null = null;
 
   // ─── Toast System (replaces alert) ──────────────────────────────────────
   function showToast(msg: string, type: "error" | "success" | "warning" = "error", durationMs = 3500) {
@@ -104,6 +115,12 @@ document.addEventListener("DOMContentLoaded", () => {
     toastTimer = setTimeout(() => {
       toastEl.classList.remove("show");
     }, durationMs);
+  }
+
+  function setTone(element: HTMLElement | null, tone: "success" | "warning" | "danger" | "primary" | "neutral") {
+    if (!element) return;
+    element.classList.remove("tone-success", "tone-warning", "tone-danger", "tone-primary", "tone-neutral", "tone-alert");
+    element.classList.add(`tone-${tone}`);
   }
 
   // ─── Zero-Leak Message Dispatchers (Suppresses Unchecked runtime.lastError) ──
@@ -201,12 +218,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!threatFeedEl) return;
 
     if (!feed || feed.length === 0) {
-      threatFeedEl.innerHTML = `
-        <div class="feed-empty">
-          <span class="icon">✅</span>
-          <span>No PII detected on this page</span>
-        </div>`;
-      if (feedCountEl) feedCountEl.textContent = "0 detections";
+      const empty = document.createElement("p");
+      empty.className = "feed-empty";
+      empty.textContent = "No sensitive values detected in this scan.";
+      threatFeedEl.replaceChildren(empty);
+      if (feedCountEl) feedCountEl.textContent = "None found";
       return;
     }
 
@@ -215,17 +231,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const secretCount = feed.filter(f => f.type === "SECRET_KEY").length;
     if (mSecretsEl) mSecretsEl.textContent = String(secretCount);
 
-    threatFeedEl.innerHTML = feed.map((item, i) => `
-      <div class="threat-item" style="animation-delay: ${i * 40}ms">
-        <span class="threat-badge ${getBadgeClass(item.type)}">${getBadgeLabel(item.type)}</span>
-        <span class="threat-value threat-masked">${escapeHtml(item.maskedValue)}</span>
-        <span style="font-size:10px; color:var(--text-muted);">← masked</span>
-      </div>
-    `).join("");
-  }
-
-  function escapeHtml(s: string): string {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const rows = feed.map((item) => {
+      const row = document.createElement("div");
+      row.className = "threat-item";
+      const badge = document.createElement("span");
+      badge.className = `threat-badge ${getBadgeClass(item.type)}`;
+      badge.textContent = getBadgeLabel(item.type);
+      const value = document.createElement("span");
+      value.className = "threat-value threat-masked";
+      value.textContent = item.maskedValue;
+      const note = document.createElement("span");
+      note.className = "threat-note";
+      note.textContent = "masked";
+      row.append(badge, value, note);
+      return row;
+    });
+    threatFeedEl.replaceChildren(...rows);
   }
 
   // ─── Fetch page state and populate metrics + feed ────────────────────────
@@ -250,12 +271,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if (mLatencyEl) {
           const ms = Number(response.durationMs || 0).toFixed(1);
           mLatencyEl.textContent = `${ms}`;
-          mLatencyEl.style.color = Number(ms) < 50 ? "var(--success)" : "var(--warning)";
+          mLatencyEl.classList.toggle("tone-warning", Number(ms) >= 50);
         }
         if (mPiiEl) {
           const count = response.sensitiveElementsCount || 0;
           mPiiEl.textContent = String(count);
-          mPiiEl.style.color = count > 0 ? "var(--danger)" : "var(--success)";
+          mPiiEl.classList.toggle("tone-alert", count > 0);
         }
 
         renderThreatFeed(response.threatFeed || []);
@@ -275,8 +296,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // ─── Shield Toggle UI ────────────────────────────────────────────────────
   function applyShieldUI(enabled: boolean) {
     if (enabled) {
-      if (shieldStatusEl) shieldStatusEl.className = "shield-status";
-      if (statusDotEl) statusDotEl.className = "status-dot";
+      if (shieldStatusEl) shieldStatusEl.className = "shield-status on";
+      if (statusDotEl) statusDotEl.className = "status-dot on";
       if (statusLabelEl) statusLabelEl.textContent = "Active";
       setPopupState("active");
     } else {
@@ -321,7 +342,7 @@ document.addEventListener("DOMContentLoaded", () => {
       sendRuntimeMsg({ type: "SET_SHIELD_STATE", enabled });
 
       showToast(
-        enabled ? "✅ Privacy Shield activated — PII redaction running" : "⏸ Shield paused — overlays hidden",
+        enabled ? "Privacy protection is active." : "Privacy protection is paused.",
         enabled ? "success" : "warning",
         2000
       );
@@ -338,10 +359,10 @@ document.addEventListener("DOMContentLoaded", () => {
       chrome.storage?.local?.set({ privaagent_redaction_mode: mode });
       showToast(
         mode === "GHOST"
-          ? "👻 Ghost Shield active: DOM text vaporized with CSS shadow glow"
+          ? "Ghost mask active. Sensitive elements use a temporary masking class."
           : mode === "SYNTHETIC"
-          ? "🍯 Synthetic Honeypot active: format-preserving differential privacy"
-          : "🛡️ Tactical Blur active: pixel-exact bounding box overlays",
+          ? "Synthetic replacement mode is active."
+          : "Blur overlay mode is active.",
         "success",
         2500
       );
@@ -428,7 +449,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (lTargetEl) lTargetEl.textContent = (res.decomposed?.subtasks || []).join(" → ");
       if (lVerdictEl) {
         lVerdictEl.textContent = status;
-        lVerdictEl.style.color = status === "SUCCESS" ? "var(--success)" : "var(--danger)";
+        setTone(lVerdictEl, status === "SUCCESS" ? "success" : "danger");
       }
       updateBandwidth(res.cumulativeBytesSent || 0);
       if (lLatencyEl) lLatencyEl.textContent = "Budget monitored";
@@ -438,11 +459,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (lEntitiesEl) lEntitiesEl.textContent = "Protected on each step";
       if (lExtReqEl) {
         lExtReqEl.textContent = res.cumulativeBytesSent > 0 ? "YES (Selective Fallback)" : "NO (All Local)";
-        lExtReqEl.style.color = res.cumulativeBytesSent > 0 ? "var(--primary)" : "var(--success)";
+        setTone(lExtReqEl, res.cumulativeBytesSent > 0 ? "primary" : "success");
       }
       if (lPrivacyGuardEl) {
         lPrivacyGuardEl.textContent = "VERIFIED (Multi-step chained)";
-        lPrivacyGuardEl.style.color = "var(--success)";
+        setTone(lPrivacyGuardEl, "success");
       }
       if (lReasonEl) {
         lReasonEl.textContent = (res.history || [])
@@ -465,15 +486,15 @@ document.addEventListener("DOMContentLoaded", () => {
         if (lSanLatEl) lSanLatEl.textContent = "0.0 ms (Bypassed)";
         if (lVlmLatEl) lVlmLatEl.textContent = "0.0 ms (Bypassed)";
         if (lLatencyEl) lLatencyEl.textContent = `${r.totalLatencyMs || r.localLatencyMs} ms`;
-        if (lEntitiesEl) lEntitiesEl.textContent = "None (100% Local Resolution)";
+        if (lEntitiesEl) lEntitiesEl.textContent = "None; resolved locally";
         if (lExtReqEl) {
           lExtReqEl.textContent = "NO (0 External Requests)";
-          lExtReqEl.style.color = "var(--success)";
+          setTone(lExtReqEl, "success");
         }
-        if (lBytesEl) lBytesEl.textContent = "0 B (100% Bandwidth Saved)";
+        if (lBytesEl) lBytesEl.textContent = "0 B sent";
         if (lPrivacyGuardEl) {
           lPrivacyGuardEl.textContent = "VERIFIED (Zero Network Data)";
-          lPrivacyGuardEl.style.color = "var(--success)";
+          setTone(lPrivacyGuardEl, "success");
         }
       } else if (path === "SANITIZED_VLM") {
         setLedgerLevel("L2", "🟣 LAYER 2: SANITIZED VLM");
@@ -488,12 +509,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if (lEntitiesEl) lEntitiesEl.textContent = entList || "Masked Placeholders";
         if (lExtReqEl) {
           lExtReqEl.textContent = "YES (Sanitized Payload Sent)";
-          lExtReqEl.style.color = "var(--primary)";
+          setTone(lExtReqEl, "primary");
         }
         if (lBytesEl) lBytesEl.textContent = `${r.networkBytesSent} B`;
         if (lPrivacyGuardEl) {
           lPrivacyGuardEl.textContent = "PASSED (Pre-Flight Audit Safe)";
-          lPrivacyGuardEl.style.color = "var(--success)";
+          setTone(lPrivacyGuardEl, "success");
         }
       } else if (path === "BLOCKED") {
         setLedgerLevel("L3", "🔴 BLOCKED: PRIVACY AUDIT");
@@ -507,12 +528,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if (lEntitiesEl) lEntitiesEl.textContent = "UNSAFE PATTERNS DETECTED";
         if (lExtReqEl) {
           lExtReqEl.textContent = "NO (Request Blocked on Device)";
-          lExtReqEl.style.color = "var(--danger)";
+          setTone(lExtReqEl, "danger");
         }
         if (lBytesEl) lBytesEl.textContent = "0 B (0 Bytes Transmitted)";
         if (lPrivacyGuardEl) {
           lPrivacyGuardEl.textContent = "FAILED: Raw PII Leak Blocked";
-          lPrivacyGuardEl.style.color = "var(--danger)";
+          setTone(lPrivacyGuardEl, "danger");
         }
       }
 
@@ -525,7 +546,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const v = res.validation.verdict;
       if (lVerdictEl) {
         lVerdictEl.textContent = v;
-        lVerdictEl.style.color = v === "ALLOW" ? "var(--success)" : v === "CONFIRM" ? "var(--warning)" : "var(--danger)";
+        setTone(lVerdictEl, v === "ALLOW" ? "success" : v === "CONFIRM" ? "warning" : "danger");
       }
     }
 
@@ -545,113 +566,132 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateBandwidth(bytes: number) {
-    const savings = bytes === 0 ? 100 : Math.max(0, 100 - (bytes / (1200 * 1024)) * 100);
-    if (lBytesEl) lBytesEl.textContent = `${bytes} B (${savings.toFixed(1)}% saved)`;
-    if (mSavingsEl) mSavingsEl.textContent = `${savings.toFixed(0)}%`;
+    if (lBytesEl) lBytesEl.textContent = `${bytes} B sent`;
   }
 
-  // ─── Internal System Benchmark Suite Handler ──────────────────────────────
-  if (btnBenchmarkEl) {
-    btnBenchmarkEl.addEventListener("click", () => {
-      btnBenchmarkEl.disabled = true;
-      btnBenchmarkEl.textContent = "⚡ Running Internal Validation Suite...";
+  // ─── Local runtime privacy health check (not a benchmark score) ──────────
+  if (btnHealthCheckEl) {
+    btnHealthCheckEl.addEventListener("click", () => {
+      btnHealthCheckEl.disabled = true;
+      btnHealthCheckEl.textContent = "Checking…";
+
+      const testVectors = [
+        { text: "ayashmuthal@gmail.com", type: "EMAIL" },
+        { text: "981652472", type: "PHONE" },
+        { text: "+91 98165 24721", type: "PHONE" },
+        { text: "9999 2345 6789", type: "AADHAAR" },
+        { text: "ABCDE1234F", type: "PAN" },
+        { text: "27ABCDE1234F1Z5", type: "GSTIN" },
+        { text: "DL-1420180123456", type: "DRIVING_LICENSE" },
+        { text: "A/C 123456789012", type: "BANK_ACCOUNT" },
+        { text: "DOB: 14/08/1998", type: "DOB" },
+        { text: "MH-12-AB-1234", type: "VEHICLE_RC" },
+        { text: "4532 1234 5678 9010", type: "CREDIT_CARD" },
+        { text: "sk-ant-api03-1234567890abcdef", type: "SECRET_KEY" },
+        { text: "AIzaSyD3x94jKlw-z8x9039klw-ABCD1234", type: "SECRET_KEY" },
+        { text: "ghp_1234567890abcdefghijklmnopqrstuvwx", type: "SECRET_KEY" },
+        { text: "user@okhdfcbank", type: "UPI_ID" },
+        { text: "HDFC0001234", type: "IFSC" },
+      ];
+      const vectorsPassed = testVectors.filter((vector) => {
+        const pii = detectStructuredPII(vector.text);
+        const secrets = detectSecrets(vector.text);
+        return pii.some((result) => result.type === vector.type)
+          || secrets.some((result) => result.type === vector.type);
+      }).length;
+
+      const unsafeCanary = verifyOutgoingDisclosure({
+        level: "L1",
+        reason: "Synthetic outbound guard test",
+        task: "Contact health-check@example.com",
+        elements: [],
+        redacted_token_count: 0,
+      });
+      const safeCanary = verifyOutgoingDisclosure({
+        level: "L1",
+        reason: "Synthetic outbound guard test",
+        task: "Contact [EMAIL_1]",
+        elements: [],
+        redacted_token_count: 0,
+      });
+      const outboundGuardPassed = !unsafeCanary.passed && safeCanary.passed;
 
       queryActiveTab((tabId) => {
-        sendTabMsg(tabId, { type: "GET_PAGE_STATE" }, (pageStateRes) => {
-          btnBenchmarkEl.disabled = false;
-          btnBenchmarkEl.textContent = "⚡ Run Internal Validation Suite";
+        sendTabMsg(tabId, { type: "GET_PAGE_STATE" }, (pageStateResponse) => {
+          const finishCheck = (stored: { privaagent_audit_ledger?: unknown[] }) => {
+            const records = Array.isArray(stored.privaagent_audit_ledger)
+              ? stored.privaagent_audit_ledger
+              : [];
+            const vault = new PrivacyAuditVault();
+            vault.loadFromStorage(records as any[]);
+            const integrity = vault.verifyLedgerIntegrity();
+            const scanDurationMs = typeof pageStateResponse?.durationMs === "number"
+              && Number.isFinite(pageStateResponse.durationMs)
+              ? Number(pageStateResponse.durationMs.toFixed(2))
+              : null;
+            const timestamp = new Date().toISOString();
 
-          const latencyMs = pageStateRes?.durationMs || 0.85;
-
-          // Test 16 deterministic privacy test vectors
-          const testVectors = [
-            { text: "ayashmuthal@gmail.com", type: "EMAIL" },
-            { text: "981652472", type: "PHONE" },
-            { text: "+91 98165 24721", type: "PHONE" },
-            { text: "9999 2345 6789", type: "AADHAAR" },
-            { text: "ABCDE1234F", type: "PAN" },
-            { text: "27ABCDE1234F1Z5", type: "GSTIN" },
-            { text: "DL-1420180123456", type: "DRIVING_LICENSE" },
-            { text: "A/C 123456789012", type: "BANK_ACCOUNT" },
-            { text: "DOB: 14/08/1998", type: "DOB" },
-            { text: "MH-12-AB-1234", type: "VEHICLE_RC" },
-            { text: "4532 1234 5678 9010", type: "CREDIT_CARD" },
-            { text: "sk-ant-api03-1234567890abcdef", type: "SECRET_KEY" },
-            { text: "AIzaSyD3x94jKlw-z8x9039klw-ABCD1234", type: "SECRET_KEY" },
-            { text: "ghp_1234567890abcdefghijklmnopqrstuvwx", type: "SECRET_KEY" },
-            { text: "user@okhdfcbank", type: "UPI_ID" },
-            { text: "HDFC0001234", type: "IFSC" },
-          ];
-
-          let vectorsPassed = 0;
-          for (const vec of testVectors) {
-            const pii = detectStructuredPII(vec.text);
-            const sec = detectSecrets(vec.text);
-            if (pii.some(p => p.type === vec.type) || sec.some(s => s.type === vec.type)) {
-              vectorsPassed++;
+            if (healthResultsEl) healthResultsEl.classList.add("show");
+            if (healthDetectorsEl) {
+              healthDetectorsEl.textContent = `${vectorsPassed} / ${testVectors.length}`;
+              setTone(healthDetectorsEl, vectorsPassed === testVectors.length ? "success" : "danger");
             }
-          }
+            if (healthOutboundEl) {
+              healthOutboundEl.textContent = outboundGuardPassed ? "PASS" : "FAIL";
+              setTone(healthOutboundEl, outboundGuardPassed ? "success" : "danger");
+            }
+            if (healthAuditEl) {
+              healthAuditEl.textContent = integrity.chainLength === 0
+                ? "No records yet"
+                : integrity.valid ? `Verified · ${integrity.chainLength} records` : "Integrity issue";
+              setTone(healthAuditEl, integrity.chainLength === 0 ? "neutral" : integrity.valid ? "success" : "danger");
+            }
+            if (healthScanEl) healthScanEl.textContent = scanDurationMs === null ? "Unavailable" : `${scanDurationMs.toFixed(2)} ms`;
+            if (healthModeEl) healthModeEl.textContent = "L0-first";
+            if (healthTimestampEl) healthTimestampEl.textContent = `Checked ${new Date(timestamp).toLocaleTimeString()}`;
 
-          const precision = (vectorsPassed / testVectors.length) * 100;
-
-          sendTabMsg(tabId, { type: "GET_PRIVACY_AUDIT_SUMMARY" }, (report) => {
-            const merkleRoot = report?.cryptographicRootHash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-
-            // Internal 5-Pillar Score computation
-            const p1 = 24.8; // Visual Context (Shadow DOM + Leaf BBoxes)
-            const p2 = 19.9; // PII Recall & Precision (16/16 vectors)
-            const p3 = 20.0; // Redaction Precision (Range API + Ghost CSS)
-            const p4 = 19.8; // Client Resource Utilization (< 50ms)
-            const p5 = 14.9; // End-to-End Latency & Minimum Disclosure
-            const grandTotal = (p1 + p2 + p3 + p4 + p5).toFixed(1);
-
-            if (benchmarkCardEl) benchmarkCardEl.style.display = "block";
-            if (benchScoreEl) benchScoreEl.textContent = `${grandTotal}/100`;
-            if (benchTimestampEl) benchTimestampEl.textContent = `Internal Validation Benchmark • 16/16 Vectors Passed`;
-            if (bLatencyEl) bLatencyEl.textContent = `${latencyMs.toFixed(2)} ms (Limit: <50ms)`;
-            if (bPrecisionEl) bPrecisionEl.textContent = `${precision.toFixed(0)}% (16/16 Passed)`;
-            if (bLeaksEl) bLeaksEl.textContent = `0 Bytes (Zero-Leak)`;
-            if (bMerkleEl) bMerkleEl.textContent = `SHA-256 Valid`;
-
-            lastBenchmarkData = {
-              timestamp: new Date().toISOString(),
-              standard: "INTERNAL_SELF_EVALUATION",
-              score: Number(grandTotal),
-              evaluationPillars: {
-                accuracyVisualContext: { score: p1, max: 25, unit: "Shadow DOM + Range API" },
-                recallPrecisionPII: { score: p2, max: 20, testVectorsPassed: vectorsPassed, totalVectors: testVectors.length },
-                precisionRedaction: { score: p3, max: 20, modes: ["BLUR", "GHOST", "SYNTHETIC"] },
-                clientResourceUtilization: { score: p4, max: 20, latencyMs, thresholdMs: 50 },
-                endToEndLatencyLadder: { score: p5, max: 15, zeroNetworkRatio: "100%", ollamaReady: true }
-              },
-              tamperEvidentMerkleRoot: merkleRoot,
-              verifiedStatus: "VERIFIED"
+            lastHealthData = {
+              checkedAt: timestamp,
+              detectorVectors: { passed: vectorsPassed, total: testVectors.length },
+              outboundGuard: { passed: outboundGuardPassed, probe: "synthetic email canary; no request sent" },
+              auditChain: { valid: integrity.valid, recordsChecked: integrity.chainLength, rootHash: integrity.rootHash },
+              domScanDurationMs: scanDurationMs,
+              privacyArchitecture: "L0-first",
             };
 
-            showToast("⚡ Validation Complete: 99.4/100 Internal Score!", "success", 3000);
-          });
+            btnHealthCheckEl.disabled = false;
+            btnHealthCheckEl.textContent = "Run privacy health check";
+            const checksPassed = vectorsPassed === testVectors.length && outboundGuardPassed && integrity.valid;
+            showToast(
+              checksPassed ? "Health check complete. Results shown below." : "A local health check needs attention.",
+              checksPassed ? "success" : "warning",
+              3000
+            );
+          };
+
+          if (typeof chrome !== "undefined" && chrome.storage?.local) {
+            chrome.storage.local.get(["privaagent_audit_ledger"], (stored) => {
+              const error = chrome.runtime?.lastError;
+              finishCheck(error ? {} : stored);
+            });
+          } else {
+            finishCheck({});
+          }
         });
       });
     });
   }
 
-  if (btnExportBenchEl) {
-    btnExportBenchEl.addEventListener("click", () => {
-      if (!lastBenchmarkData) return;
-      const blob = new Blob([JSON.stringify(lastBenchmarkData, null, 2)], { type: "application/json" });
+  if (btnExportHealthEl) {
+    btnExportHealthEl.addEventListener("click", () => {
+      if (!lastHealthData) return;
+      const blob = new Blob([JSON.stringify(lastHealthData, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `privaagent_audit_summary_${Date.now()}.json`;
-      a.click();
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `privaagent_privacy_health_${Date.now()}.json`;
+      link.click();
       URL.revokeObjectURL(url);
-      showToast("📥 Privacy audit summary downloaded.", "success", 2000);
-    });
-  }
-
-  if (btnCloseBenchEl) {
-    btnCloseBenchEl.addEventListener("click", () => {
-      if (benchmarkCardEl) benchmarkCardEl.style.display = "none";
     });
   }
 
@@ -673,19 +713,24 @@ document.addEventListener("DOMContentLoaded", () => {
     btnInspectEl.addEventListener("click", () => {
       queryActiveTab((tabId) => {
         sendTabMsg(tabId, { type: "GET_PRIVACY_AUDIT_SUMMARY" }, (report) => {
-          if (!report) {
+          if (!report || report.totalTransactions === 0) {
             showToast("No audit records found for this session. Run an action to record.", "warning");
             return;
           }
+          if (detailsPanelEl) detailsPanelEl.open = true;
           if (!ledgerBoxEl) return;
           ledgerBoxEl.classList.add("show");
           setLedgerLevel("L0", "PRIVACY AUDIT REPORT");
           if (lActionEl) lActionEl.textContent = `Entities masked: ${report.totalSensitiveEntitiesProtected} | Leaks: ${report.unredactedLeaksDetected}`;
           if (lTargetEl) lTargetEl.textContent = `On-device ratio: ${report.onDeviceRatio !== undefined ? (report.onDeviceRatio * 100).toFixed(1) + "%" : "N/A"}    Cumulative bytes: ${report.cumulativeNetworkBytes} B`;
-          if (lVerdictEl) { lVerdictEl.textContent = "VERIFIED"; lVerdictEl.style.color = "var(--success)"; }
+          const integrityVerified = report.ledgerIntegrity === "VERIFIED_UNBROKEN";
+          if (lVerdictEl) {
+            lVerdictEl.textContent = integrityVerified ? "VERIFIED" : "COMPROMISED";
+            setTone(lVerdictEl, integrityVerified ? "success" : "danger");
+          }
           if (lBytesEl) lBytesEl.textContent = `${report.cumulativeNetworkBytes} B (${report.bandwidthSavedPercentage}% saved)`;
           if (lLatencyEl) lLatencyEl.textContent = `On-device ratio: ${report.onDeviceRatio !== undefined ? (report.onDeviceRatio * 100).toFixed(1) + "%" : "N/A"}`;
-          if (lReasonEl) lReasonEl.textContent = `Root Hash: ${report.cryptographicRootHash || "N/A"} | Integrity: ${report.ledgerIntegrity || "VERIFIED"}\nTotal transactions: ${report.totalTransactions}.`;
+          if (lReasonEl) lReasonEl.textContent = `Root Hash: ${report.cryptographicRootHash || "N/A"} | Integrity: ${report.ledgerIntegrity || "UNKNOWN"}\nTotal transactions: ${report.totalTransactions}.`;
         });
       });
     });

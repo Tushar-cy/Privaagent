@@ -71,7 +71,7 @@ export async function resolveTaskAction(
     for (const el of pageState.elements) {
       const liveEl = options.resolveLiveElement
         ? options.resolveLiveElement(el.target_id)
-        : locateLiveElement(el.target_id, doc);
+        : locateLiveElement(el.target_id, doc, pageState);
       if (liveEl) {
         const injectionCheck = inspectElementForHiddenInjection(liveEl);
         if (injectionCheck.isInjection) {

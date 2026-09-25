@@ -439,6 +439,16 @@ const mockFetch = async (url, options) => {
   };
 };
 
+// This task-resolution pass uses a blank synthetic PNG for the mock HTTP
+// contract only; visual recognition is measured separately against real pixels.
+const benchmarkScreenshot = createCanvas(1, 1).toDataURL("image/png");
+const benchmarkVisualManifest = {
+  sourceSensitiveBoxCount: 0,
+  intersectingBoxCount: 0,
+  redactedBoxCount: 0,
+  redactedBoxes: [],
+};
+
 for (const task of tasks) {
   const taskFixturePath = path.resolve(ROOT_DIR, task.fixture);
   const domEnv = createDOMEnvironment(taskFixturePath);
@@ -495,7 +505,11 @@ for (const task of tasks) {
       disclosure: { level: "L0", reason: "Direct action test", task: task.prompt, elements: [], redacted_token_count: 0 },
     };
   } else {
-    actionResult = await resolveTaskAction(task.prompt, state, { fetchFn: mockFetch });
+    actionResult = await resolveTaskAction(task.prompt, state, {
+      fetchFn: mockFetch,
+      sanitizedScreenshotBase64: benchmarkScreenshot,
+      sanitizedScreenshotManifest: benchmarkVisualManifest,
+    });
   }
 
   const endT    = performance.now();

@@ -8,8 +8,12 @@ export interface ExecutionResult {
   error?: string;
 }
 
-export function executeClick(targetId: string): ExecutionResult {
-  const element = resolveElementByTargetId(targetId);
+export function executeClick(
+  targetId: string,
+  verifiedElement?: Element | null,
+  clickPoint?: { x: number; y: number }
+): ExecutionResult {
+  const element = verifiedElement || resolveElementByTargetId(targetId);
 
   if (!element) {
     return {
@@ -53,8 +57,8 @@ export function executeClick(targetId: string): ExecutionResult {
   const MouseEventCtor = (win as any).MouseEvent || MouseEvent;
   const PointerEventCtor = (win as any).PointerEvent || null;
 
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
+  const centerX = clickPoint?.x ?? rect.left + rect.width / 2;
+  const centerY = clickPoint?.y ?? rect.top + rect.height / 2;
 
   const eventInit: MouseEventInit = {
     bubbles: true,

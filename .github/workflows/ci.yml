@@ -94,6 +94,11 @@ jobs:
           cd extension
           npx tsx ../tests/test_compliance_audit.mjs
 
+      - name: Audit Dashboard SHA-256 Verification Test
+        run: |
+          cd extension
+          npx tsx ../tests/test_audit_dashboard.mjs
+
       - name: Extension Test - Synthetic Replacer and Audit Vault
         run: |
           cd extension
@@ -108,6 +113,11 @@ jobs:
         run: |
           cd server
           python -m pytest -p no:cacheprovider ../tests/test_backend_api.py ../tests/test_backend_visual_contract.py ../tests/test_request_size_limit.py ../tests/test_contracts.py -v
+
+      - name: Run Live HTTP Trust Boundary Integration Test
+        run: |
+          cd extension
+          npx tsx ../tests/test_live_http_end_to_end.mjs
 
       - name: Run Internal 5-Metric Benchmark Smoke Test
         run: |

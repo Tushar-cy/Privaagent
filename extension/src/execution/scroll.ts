@@ -5,7 +5,8 @@ import { ExecutionResult } from "./click";
 
 export function executeScroll(
   targetId: string,
-  delta?: { x: number; y: number }
+  delta?: { x: number; y: number },
+  verifiedElement?: Element | null
 ): ExecutionResult {
   const dx = delta?.x ?? 0;
   const dy = delta?.y ?? 0;
@@ -20,7 +21,7 @@ export function executeScroll(
     return { success: true, target_id: targetId };
   }
 
-  const element = resolveElementByTargetId(targetId);
+  const element = verifiedElement || resolveElementByTargetId(targetId);
   if (!element) {
     return {
       success: false,

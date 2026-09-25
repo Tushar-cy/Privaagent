@@ -70,8 +70,8 @@ async def token_status():
         "paired": not is_demo,
         "instructions": (
             "Demo mode: any extension token is accepted. "
-            "Copy your extension token from DevTools → Application → Local Storage → privaagent_session_token "
-            "to server/.env as SESSION_TOKEN= to enable enforced pairing."
+            "For enforced mode, read privaagent_session_token from chrome.storage.local in the Privaagent extension's DevTools console, "
+            "then set SESSION_TOKEN in server/.env and restart the backend."
         ) if is_demo else "Enforced mode: only the configured extension token is accepted.",
     }
 
@@ -103,8 +103,9 @@ async def resolve_action(disclosure: Disclosure):
     try:
         action = await vlm_client.predict_action(disclosure)
         return action
-    except Exception as err:
+    except Exception:
+        logger.exception("VLM reasoning service failed while resolving an action.")
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"VLM reasoning engine failed: {str(err)}",
+            detail="VLM reasoning service unavailable.",
         )

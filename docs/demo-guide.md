@@ -6,7 +6,7 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
 
 ## 🎯 Key Elevator Pitch (30 Seconds)
 
-> *"Existing browser agents send full unredacted screen captures to frontier LLMs—exposing citizen Aadhaar numbers, tax PANs, banking tokens, and enterprise secrets on every single step. **Privaagent** fundamentally flips this paradigm: **~80% of evaluation criteria and actions are solved on-device within the Chrome sandbox in ~2.92 ms with 0 network bytes sent**. For visual or complex reasoning, Privaagent escalates through an adaptive Minimum Disclosure Ladder, transmitting only sanitized bounding crops, while an active defense-in-depth shield blocks leaked PII and prompt injection attacks before execution."*
+> *"Privaagent attempts browser tasks locally first and escalates through a Minimum Disclosure Ladder only when the task requires remote visual reasoning. Visual payloads are sanitized and checked before dispatch, while local defenses check for sensitive data and prompt injection before execution."*
 
 ---
 
@@ -22,7 +22,7 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
    - **Network Bytes Sent**: `0 Bytes`.
    - **Latency**: `< 15 ms` (measured `2.92 ms`).
    - **Disclosure Level**: `L0 LOCAL ONLY`.
-   - **Zero DOM Mutation**: The live page DOM is never mutated or corrupted.
+   - **Local processing**: The local solver path sends no task request to the backend.
 
 ---
 
@@ -33,7 +33,7 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
    - Element cropper captures isolated `<canvas>` pixel crop (no full desktop/browser capture).
    - On-device **classical CV** (`cv-analyzer.ts`) analyzes luminance contrast to detect 4 bar column regions.
    - **Tesseract OCR** attempts to read value text from the chart (recognizes `$12k`–`$28k` labels; Q1–Q4 axis labels are below reliable OCR threshold at 12px font size — this is a known limitation documented in the README).
-   - Escalates to **L2 Sanitized Visual Crop ROI**: only the cropped canvas coordinates and masked tokens leave the browser boundary (saving > 99.9% network bandwidth vs. full-screen captures).
+   - Escalates to **L2 Sanitized Visual Crop ROI**: only the sanitized crop and masked tokens leave the browser boundary.
    - Open-weight fallback VLM maps to candidate `revenue-chart_bar_4`.
 3. **What Judges See**:
    - Canvas bar highlighted and clicked accurately.
@@ -41,15 +41,16 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
 
 ---
 
-### Workflow 3: Viewport Privacy Blur Shield (Zero DOM Mutation)
+### Workflow 3: Viewport Privacy Overlays
 1. **Scenario**: Dashboard displays customer PII (Name, Email, Mobile, PAN `ABCDE1234F`, Aadhaar `9876 5432 1098`, and Customer Avatar Face).
 2. **Execution**:
    - On-device **Privacy Engine** (regex + Shannon entropy + NER) detects all 6 sensitive fields.
    - **Chrominance Skin-Tone Face Detector** identifies the customer photo avatar.
-   - **OverlayManager** projects real-time backdrop blur masks (`backdrop-filter: blur(8px)`) directly onto the screen.
+   - In **BLUR mode**, `OverlayManager` projects viewport masks over detected sensitive regions without changing their source text.
+   - In **GHOST mode**, it temporarily applies a masking class to sensitive page elements; switching modes or tearing down the overlay removes that class.
 3. **What Judges See**:
    - Sensitive text and faces appear blurred with subtle `🔒 [REDACTED]` and `🛡️ [FACE_BLURRED]` badges.
-   - Inspecting the DOM reveals the underlying HTML text nodes remain 100% untouched—ensuring site scripts never break.
+   - Inspecting the DOM in BLUR mode reveals the original source text remains present. GHOST mode changes the sensitive element's class while active.
 
 ---
 

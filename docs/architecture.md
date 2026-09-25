@@ -3,7 +3,7 @@
 **SIH26171 — On-device Visual Perception for Light-weight Browser Agents**
 
 ## 1. System Overview
-Privaagent is an adaptive, minimum-disclosure browser agent built upon the fundamental principle that **85% of scoring metrics are determined on-device**. Rather than streaming raw screen recordings or entire DOM trees to proprietary remote models, Privaagent solves tasks on-device using multi-modal perception and escalates to an untrusted, open-weight VLM server only when necessary via a strictly enforced disclosure ladder.
+Privaagent is an adaptive, minimum-disclosure browser agent with an **L0-first architecture**: it attempts tasks locally and escalates through a strictly enforced disclosure ladder only when the task requires remote visual reasoning. It does not claim a universal on-device task or evaluation percentage; measured results are reported separately as internal benchmark results.
 
 ```
 +-------------------------------------------------------------------------+

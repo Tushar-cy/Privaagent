@@ -20,22 +20,26 @@ export interface ActionExecutionContext {
  * Low-level DOM event dispatcher. PRIVATE to this module: cannot be invoked directly
  * from outside without passing through executeAction.
  */
-async function dispatchLowLevelAction(validAction: Action): Promise<ExecutionResult> {
+async function dispatchLowLevelAction(
+  validAction: Action,
+  verifiedElement: Element | null,
+  clickPoint?: { x: number; y: number }
+): Promise<ExecutionResult> {
   switch (validAction.action) {
     case "click":
-      return executeClick(validAction.target_id);
+      return executeClick(validAction.target_id, verifiedElement, clickPoint);
 
     case "type":
-      return executeType(validAction.target_id, validAction.value ?? "");
+      return executeType(validAction.target_id, validAction.value ?? "", verifiedElement);
 
     case "scroll":
-      return executeScroll(validAction.target_id, validAction.delta);
+      return executeScroll(validAction.target_id, validAction.delta, verifiedElement);
 
     case "navigate":
       return executeNavigate(validAction.url || validAction.value);
 
     case "select": {
-      const el = document.querySelector(`[data-privaagent-id="${validAction.target_id}"]`);
+      const el = verifiedElement;
       if (el instanceof HTMLSelectElement) {
         el.value = validAction.value ?? "";
         el.dispatchEvent(new Event("change", { bubbles: true }));
@@ -99,5 +103,5 @@ export async function executeAction(
     };
   }
 
-  return dispatchLowLevelAction(validAction);
+  return dispatchLowLevelAction(validAction, valResult.element, valResult.clickPoint);
 }

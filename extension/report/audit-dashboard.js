@@ -1,203 +1,259 @@
-// Privaagent Privacy Audit Dashboard & Cryptographic Audit Ledger
-// Displays on-device audit records for internal validation.
+// Audit history is read only from the extension's persisted ledger. The empty
+// state never substitutes example transactions for real user activity.
 
-// Sample verified records for standalone certification viewing
-const DEFAULT_RECORDS = [
-  {
-    id: "tx_001_dom_solve",
-    timestamp: Date.now() - 320000,
-    goal: "Search for statement then open invoice",
-    subtask: "Type 2026 into search",
-    disclosureLevel: "L0",
-    entitiesMasked: [],
-    outboundBytes: 0,
-    previousHash: "0000000000000000",
-    payloadHash: "0009dab76fb675c5",
-    action: "type",
-    targetId: "search-input",
-    riskVerdict: "ALLOW",
-    isLocal: true
-  },
-  {
-    id: "tx_002_dom_click",
-    timestamp: Date.now() - 280000,
-    goal: "Search for statement then open invoice",
-    subtask: "click view statement",
-    disclosureLevel: "L0",
-    entitiesMasked: ["PAN", "AADHAAR"],
-    outboundBytes: 0,
-    previousHash: "0009dab76fb675c5",
-    payloadHash: "4f7a8b1c9e2d3f0a",
-    action: "click",
-    targetId: "btn-view-statement",
-    riskVerdict: "ALLOW",
-    isLocal: true
-  },
-  {
-    id: "tx_003_vlm_q4_bar",
-    timestamp: Date.now() - 140000,
-    goal: "Click the bar representing Q4",
-    subtask: "click the bar representing Q4",
-    disclosureLevel: "L2",
-    entitiesMasked: ["AADHAAR", "PAN", "EMAIL", "FACE"],
-    outboundBytes: 340,
-    previousHash: "4f7a8b1c9e2d3f0a",
-    payloadHash: "9b3c4d5e6f7a8b1c",
-    action: "click",
-    targetId: "revenue-chart_bar_4",
-    riskVerdict: "ALLOW",
-    isLocal: false
-  },
-  {
-    id: "tx_004_pay_intercept",
-    timestamp: Date.now() - 40000,
-    goal: "Pay Rahul 5000 USD",
-    subtask: "click pay now",
-    disclosureLevel: "L0",
-    entitiesMasked: ["CREDIT_CARD", "UPI_ID"],
-    outboundBytes: 0,
-    previousHash: "9b3c4d5e6f7a8b1c",
-    payloadHash: "2a1b3c4d5e6f7a8b",
-    action: "pay",
-    targetId: "btn-pay-now",
-    riskVerdict: "CONFIRM",
-    isLocal: true
+const GENESIS_PREVIOUS_HASH = "0".repeat(64);
+let currentRecords = [];
+let lastVerification = null;
+
+function toHex(buffer) {
+  return Array.from(new Uint8Array(buffer), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function canonicalRecord(record) {
+  const sortedEntities = (Array.isArray(record.entitiesMasked) ? record.entitiesMasked : [])
+    .slice()
+    .sort()
+    .join(",");
+  return [
+    record.previousHash,
+    record.timestamp,
+    record.goal,
+    record.subtask,
+    record.targetId,
+    record.action,
+    record.outboundBytes,
+    record.riskVerdict,
+    sortedEntities,
+    record.policyApplied || "",
+    record.isLocal ? "1" : "0",
+    record.disclosureLevel,
+  ].join("|");
+}
+
+async function sha256Hex(value) {
+  if (!globalThis.crypto?.subtle) throw new Error("Web Crypto is unavailable in this context.");
+  return toHex(await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
+}
+
+/** Recomputes each SHA-256 payload hash and verifies each previous-hash link. */
+export async function verifyAuditLedger(records) {
+  if (!Array.isArray(records)) {
+    return { valid: false, chainLength: 0, rootHash: GENESIS_PREVIOUS_HASH, tamperedIndex: 0, error: "Ledger is not an array." };
   }
-];
-
-let currentRecords = [...DEFAULT_RECORDS];
-
-// Load from chrome.storage or window opener if available
-function initLedger() {
-  if (typeof chrome !== "undefined" && chrome.storage?.local) {
-    chrome.storage.local.get(["privaagent_audit_ledger"], (res) => {
-      if (res.privaagent_audit_ledger && res.privaagent_audit_ledger.length > 0) {
-        currentRecords = res.privaagent_audit_ledger;
-      }
-      renderDashboard();
-    });
-  } else {
-    renderDashboard();
+  if (records.length === 0) {
+    return { valid: true, chainLength: 0, rootHash: GENESIS_PREVIOUS_HASH };
   }
+
+  let expectedPreviousHash = GENESIS_PREVIOUS_HASH;
+  for (let index = 0; index < records.length; index++) {
+    const record = records[index];
+    if (!record || typeof record !== "object" || record.previousHash !== expectedPreviousHash) {
+      return {
+        valid: false,
+        chainLength: records.length,
+        rootHash: record?.payloadHash || expectedPreviousHash,
+        tamperedIndex: index,
+        error: `Broken previous-hash link at record ${index + 1}.`,
+      };
+    }
+
+    let calculatedHash;
+    try {
+      calculatedHash = await sha256Hex(canonicalRecord(record));
+    } catch (error) {
+      return {
+        valid: false,
+        chainLength: records.length,
+        rootHash: record.payloadHash || expectedPreviousHash,
+        tamperedIndex: index,
+        error: error instanceof Error ? error.message : "Hash verification failed.",
+      };
+    }
+
+    if (record.payloadHash !== calculatedHash) {
+      return {
+        valid: false,
+        chainLength: records.length,
+        rootHash: record.payloadHash || expectedPreviousHash,
+        tamperedIndex: index,
+        error: `Payload hash mismatch at record ${index + 1}.`,
+      };
+    }
+    expectedPreviousHash = record.payloadHash;
+  }
+
+  return { valid: true, chainLength: records.length, rootHash: expectedPreviousHash };
+}
+
+function setText(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.textContent = value;
+}
+
+function safeNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : 0;
+}
+
+function tableCell(value, className) {
+  const cell = document.createElement("td");
+  if (className) cell.className = className;
+  cell.textContent = String(value ?? "—");
+  return cell;
 }
 
 function renderDashboard() {
   const tbody = document.getElementById("ledger-body");
   if (!tbody) return;
-  tbody.innerHTML = "";
+  tbody.replaceChildren();
 
   let totalBytes = 0;
   let localCount = 0;
   let totalMasked = 0;
+  let possibleLeakIndicators = 0;
 
-  currentRecords.forEach((r) => {
-    totalBytes += r.outboundBytes;
-    if (r.outboundBytes === 0) localCount++;
-    totalMasked += (r.entitiesMasked ? r.entitiesMasked.length : 0);
-
-    const tr = document.createElement("tr");
-
-    const levelClass = r.disclosureLevel === "L0" ? "badge-l0" : r.disclosureLevel === "L1" ? "badge-l1" : "badge-l2";
-    const verdictClass = r.riskVerdict === "ALLOW" ? "badge-allow" : r.riskVerdict === "CONFIRM" ? "badge-confirm" : "badge-block";
-
-    tr.innerHTML = `
-      <td><span style="font-family: monospace; font-size: 11px;">${r.id.slice(0, 16)}</span></td>
-      <td><strong>${r.subtask || r.goal}</strong></td>
-      <td><span class="badge ${levelClass}">${r.disclosureLevel}</span></td>
-      <td><code>${r.targetId}</code></td>
-      <td><span class="badge ${verdictClass}">${r.riskVerdict}</span></td>
-      <td>${r.outboundBytes} B</td>
-      <td><span class="hash-cell">${(r.previousHash || "0000000000000000").slice(0, 8)} &rarr; ${(r.payloadHash || "0000000000000000").slice(0, 8)}</span></td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  const total = currentRecords.length;
-  const ratio = total === 0 ? 100 : ((localCount / total) * 100).toFixed(1);
-  const baseline = total * 1200 * 1024;
-  const saved = baseline === 0 ? 100 : Math.max(0, 100 - (totalBytes / baseline) * 100).toFixed(2);
-
-  const localRatioEl = document.getElementById("kpi-local-ratio");
-  const bwSavedEl = document.getElementById("kpi-bandwidth-saved");
-  const entitiesEl = document.getElementById("kpi-entities-masked");
-  const rootHashEl = document.getElementById("root-hash");
-
-  if (localRatioEl) localRatioEl.innerText = `${ratio}%`;
-  if (bwSavedEl) bwSavedEl.innerText = `${saved}%`;
-  if (entitiesEl) entitiesEl.innerText = String(totalMasked);
-
-  if (currentRecords.length > 0 && rootHashEl) {
-    rootHashEl.innerText = currentRecords[currentRecords.length - 1].payloadHash;
+  if (currentRecords.length === 0) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.className = "empty-ledger";
+    cell.colSpan = 7;
+    cell.textContent = "No audit transactions recorded yet. Run a Privaagent task to generate the first record.";
+    row.appendChild(cell);
+    tbody.appendChild(row);
   }
 
-  // Generate synthetic surrogate demo
-  generateSyntheticPreview();
+  for (const record of currentRecords) {
+    const bytes = safeNumber(record.outboundBytes);
+    const entities = Array.isArray(record.entitiesMasked) ? record.entitiesMasked : [];
+    totalBytes += bytes;
+    if (bytes === 0) localCount++;
+    totalMasked += entities.length;
+    if (bytes > 0 && entities.length === 0) possibleLeakIndicators++;
+
+    const row = document.createElement("tr");
+    const levelClass = ({ L0: "badge-l0", L1: "badge-l1", L2: "badge-l2", L3: "badge-l2" })[record.disclosureLevel] || "";
+    const verdictClass = ({ ALLOW: "badge-allow", CONFIRM: "badge-confirm", BLOCK: "badge-block" })[record.riskVerdict] || "";
+
+    row.appendChild(tableCell(String(record.id || "").slice(0, 16), "mono-cell"));
+    row.appendChild(tableCell(record.subtask || record.goal || "—"));
+
+    const levelCell = document.createElement("td");
+    const level = document.createElement("span");
+    level.className = `badge ${levelClass}`.trim();
+    level.textContent = String(record.disclosureLevel || "—");
+    levelCell.appendChild(level);
+    row.appendChild(levelCell);
+
+    row.appendChild(tableCell(record.targetId || "—", "mono-cell"));
+
+    const verdictCell = document.createElement("td");
+    const verdict = document.createElement("span");
+    verdict.className = `badge ${verdictClass}`.trim();
+    verdict.textContent = String(record.riskVerdict || "—");
+    verdictCell.appendChild(verdict);
+    row.appendChild(verdictCell);
+    row.appendChild(tableCell(`${bytes} B`));
+    row.appendChild(tableCell(`${String(record.previousHash || "").slice(0, 8)} → ${String(record.payloadHash || "").slice(0, 8)}`, "hash-cell"));
+    tbody.appendChild(row);
+  }
+
+  if (currentRecords.length === 0) {
+    setText("kpi-local-ratio", "—");
+    setText("kpi-bandwidth-saved", "—");
+    setText("kpi-entities-masked", "—");
+    setText("kpi-leaks", "—");
+    setText("root-hash", "No ledger records");
+  } else {
+    const total = currentRecords.length;
+    const ratio = ((localCount / total) * 100).toFixed(1);
+    const baseline = total * 1200 * 1024;
+    const saved = Math.max(0, 100 - (totalBytes / baseline) * 100).toFixed(2);
+    setText("kpi-local-ratio", `${ratio}%`);
+    setText("kpi-bandwidth-saved", `${saved}%`);
+    setText("kpi-entities-masked", String(totalMasked));
+    setText("kpi-leaks", String(possibleLeakIndicators));
+    setText("root-hash", currentRecords[currentRecords.length - 1].payloadHash || "Invalid hash");
+  }
+  setText("records-count", `${currentRecords.length} record${currentRecords.length === 1 ? "" : "s"}`);
+}
+
+function initLedger() {
+  if (typeof chrome !== "undefined" && chrome.storage?.local) {
+    chrome.storage.local.get(["privaagent_audit_ledger"], (result) => {
+      const error = chrome.runtime?.lastError;
+      currentRecords = !error && Array.isArray(result.privaagent_audit_ledger)
+        ? result.privaagent_audit_ledger
+        : [];
+      renderDashboard();
+      void reverifyChain();
+    });
+  } else {
+    currentRecords = [];
+    renderDashboard();
+    void reverifyChain();
+  }
+}
+
+async function reverifyChain() {
+  const feedback = document.getElementById("verify-feedback");
+  const status = document.getElementById("chain-status");
+  const result = await verifyAuditLedger(currentRecords);
+  lastVerification = result;
+
+  if (currentRecords.length === 0) {
+    if (feedback) feedback.textContent = "No audit transactions recorded yet.";
+    if (status) {
+      status.textContent = "NO RECORDS";
+      status.className = "meta-val integrity-neutral";
+    }
+    return result;
+  }
+
+  if (result.valid) {
+    if (feedback) feedback.textContent = `Cryptographic integrity verified. Records checked: ${result.chainLength}; hash mismatches: 0.`;
+    if (status) {
+      status.textContent = "VERIFIED";
+      status.className = "meta-val integrity-good";
+    }
+  } else {
+    if (feedback) feedback.textContent = result.error || "Ledger integrity verification failed.";
+    if (status) {
+      status.textContent = "COMPROMISED";
+      status.className = "meta-val integrity-bad";
+    }
+  }
+  return result;
 }
 
 function generateSyntheticPreview() {
-  const fakeAadhaar = "9999 " + Math.floor(1000 + Math.random() * 9000) + " " + Math.floor(1000 + Math.random() * 9000);
-  const fakePAN = "ABCPE" + Math.floor(1000 + Math.random() * 9000) + "Z";
-  const synthEl = document.getElementById("synthetic-demo-val");
-  if (synthEl) {
-    synthEl.innerText = `Rahul Sharma | ${fakeAadhaar} (Verhoeff) | ${fakePAN} (CBDT)`;
-  }
+  const fakeAadhaar = `9999 ${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)}`;
+  const fakePAN = `ABCPE${Math.floor(1000 + Math.random() * 9000)}Z`;
+  setText("synthetic-demo-val", `Synthetic example only · ${fakeAadhaar} · ${fakePAN}`);
 }
 
-function reverifyChain() {
-  let unbroken = true;
-  let expectedPrev = "0000000000000000";
-
-  for (let i = 0; i < currentRecords.length; i++) {
-    const r = currentRecords[i];
-    if (r.previousHash && r.previousHash !== expectedPrev) {
-      unbroken = false;
-      break;
-    }
-    expectedPrev = r.payloadHash;
-  }
-
-  const fb = document.getElementById("verify-feedback");
-  const statusEl = document.getElementById("chain-status");
-
-  if (unbroken) {
-    if (fb) fb.innerHTML = `✓ Cryptographic chain verified unbroken (${currentRecords.length} blocks validated)`;
-    if (statusEl) {
-      statusEl.innerText = "✓ VERIFIED UNBROKEN";
-      statusEl.style.color = "var(--accent)";
-    }
-  } else {
-    if (fb) fb.innerHTML = `⚠️ Hash mismatch detected!`;
-    if (statusEl) {
-      statusEl.innerText = "❌ CHAIN COMPROMISED";
-      statusEl.style.color = "var(--danger)";
-    }
-  }
-}
-
-function exportSignedJSON() {
-  const certIdEl = document.getElementById("cert-id");
-  const rootHashEl = document.getElementById("root-hash");
-
+async function exportSignedJSON() {
+  const verification = await verifyAuditLedger(currentRecords);
   const data = {
-    summaryId: `audit_${Date.now().toString(36)}`,
     generatedAt: new Date().toISOString(),
-    rootHash: rootHashEl ? rootHashEl.innerText : "0009dab76fb675c5",
+    integrity: verification,
     totalRecords: currentRecords.length,
-    ledger: currentRecords
+    ledger: currentRecords,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `privaagent_privacy_audit_summary_${Date.now()}.json`;
-  a.click();
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `privaagent_privacy_audit_${Date.now()}.json`;
+  link.click();
   URL.revokeObjectURL(url);
 }
 
-// Bind DOM event listeners on load (strict MV3 CSP compliant, no inline handlers)
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("btn-print")?.addEventListener("click", () => window.print());
-  document.getElementById("btn-export")?.addEventListener("click", exportSignedJSON);
-  document.getElementById("btn-verify")?.addEventListener("click", reverifyChain);
-  initLedger();
-});
+if (typeof document !== "undefined") {
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("btn-print")?.addEventListener("click", () => window.print());
+    document.getElementById("btn-export")?.addEventListener("click", () => void exportSignedJSON());
+    document.getElementById("btn-verify")?.addEventListener("click", () => void reverifyChain());
+    generateSyntheticPreview();
+    initLedger();
+  });
+}

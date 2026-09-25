@@ -47,6 +47,13 @@ global.Node = dom.window.Node;
 global.getComputedStyle = dom.window.getComputedStyle.bind(dom.window);
 global.performance = globalThis.performance;
 
+// JSDOM does not implement Range#getBoundingClientRect; map selected text to
+// its containing element so the overlay test exercises the normal geometry path.
+dom.window.Range.prototype.getBoundingClientRect = function () {
+  const parent = this.startContainer.parentElement;
+  return parent?.getBoundingClientRect() || { left: 0, top: 0, width: 0, height: 0, right: 0, bottom: 0 };
+};
+
 dom.window.Element.prototype.getBoundingClientRect = function () {
   const id = this.id || "";
   if (id === "revenue-chart") return { left: 450, top: 80, width: 380, height: 220, right: 830, bottom: 300 };
@@ -71,10 +78,18 @@ if (!hudEl.textContent.includes("Privaagent") || !hudEl.textContent.includes("L0
 }
 console.log("✓ Floating HUD badge injected into DOM with active privacy level indicator.");
 
+const hudPayload = `<img src=x onerror="document.body.dataset.hudXss='executed'">`;
+overlayMgr.updateHUD("L0", hudPayload);
+if (!hudEl.textContent.includes(hudPayload) || hudEl.querySelector("img") || doc.body.dataset.hudXss) {
+  throw new Error("HUD status text must remain inert text, never executable markup.");
+}
+overlayMgr.updateHUD("L0", "Local Reasoning Mode");
+console.log("✓ Runtime HUD text is inserted as inert text, not parsed HTML.");
+
 // ----------------------------------------------------
 // TEST 2: Live Non-Mutating Viewport Redaction Overlays
 // ----------------------------------------------------
-console.log("\n[TEST 2] Testing Viewport Blur/Blackout Overlays (85% Rule: Zero DOM Mutation)...");
+console.log("\n[TEST 2] Testing BLUR overlays preserve sensitive page text...");
 
 // Capture original document HTML ground truth before overlay rendering
 const preOverlayHtml = doc.body.innerHTML;
@@ -104,12 +119,12 @@ if (container.children.length !== renderedCount || renderedCount === 0) {
   throw new Error(`Expected >0 overlays in root container, got ${container.children.length}`);
 }
 
-// Verify live DOM content was NEVER modified or altered
+// BLUR mode adds a separate viewport overlay and keeps sensitive source text intact.
 const rawPanEl = doc.getElementById("user-pan");
 if (!rawPanEl || !rawPanEl.textContent.includes("ABCDE1234F")) {
-  throw new Error("VIOLATION: Underlying live DOM text was mutated by privacy engine!");
+  throw new Error("BLUR mode must preserve the underlying sensitive source text.");
 }
-console.log("✓ Zero-Mutation verified: Underlying DOM text nodes remain 100% untouched.");
+console.log("✓ BLUR overlay leaves the source text content unchanged.");
 
 // ----------------------------------------------------
 // TEST 3: Overlay Visibility Toggling
@@ -120,6 +135,21 @@ if (container.style.display !== "none") throw new Error("Container not hidden af
 overlayMgr.setVisible(true);
 if (container.style.display !== "block") throw new Error("Container not visible after setVisible(true)");
 console.log("✓ Viewport blur shield successfully toggled on/off.");
+
+// GHOST mode uses a temporary masking class on sensitive page elements.
+const sensitiveTarget = sensitiveState.elements.find((element) => element.sensitive && element.target_id !== "user-avatar-face");
+const liveSensitiveElement = Array.from(doc.querySelectorAll("[data-privaagent-id]"))
+  .find((element) => element.getAttribute("data-privaagent-id") === sensitiveTarget?.target_id);
+if (!liveSensitiveElement) throw new Error("Could not resolve a sensitive target for GHOST mode verification.");
+overlayMgr.setMode("GHOST");
+if (!liveSensitiveElement.classList.contains("privaagent-ghost-redacted")) {
+  throw new Error("GHOST mode must apply its temporary masking class to sensitive elements.");
+}
+overlayMgr.setMode("BLUR");
+if (liveSensitiveElement.classList.contains("privaagent-ghost-redacted")) {
+  throw new Error("Switching out of GHOST mode must remove its temporary masking class.");
+}
+console.log("✓ GHOST mode temporarily applies and removes its masking class.");
 
 // ----------------------------------------------------
 // TEST 4: Policy Ceiling Enforcement (L0 / L1 / L2 Controls)

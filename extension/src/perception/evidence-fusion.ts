@@ -30,6 +30,11 @@ export function fusePerceptionEvidence(
 ): FusionResult {
   const start = performance.now();
   const fusedElements: PageElement[] = [];
+  // Callers may identify a perception region by its DOM id for local capture,
+  // but fused targets must retain only Privaagent's opaque parent identifier.
+  const parentTargetId = pageState.elements.find((element) =>
+    element.target_id === targetId || element.metadata?.domId === targetId
+  )?.target_id;
 
   // 1. Process Vision Detections (<OD> and <OCR>)
   for (const vDet of visionRes.detections) {
@@ -64,7 +69,7 @@ export function fusePerceptionEvidence(
       interactable: true,
       metadata: {
         task_token: vDet.task,
-        derived_from: targetId,
+        derived_from: parentTargetId,
       },
     };
 
@@ -87,7 +92,7 @@ export function fusePerceptionEvidence(
       interactable: false,
       metadata: {
         landmarks: face.landmarks,
-        derived_from: targetId,
+        derived_from: parentTargetId,
       },
     };
 

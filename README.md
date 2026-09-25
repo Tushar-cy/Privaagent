@@ -43,7 +43,7 @@ Privaagent/
 ├── 🧩 privaagent-extension/    # ⭐ PRE-BUILT UNPACKED EXTENSION (Select THIS in chrome://extensions)
 ├── ⚡ start-privaagent.bat     # ⭐ 1-CLICK LAUNCHER (Auto-boots server + opens Chrome with extension)
 ├── ⚡ start-privaagent.ps1     # 1-Click Launcher for PowerShell
-├── 🧪 run-all-tests.ps1        # Automated Test Runner (Executes all 13 test suites & benchmarks)
+├── 🧪 run-all-tests.ps1        # Automated Test Runner (Executes all 14 test suites & benchmarks)
 ├── 🌐 demo/                    # Interactive Demonstration Web Portal (HTML/CSS/JS with test presets)
 ├── 🖥️ server/                  # FastAPI Python Backend (Defense-in-depth, VLM client, schemas)
 ├── 📦 extension/               # Chrome MV3 Extension Source Code (TypeScript, WebGPU/WASM, Vite)
@@ -83,7 +83,7 @@ Only when a task requires remote visual intelligence (e.g., reading an arbitrary
 │  └──────────────┬────────────────┘                                               │
 │                 ▼                                                                │
 │  ┌───────────────────────────────┐                                               │
-│  │   Local Privacy Filter        │ ──► [Zero DOM Mutation Viewport Blur Shield]  │
+│  │   Local Privacy Filter        │ ──► [BLUR Viewport Overlay]                   │
 │  │   (PAN / Aadhaar / Face / NER)│                                               │
 │  └──────────────┬────────────────┘                                               │
 │                 ▼                                                                │
@@ -130,7 +130,7 @@ Only when a task requires remote visual intelligence (e.g., reading an arbitrary
 * **Chrominance Skin-Tone Face Detection (`extension/src/perception/face-detector.ts`)**: Runs color-space chrominance thresholding ($Cb \in [77, 127]$, $Cr \in [133, 173]$) to detect faces and compute facial landmark points (eyes, nose, mouth) in under 0.5 ms.
 
 ### 2. Privacy-Preserving Filter & Redaction
-* **Zero DOM Mutation Viewport Shield (`extension/src/ui/zero-mutation-blur.ts`)**: Renders floating canvas blur overlays (`backdrop-filter: blur(12px)`) over detected faces and sensitive fields. Crucially, host webpage DOM nodes and `innerHTML` are **never altered**, preventing layout breakage or form validation corruption.
+* **BLUR Viewport Overlay (`extension/src/content/overlay-manager.ts`)**: Renders overlays over detected faces and sensitive fields without changing their source text. The separate GHOST mode temporarily adds a masking class to sensitive elements and removes it when that mode ends.
 * **Deterministic Structured PII Detection (`extension/src/privacy/pii-detector.ts`)**:
   * **Indian Aadhaar**: 12-digit UIDAI validation verified via the **Verhoeff Checksum Algorithm**.
   * **Indian PAN**: CBDT 10-character alphanumeric structure (`[A-Z]{5}[0-9]{4}[A-Z]`).
@@ -244,9 +244,9 @@ start-privaagent.bat
 > By default, the `.env` uses `SESSION_TOKEN=change-this-for-local-evaluation`. This places the backend in **DEMO MODE**. In Demo Mode, backend authentication is intentionally bypassed to allow a seamless one-click demonstration for SIH judges. A warning is logged on the server.
 > 
 > For a hardened production deployment, switch to **ENFORCED MODE**:
-> 1. Open Chrome DevTools (F12) while the extension is loaded.
-> 2. Go to `Application` > `Local Storage` and copy your `privaagent_session_token` (e.g. `sih_1234abcd...`).
-> 3. Paste this into `server/.env` as `SESSION_TOKEN=sih_1234abcd...` and restart the backend.
+> 1. Open `chrome://extensions/`, find Privaagent, and click **Service worker → Inspect**.
+> 2. In that extension DevTools console, run `chrome.storage.local.get("privaagent_session_token", ({ privaagent_session_token }) => console.log(privaagent_session_token))`.
+> 3. Set the returned value in `server/.env` as `SESSION_TOKEN=...` and restart the backend. The token is stored in extension storage, not webpage Local Storage.
 > 
 > Once enforced, the backend strictly rejects any request with a missing or mismatched token via HTTP 401 Unauthorized.
 
@@ -323,7 +323,7 @@ Privaagent/
 │   │   ├── perception/                 # WebGPU/WASM vision, CV analyzer, OCR, face detector
 │   │   ├── privacy/                    # PII, secret, NER detectors, redactor, audit vault
 │   │   ├── semantic/                   # DOM tree extractor & accessibility fusion
-│   │   ├── ui/                         # Floating HUD, zero-mutation canvas blur overlays
+│   │   ├── ui/                         # Floating HUD and viewport privacy overlays
 │   │   └── validator/                  # Action validator & homoglyph prompt injection shield
 │   ├── popup/                          # Mission control popup UI
 │   └── dist/                           # Compiled production extension build

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Privaagent — Privacy Audit Summary</title>
+  <title>Privaagent — Audit records</title>
   <link rel="stylesheet" href="../src/common/design-tokens.css" />
   <style>
     body {
@@ -40,6 +40,9 @@
     .meta-item { display: flex; flex-direction: column; }
     .meta-label { color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
     .meta-val { font-weight: 600; color: var(--text-primary); font-family: monospace; }
+    .integrity-neutral { color: var(--text-secondary); }
+    .integrity-good { color: var(--success); }
+    .integrity-bad { color: var(--danger); }
     
     .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-16); margin-bottom: var(--space-24); }
     .kpi-card { background: var(--bg-surface); border: 1px solid var(--gray-800); border-radius: var(--radius-md); padding: var(--space-16); }
@@ -57,6 +60,7 @@
     table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); text-align: left; }
     th { background: var(--gray-900); padding: var(--space-12) var(--space-16); color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--gray-800); }
     td { padding: var(--space-12) var(--space-16); border-bottom: 1px solid var(--gray-800); color: var(--text-primary); }
+    .empty-ledger { padding: 28px 16px; color: var(--text-secondary); text-align: center; }
     tr:hover td { background: var(--gray-800); }
     
     .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 700; font-family: monospace; }
@@ -79,18 +83,18 @@
 </head>
 <body>
   <div class="container">
-    <!-- Official Audit Header -->
+    <!-- Privacy activity summary -->
     <header class="cert-header">
-      <div class="top-badge"><svg class="icon" style="width:16px;height:16px;vertical-align:-3px;" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Internal Privacy Audit Summary</div>
-      <h1>Enterprise Privacy & Cryptographic Audit Summary</h1>
+      <div class="top-badge"><svg class="icon" style="width:16px;height:16px;vertical-align:-3px;" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Privaagent audit records</div>
+      <h1>Privacy activity</h1>
       <p class="subtitle">
-        Official tamper-evident privacy audit record verifying zero raw citizen data leakage, on-device local execution priority (85% Rule), and deterministic cryptographic payload hashing.
+        Locally stored task records with SHA-256 chain verification. This page shows actual extension history and does not insert sample transactions.
       </p>
 
       <div class="cert-meta-grid">
         <div class="meta-item">
           <span class="meta-label">Audit ID</span>
-          <span class="meta-val" id="cert-id">PRIVAAGENT-AUDIT-2026</span>
+          <span class="meta-val" id="records-count">0 records</span>
         </div>
         <div class="meta-item">
           <span class="meta-label">Audit Standard</span>
@@ -98,11 +102,11 @@
         </div>
         <div class="meta-item">
           <span class="meta-label">Cryptographic Root Hash</span>
-          <span class="meta-val" id="root-hash">0009dab76fb675c5</span>
+          <span class="meta-val" id="root-hash">No ledger records</span>
         </div>
         <div class="meta-item">
           <span class="meta-label">Chain Integrity</span>
-          <span class="meta-val" id="chain-status" style="color: var(--accent);">✓ VERIFIED UNBROKEN</span>
+          <span class="meta-val integrity-neutral" id="chain-status">NO RECORDS</span>
         </div>
       </div>
     </header>
@@ -110,33 +114,33 @@
     <!-- KPI Summary Row -->
     <section class="kpi-grid">
       <div class="kpi-card">
-        <div class="kpi-title">Zero-Network Local Ratio</div>
-        <div class="kpi-val green" id="kpi-local-ratio">85.7%</div>
-        <div class="kpi-sub">Target: &ge; 75% On-Device Resolution</div>
+        <div class="kpi-title">Local task ratio</div>
+        <div class="kpi-val green" id="kpi-local-ratio">—</div>
+        <div class="kpi-sub">Calculated from stored records</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-title">Bandwidth Saved</div>
-        <div class="kpi-val purple" id="kpi-bandwidth-saved">99.98%</div>
-        <div class="kpi-sub">vs. 1.2MB Raw Screen Capture Baseline</div>
+        <div class="kpi-val purple" id="kpi-bandwidth-saved">—</div>
+        <div class="kpi-sub">Internal comparison estimate</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-title">Sensitive Entities Masked</div>
-        <div class="kpi-val amber" id="kpi-entities-masked">14</div>
-        <div class="kpi-sub">Aadhaar, PAN, UPI, Face, Banking Tokens</div>
+        <div class="kpi-val amber" id="kpi-entities-masked">—</div>
+        <div class="kpi-sub">From recorded masking events</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-title">Unredacted Network Leaks</div>
-        <div class="kpi-val green" id="kpi-leaks">0</div>
-        <div class="kpi-sub">100% Fail-Closed Boundary Enforcement</div>
+        <div class="kpi-title">Potential leak indicators</div>
+        <div class="kpi-val green" id="kpi-leaks">—</div>
+        <div class="kpi-sub">Outbound records with no masking entries</div>
       </div>
     </section>
 
     <!-- Action Toolbar -->
     <div class="toolbar">
       <div class="btn-group">
-        <button class="btn-primary" id="btn-print">🖨️ Print / Save Audit PDF</button>
-        <button class="btn-secondary" id="btn-export">📥 Export Audit JSON</button>
-        <button class="btn-secondary" id="btn-verify">🔄 Verify Cryptographic Hashes</button>
+        <button class="btn-primary" id="btn-print">Print / save PDF</button>
+        <button class="btn-secondary" id="btn-export">Export JSON</button>
+        <button class="btn-secondary" id="btn-verify">Verify cryptographic integrity</button>
       </div>
       <div id="verify-feedback" style="font-size: 12px; color: var(--accent); font-weight: 600;"></div>
     </div>
@@ -161,25 +165,25 @@
       </table>
     </div>
 
-    <!-- Interactive Differential Privacy & Synthetic Sandbox -->
+    <!-- Clearly labeled demonstration; these samples are not audit transactions. -->
     <div class="sandbox-box">
       <div class="sandbox-title">
-        <span>🧪 Interactive Differential Privacy & Synthetic Surrogate Sandbox</span>
+        <span>Demonstration sandbox · synthetic examples only</span>
       </div>
       <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
-        Demonstrates how Privaagent ensures 0 PII leaks: sensitive fields can either be masked with visual redact tokens or substituted on-device with mathematically valid synthetic surrogates (Verhoeff Aadhaar, CBDT PAN, Luhn Credit Card).
+        The generated values below illustrate masking and format-preserving replacement. They are not stored in the audit ledger and do not represent user activity.
       </p>
       <div class="sandbox-grid">
         <div class="sandbox-card">
-          <div class="sandbox-label">Sample Input (Citizen Data)</div>
-          <div class="sandbox-val">Rahul Sharma | 9876 5432 1098 | ABCDE1234F</div>
+          <div class="sandbox-label">Synthetic sample input</div>
+          <div class="sandbox-val">Sample Person | 9876 5432 1098 | ABCDE1234F</div>
         </div>
         <div class="sandbox-card">
-          <div class="sandbox-label">Standard Privacy Redaction (L1/L2)</div>
-          <div class="sandbox-val" style="color: #93c5fd;">Rahul Sharma | 🔒 [REDACTED_AADHAAR] | 🔒 [REDACTED_PAN]</div>
+          <div class="sandbox-label">Example redaction</div>
+          <div class="sandbox-val" style="color: #1a73e8;">Sample Person | [REDACTED_AADHAAR] | [REDACTED_PAN]</div>
         </div>
         <div class="sandbox-card">
-          <div class="sandbox-label">Differential Synthetic Surrogate</div>
+          <div class="sandbox-label">Generated synthetic example</div>
           <div class="sandbox-val" style="color: #34d399;" id="synthetic-demo-val">Generating...</div>
         </div>
       </div>

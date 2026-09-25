@@ -3,8 +3,8 @@
 import { resolveElementByTargetId } from "../semantic/dom-extractor";
 import { ExecutionResult } from "./click";
 
-export function executeType(targetId: string, text: string): ExecutionResult {
-  const element = resolveElementByTargetId(targetId);
+export function executeType(targetId: string, text: string, verifiedElement?: Element | null): ExecutionResult {
+  const element = verifiedElement || resolveElementByTargetId(targetId);
 
   if (!element) {
     return {

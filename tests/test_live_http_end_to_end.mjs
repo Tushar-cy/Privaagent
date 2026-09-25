@@ -3,46 +3,84 @@
 // validates strict Action schemas and defense-in-depth HTTP 422 rejection of leaked PII.
 
 import { spawn } from "child_process";
+import { existsSync } from "fs";
+import { createServer } from "net";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createCanvas } from "../extension/node_modules/@napi-rs/canvas/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, "..");
-const pythonExe = path.resolve(ROOT_DIR, "server/venv/Scripts/python.exe");
+const pythonCandidates = process.platform === "win32"
+  ? [path.resolve(ROOT_DIR, "server/venv/Scripts/python.exe"), "python"]
+  : [path.resolve(ROOT_DIR, "server/venv/bin/python"), "python3", "python"];
+const pythonExe = process.env.PRIVAAGENT_PYTHON
+  || pythonCandidates.find((candidate) => candidate.includes(path.sep) && existsSync(candidate))
+  || pythonCandidates.find((candidate) => !candidate.includes(path.sep));
+
+async function reserveLocalPort() {
+  const server = createServer();
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const { port } = server.address();
+  await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  return port;
+}
+
+const port = await reserveLocalPort();
+const BASE_URL = `http://127.0.0.1:${port}`;
+const sessionToken = "privaagent-live-http-test-token";
+const requestHeaders = {
+  "Content-Type": "application/json",
+  "X-Privaagent-Session-Token": sessionToken,
+};
+const screenshotDataUrl = createCanvas(1, 1).toDataURL("image/png");
+const redactionManifest = {
+  sourceSensitiveBoxCount: 0,
+  intersectingBoxCount: 0,
+  redactedBoxCount: 0,
+  redactedBoxes: [],
+};
 
 console.log("==================================================");
 console.log("   PRIVAAGENT LIVE HTTP TRUST BOUNDARY TEST       ");
 console.log("==================================================");
 
 // 1. Boot FastAPI Server
-console.log("[SETUP] Spawning FastAPI Core backend server on port 8000...");
+console.log(`[SETUP] Spawning FastAPI Core backend server on port ${port}...`);
 const serverProcess = spawn(
   pythonExe,
-  ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+  ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", String(port)],
   {
     cwd: path.resolve(ROOT_DIR, "server"),
-    env: { ...process.env, VLM_PROVIDER: process.env.VLM_PROVIDER || "mock" },
+    env: { ...process.env, SESSION_TOKEN: sessionToken, VLM_PROVIDER: "mock" },
   }
 );
+let serverOutput = "";
+serverProcess.on("error", (error) => { serverOutput += `${error.stack || error}\n`; });
+serverProcess.stdout.on("data", (data) => { serverOutput += data.toString(); });
 
 serverProcess.stderr.on("data", (data) => {
-  // Silence regular access logs, output errors
   const str = data.toString();
+  serverOutput += str;
   if (str.includes("ERROR") || str.includes("Traceback")) {
     console.error("[SERVER ERROR]", str);
   }
 });
 
 // Helper to wait for server health
-async function waitForServer(retries = 30) {
+async function waitForServer(retries = 60) {
   for (let i = 0; i < retries; i++) {
+    if (serverProcess.exitCode !== null || serverProcess.signalCode !== null) return false;
     try {
-      const res = await fetch("http://127.0.0.1:8000/health");
+      const res = await fetch(`${BASE_URL}/health`);
       if (res.ok) return true;
     } catch {
       // Waiting for socket
     }
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 250));
   }
   return false;
 }
@@ -50,9 +88,9 @@ async function waitForServer(retries = 30) {
 try {
   const isHealthy = await waitForServer();
   if (!isHealthy) {
-    throw new Error("FastAPI server failed to start within timeout!");
+    throw new Error(`FastAPI server failed to start within timeout. Server output:\n${serverOutput || "(no output captured)"}`);
   }
-  console.log("✓ Server online at http://127.0.0.1:8000 (/health: 200 OK)");
+  console.log(`✓ Server online at ${BASE_URL} (/health: 200 OK)`);
 
   // ----------------------------------------------------
   // TEST 1: Live Sanitized L1 Disclosure Action Resolution
@@ -79,9 +117,9 @@ try {
     redacted_token_count: 2,
   };
 
-  const res1 = await fetch("http://127.0.0.1:8000/api/resolve-action", {
+  const res1 = await fetch(`${BASE_URL}/api/resolve-action`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: requestHeaders,
     body: JSON.stringify(l1Payload),
   });
 
@@ -105,6 +143,8 @@ try {
     reason: "Canvas quarterly revenue bar chart requires visual reasoning",
     task: "Click the bar representing Q4",
     crop_box: [450, 80, 380, 220],
+    screenshot_data: screenshotDataUrl,
+    redaction_manifest: redactionManifest,
     elements: [
       {
         target_id: "revenue-chart_bar_1",
@@ -122,9 +162,9 @@ try {
     redacted_token_count: 4,
   };
 
-  const res2 = await fetch("http://127.0.0.1:8000/api/resolve-action", {
+  const res2 = await fetch(`${BASE_URL}/api/resolve-action`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: requestHeaders,
     body: JSON.stringify(l2Payload),
   });
 
@@ -158,9 +198,9 @@ try {
     redacted_token_count: 0,
   };
 
-  const res3 = await fetch("http://127.0.0.1:8000/api/resolve-action", {
+  const res3 = await fetch(`${BASE_URL}/api/resolve-action`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: requestHeaders,
     body: JSON.stringify(leakedPayload),
   });
 
@@ -176,7 +216,7 @@ try {
   // TEST 4: Static File Mounts Verification
   // ----------------------------------------------------
   console.log("\n[TEST 4] Testing FastAPI Static Demonstration Mounts...");
-  const demoRes = await fetch("http://127.0.0.1:8000/demo/index.html");
+  const demoRes = await fetch(`${BASE_URL}/demo/index.html`);
   if (!demoRes.ok || !(await demoRes.text()).includes("Privaagent")) {
     throw new Error("Demo static mount failed!");
   }
@@ -186,6 +226,14 @@ try {
   console.log("[ALL TESTS PASSED] Live HTTP Trust Boundary & Defense-in-Depth fully verified!");
 } finally {
   console.log("\n[TEARDOWN] Stopping FastAPI server process...");
-  try { serverProcess.kill("SIGTERM"); } catch (_) {}
-  process.exit(0);
+  if (serverProcess.exitCode === null) {
+    await new Promise((resolve) => {
+      const timer = setTimeout(resolve, 3000);
+      serverProcess.once("exit", () => {
+        clearTimeout(timer);
+        resolve();
+      });
+      try { serverProcess.kill("SIGTERM"); } catch (_) { clearTimeout(timer); resolve(); }
+    });
+  }
 }

@@ -24,30 +24,19 @@ export function resolveElementByTargetId(targetId: string): Element | null {
     return cached;
   }
 
-  // Fallback to DOM attribute lookup
-  const element = document.querySelector(`[data-privaagent-id="${targetId}"]`);
-  if (element) {
-    elementRegistry.set(targetId, element);
-    return element;
-  }
-
-  // Fallback to ID lookup
-  const byId = document.getElementById(targetId);
-  if (byId) {
-    elementRegistry.set(targetId, byId);
-    return byId;
-  }
-
-  // Fallback: search across open Shadow DOM roots in Web Components
-  const shadowHosts = document.querySelectorAll("*");
-  for (let i = 0; i < shadowHosts.length; i++) {
-    const root = shadowHosts[i].shadowRoot;
-    if (root) {
-      const el = root.querySelector(`[data-privaagent-id="${targetId}"]`) || root.getElementById(targetId);
-      if (el) {
-        elementRegistry.set(targetId, el);
-        return el;
+  // Fallback to exact agent-owned attributes (without interpolating untrusted IDs
+  // into CSS selectors and without consulting page-controlled DOM IDs).
+  const roots: Array<Document | ShadowRoot> = [document];
+  while (roots.length > 0) {
+    const root = roots.pop()!;
+    for (const element of Array.from(root.querySelectorAll("[data-privaagent-id]"))) {
+      if (element.getAttribute("data-privaagent-id") === targetId) {
+        elementRegistry.set(targetId, element);
+        return element;
       }
+    }
+    for (const host of Array.from(root.querySelectorAll("*"))) {
+      if (host.shadowRoot) roots.push(host.shadowRoot);
     }
   }
 

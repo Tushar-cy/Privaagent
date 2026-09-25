@@ -136,6 +136,16 @@ export function evaluateActionRisk(
         matchedRules,
       };
     }
+
+    if (targetElement?.sensitive) {
+      matchedRules.push("SENSITIVE_FIELD_TYPING");
+      return {
+        verdict: "CONFIRM",
+        policyReason: "Typing into a sensitive field requires explicit user confirmation.",
+        matchedRules,
+        requiredUserConfirmation: "Allow Privaagent to enter text into this sensitive field?",
+      };
+    }
   }
 
   // 4. Financial transaction checks

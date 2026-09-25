@@ -110,6 +110,28 @@ def test_resolve_action_valid_disclosure(monkeypatch):
     assert data["confidence"] > 0.5
 
 
+def test_resolve_action_hides_internal_vlm_errors(monkeypatch):
+    from app.api import routes
+
+    async def fail_prediction(_disclosure):
+        raise RuntimeError("private endpoint details must stay in server logs")
+
+    monkeypatch.setattr(routes.vlm_client, "predict_action", fail_prediction)
+    payload = {
+        "level": "L1",
+        "reason": "Test generic service error",
+        "task": "Click submit",
+        "elements": [{"target_id": "el_0001", "role": "button", "label": "Submit"}],
+        "redacted_token_count": 0,
+    }
+
+    response = client.post("/api/resolve-action", json=payload, headers=AUTH_HEADERS)
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "VLM reasoning service unavailable."
+    assert "private endpoint details" not in response.text
+
+
 def test_defense_in_depth_rejects_pan_leak():
     leaked_payload = {
         "level": "L1",
@@ -173,6 +195,36 @@ def test_defense_in_depth_rejects_secret_leak():
     response = client.post("/api/resolve-action", json=leaked_payload, headers=AUTH_HEADERS)
     assert response.status_code == 422
     assert "Defense-in-depth violation" in response.json()["detail"]
+    assert "SECRET_KEY" in response.json()["detail"]
+
+
+@pytest.mark.parametrize("secret", [
+    "gho_0123456789abcdefghijklmnopqrstuv",
+    "ghs_0123456789abcdefghijklmnopqrstuv",
+    "ghr_0123456789abcdefghijklmnopqrstuv",
+    "glpat-0123456789abcdefghijklmnopqrstuv",
+    "xoxb-0123456789abcdefghijklmnopqrstuv",
+    "xoxp-0123456789abcdefghijklmnopqrstuv",
+    "xapp-0123456789abcdefghijklmnopqrstuv",
+    "pk_0123456789abcdefghijklmnop",
+    "rk_0123456789abcdefghijklmnop",
+    "hf_0123456789abcdefghijklmnop",
+    "sk-ant-api03-0123456789abcdefghijklmnop",
+    "Authorization: Bearer 0123456789abcdefghijklmnop",
+    "aB3cD4eF5gH6iJ7kL8mN9pQ0rS1tUv2",
+])
+def test_defense_in_depth_rejects_client_supported_secret_patterns(secret):
+    payload = {
+        "level": "L1",
+        "reason": "Secret detector parity test",
+        "task": f"Use credential {secret}",
+        "elements": [{"target_id": "el_0001", "role": "button", "label": "Submit"}],
+        "redacted_token_count": 0,
+    }
+
+    response = client.post("/api/resolve-action", json=payload, headers=AUTH_HEADERS)
+
+    assert response.status_code == 422
     assert "SECRET_KEY" in response.json()["detail"]
 
 

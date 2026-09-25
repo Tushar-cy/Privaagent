@@ -411,6 +411,7 @@ runTest("21. Target element structural tag swap is detected and BLOCKED (bait-an
   const dom = new JSDOM(`<!DOCTYPE html><html><body>
     <input id="target-1" data-privaagent-id="el_1" type="text">
   </body></html>`);
+  dom.window.Element.prototype.getBoundingClientRect = () => ({ left: 10, top: 10, width: 100, height: 30, right: 110, bottom: 40 });
   global.document = dom.window.document;
   global.window = dom.window;
 
@@ -441,6 +442,7 @@ runTest("22. Target element text mutation is detected and BLOCKED (semantic drif
   const dom = new JSDOM(`<!DOCTYPE html><html><body>
     <button id="target-1" data-privaagent-id="el_1">Transfer $50,000</button>
   </body></html>`);
+  dom.window.Element.prototype.getBoundingClientRect = () => ({ left: 10, top: 10, width: 100, height: 30, right: 110, bottom: 40 });
   global.document = dom.window.document;
   global.window = dom.window;
 
@@ -470,7 +472,8 @@ runTest("22. Target element text mutation is detected and BLOCKED (semantic drif
 runTest("23. Stale / detached target element is strictly BLOCKED", () => {
   const dom = new JSDOM(`<!DOCTYPE html><html><body><div>Empty</div></body></html>`);
   const action = { action: "click", target_id: "el_nonexistent", reason: "Click missing" };
-  const valResult = validateAction(action, undefined, dom.window.document);
+  const currentState = { url: "https://test.com", elements: [{ target_id: "el_nonexistent", role: "button", text: "Missing", bbox: [0, 0, 10, 10], confidence: 1, sensitive: false, task_relevance: 1, sources: ["dom"], interactable: true, metadata: { tagName: "button" } }] };
+  const valResult = validateAction(action, currentState, dom.window.document);
   assert.strictEqual(valResult.valid, false, "Non-existent element must fail validation");
   assert.ok(valResult.error?.includes("not found in current DOM"), "Must report missing element");
 });
@@ -479,11 +482,13 @@ runTest("24. Target element hidden via display:none is strictly BLOCKED", () => 
   const dom = new JSDOM(`<!DOCTYPE html><html><body>
     <button id="hidden-btn" data-privaagent-id="el_hidden" style="display: none;">Hidden</button>
   </body></html>`);
+  dom.window.Element.prototype.getBoundingClientRect = () => ({ left: 10, top: 10, width: 100, height: 30, right: 110, bottom: 40 });
   global.document = dom.window.document;
   global.window = dom.window;
 
   const action = { action: "click", target_id: "el_hidden", reason: "Click hidden" };
-  const valResult = validateAction(action, undefined, dom.window.document);
+  const currentState = { url: "https://test.com", elements: [{ target_id: "el_hidden", role: "button", text: "Hidden", bbox: [0, 0, 10, 10], confidence: 1, sensitive: false, task_relevance: 1, sources: ["dom"], interactable: true, metadata: { tagName: "button" } }] };
+  const valResult = validateAction(action, currentState, dom.window.document);
   assert.strictEqual(valResult.valid, false, "Hidden element must fail validation");
   assert.ok(valResult.error?.includes("hidden from view"), "Must report visibility failure");
 });
@@ -496,9 +501,11 @@ console.log("\n>>> [MODULE 3/4] AI Trust Boundary & Schema Validation Tests");
 runTest("25. Hallucinated target_id from remote VLM is rejected by validator", () => {
   const dom = new JSDOM(`<!DOCTYPE html><html><body><button id="btn-1">Real</button></body></html>`);
   const action = { action: "click", target_id: "el_vlm_invented_9999", reason: "VLM hallucination" };
-  const valResult = validateAction(action, undefined, dom.window.document);
+  const currentState = { url: "https://test.com", elements: [{ target_id: action.target_id, role: "button", text: "Real", bbox: [0, 0, 100, 30], confidence: 1, sensitive: false, task_relevance: 1, sources: ["dom"], interactable: true, metadata: { tagName: "button" } }] };
+  const valResult = validateAction(action, currentState, dom.window.document);
   assert.strictEqual(valResult.valid, false, "Hallucinated target_id must be rejected");
   assert.strictEqual(valResult.requiresReplan, true, "Must flag replan required");
+  assert.ok(valResult.error?.includes("not found in current DOM"), "Page-controlled HTML id must not resolve a VLM target");
 });
 
 runTest("26. Malformed action schema without target_id is rejected", () => {
