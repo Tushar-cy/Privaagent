@@ -11,9 +11,14 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "info"
     SESSION_TOKEN: str = ""  # If set, clients must supply X-Privaagent-Session-Token or Bearer auth
 
-    # CORS configuration - restricted to extension origins and local dev servers
+    # When set, CORS is restricted to this exact Chrome extension ID.
+    # Leave empty to allow any chrome-extension:// origin (dev/CI mode only).
+    # Example: ALLOWED_EXTENSION_ID=abcdefghijklmnopabcdefghijklmnop
+    ALLOWED_EXTENSION_ID: str = ""
+
+    # CORS configuration — chrome-extension:// origins are handled via allow_origin_regex in main.py.
+    # Only localhost/loopback dev-server origins are listed here.
     CORS_ORIGINS: List[str] = [
-        "chrome-extension://*",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "http://localhost:5173",
@@ -46,3 +51,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+

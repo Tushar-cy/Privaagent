@@ -253,9 +253,9 @@ export async function runMultiTurnAgent(
       };
     }
 
-    // 5. Execute Action
+    // 5. Execute Action via Universal Execution Gate
     const execution: ExecutionResult = doc
-      ? await executeAction(resolution.action)
+      ? await executeAction(resolution.action, { pageState: currentState, doc, userConfirmed: false })
       : { success: true, target_id: resolution.action.target_id };
 
     // Record in budget and trajectory

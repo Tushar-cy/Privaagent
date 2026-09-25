@@ -26,7 +26,21 @@ chrome.runtime.onStartup.addListener(() => {
   console.log("[Privaagent Service Worker] Browser startup - Sentry active");
   // Re-apply badge color on startup
   chrome.action?.setBadgeBackgroundColor?.({ color: "#10b981" });
+
+  // Auto-restore audit ledger from persistent storage so in-memory AuditVault
+  // is seeded even if the browser was restarted between sessions.
+  if (chrome.storage?.local) {
+    chrome.storage.local.get(["privaagent_audit_ledger"], (result) => {
+      const ledger = result.privaagent_audit_ledger;
+      if (Array.isArray(ledger) && ledger.length > 0) {
+        // Broadcast to all tabs so content-script AuditVault instances can restore state
+        chrome.runtime.sendMessage({ type: "RESTORE_AUDIT_LEDGER", ledger }).catch(() => {});
+        console.log(`[Privaagent Service Worker] Restored ${ledger.length} audit record(s) from storage.`);
+      }
+    });
+  }
 });
+
 
 // Listener for messages from content scripts, popup, and validation engines
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -130,6 +144,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
       }
       sendResponse({ success: false });
+      break;
+    }
+
+    case "RESTORE_AUDIT_LEDGER": {
+      // Content scripts receive this on browser startup to re-seed their in-memory AuditVault
+      // from chrome.storage persisted records (auto-restore invariant).
+      sendResponse({ success: true, received: true });
       break;
     }
 

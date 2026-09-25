@@ -28,14 +28,24 @@ app = FastAPI(
 )
 
 # Configure CORS for Chrome extension origins & local dev
+# When ALLOWED_EXTENSION_ID is set, restrict to that exact extension (production).
+# When unset, allow any chrome-extension:// origin (dev/CI convenience).
+_ext_id = settings.ALLOWED_EXTENSION_ID.strip()
+_chrome_ext_regex = (
+    rf"^chrome-extension://{_ext_id}$"
+    if _ext_id
+    else r"^chrome-extension://[a-z]{32}$"  # Any valid 32-char extension ID
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o for o in settings.CORS_ORIGINS if not o.startswith("chrome-extension:")],
-    allow_origin_regex=r"^chrome-extension://.*$",
+    allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=_chrome_ext_regex,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["POST", "GET", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Privaagent-Session-Token"],
 )
+
 
 
 @app.get("/health")

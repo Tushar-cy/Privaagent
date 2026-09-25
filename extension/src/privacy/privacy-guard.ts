@@ -151,7 +151,9 @@ export function verifyOutgoingDisclosure(disclosure: Disclosure): PrivacyGuardRe
   // 3. Visual payload validation: L2/L3 visual disclosures must contain valid data URL
   if (disclosure.level === "L2" || disclosure.level === "L3") {
     if (disclosure.screenshot_data !== undefined) {
-      if (!disclosure.screenshot_data || !disclosure.screenshot_data.startsWith("data:image/")) {
+      const sd = disclosure.screenshot_data;
+      const isValidDataUrl = typeof sd === "string" && sd.startsWith("data:image/");
+      if (!isValidDataUrl) {
         detectedLeaks.push({
           type: "INVALID_VISUAL_PAYLOAD",
           snippet: "Malformatted or empty screenshot payload",
@@ -160,6 +162,7 @@ export function verifyOutgoingDisclosure(disclosure: Disclosure): PrivacyGuardRe
       }
     }
   }
+
 
   const durationMs = performance.now() - startTime;
   const serialized = JSON.stringify(disclosure);

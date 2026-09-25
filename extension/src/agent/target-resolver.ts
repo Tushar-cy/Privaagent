@@ -201,18 +201,18 @@ export async function resolveTaskAction(
   let screenshotData = options.sanitizedScreenshotBase64;
   if (isVisualEscalation && !screenshotData) {
     try {
-      const sensitiveBoxes = pageState.elements
-        .filter((el) => el.sensitive)
-        .map((el) => el.bbox);
       const targetEl = targetCropId
         ? pageState.elements.find((el) => el.target_id === targetCropId)
         : undefined;
       const cropBox = options.forceEscalationLevel === "L3" ? undefined : targetEl?.bbox;
-      screenshotData = await captureAndSanitizeTab(pageState, cropBox);
+      const captureResult = await captureAndSanitizeTab(pageState, cropBox);
+      // captureResult is CaptureAndSanitizeResult { dataUrl?, manifest? }
+      screenshotData = captureResult.dataUrl;
     } catch (_) {
       // Graceful fallback if tab capture is unavailable in current context
     }
   }
+
 
   // Step 2: Minimum disclosure planning & placeholder tokenization ([EMAIL_1], [PHONE_1])
   const disclosure = planDisclosure(taskStr, pageState, {

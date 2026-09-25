@@ -128,7 +128,11 @@ export async function requestValidatedExecution(
       error: `Execution paused: Confirmation required (${valResult.policyResult?.requiredUserConfirmation || "User approval required"})`,
     };
   }
-  return executeAction(action);
+  return executeAction(action, {
+    pageState: latestPageState || undefined,
+    doc: document,
+    userConfirmed: options?.userConfirmed,
+  });
 }
 
 if (typeof window !== "undefined") {
@@ -187,16 +191,29 @@ function setShieldEnabled(enabled: boolean): void {
 
 // Initialize on page load
 function initialize(): void {
-  // Restore shield state and redaction mode from chrome.storage
+  // Restore shield state, redaction mode, AND audit ledger from chrome.storage
   if (typeof chrome !== "undefined" && chrome.storage?.local) {
-    chrome.storage.local.get(["privaagent_shield_enabled", "privaagent_redaction_mode"], (result) => {
-      const stored = result?.privaagent_shield_enabled;
-      shieldEnabled = stored === undefined ? true : Boolean(stored);
-      const storedMode = result?.privaagent_redaction_mode || "BLUR";
-      overlayManager.setMode(storedMode as any);
-      overlayManager.setVisible(shieldEnabled);
-      runPerception();
-    });
+    chrome.storage.local.get(
+      ["privaagent_shield_enabled", "privaagent_redaction_mode", "privaagent_audit_ledger"],
+      (result) => {
+        const stored = result?.privaagent_shield_enabled;
+        shieldEnabled = stored === undefined ? true : Boolean(stored);
+        const storedMode = result?.privaagent_redaction_mode || "BLUR";
+        overlayManager.setMode(storedMode as any);
+        overlayManager.setVisible(shieldEnabled);
+
+        // Auto-restore audit vault from persistent storage (P1 invariant)
+        const storedLedger = result?.privaagent_audit_ledger;
+        if (Array.isArray(storedLedger) && storedLedger.length > 0) {
+          const restoreResult = PrivacyAuditVault.getInstance().loadFromStorage(storedLedger);
+          console.log(
+            `[Privaagent] Audit ledger restored: ${restoreResult.loaded} records, integrity=${restoreResult.valid ? "VERIFIED" : "COMPROMISED"}`
+          );
+        }
+
+        runPerception();
+      }
+    );
   } else {
     runPerception();
   }
@@ -312,6 +329,17 @@ if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
   if (message?.type === "CLEAR_AUDIT_VAULT") {
     PrivacyAuditVault.getInstance().clear();
     sendResponse({ ok: true });
+    return false;
+  }
+
+  // Background broadcasts this on browser startup after loading from storage.
+  // Content scripts re-seed the in-memory AuditVault from persisted records.
+  if (message?.type === "RESTORE_AUDIT_LEDGER" && Array.isArray(message.ledger)) {
+    const restoreResult = PrivacyAuditVault.getInstance().loadFromStorage(message.ledger);
+    console.log(
+      `[Privaagent] Startup audit restore: ${restoreResult.loaded} records, integrity=${restoreResult.valid ? "VERIFIED" : "COMPROMISED"}`
+    );
+    sendResponse({ ok: true, loaded: restoreResult.loaded, valid: restoreResult.valid });
     return false;
   }
 
@@ -480,7 +508,10 @@ async function handleRunTaskMessage(
   }
 
   overlayManager.updateHUD(resolution.disclosure.level, `Executing ${resolution.action.action}`);
-  const execution = await executeAction(resolution.action);
+  const execution = await executeAction(resolution.action, {
+    pageState: latestPageState,
+    doc: document,
+  });
   overlayManager.updateHUD(resolution.disclosure.level, execution.success ? "Done" : "Execution failed");
 
   PrivacyAuditVault.getInstance().record({

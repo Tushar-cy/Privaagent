@@ -3,12 +3,32 @@
 // on-device irreversible pixel blackouts/redactions over all sensitive bounding boxes
 // BEFORE visual payloads leave the device.
 
-import { BoundingBox } from "../common/types";
+import { BoundingBox, VisualRedactionManifest } from "../common/types";
 
 export interface TabCaptureResult {
   success: boolean;
   dataUrl?: string;
   error?: string;
+}
+
+/**
+ * Structured result of a sanitization pass.
+ * The manifest is a formal proof that all sensitive bounding boxes were evaluated
+ * and blackout-burned onto the canvas BEFORE any network dispatch.
+ */
+export interface SanitizeResult {
+  /** Empty string on fail-closed; non-empty base64 PNG otherwise. */
+  dataUrl: string;
+  manifest: VisualRedactionManifest;
+}
+
+/**
+ * Captures the current tab and returns both the sanitized screenshot and its
+ * redaction manifest so callers can attach the manifest to outbound disclosures.
+ */
+export interface CaptureAndSanitizeResult {
+  dataUrl?: string;
+  manifest?: VisualRedactionManifest;
 }
 
 /**
@@ -62,17 +82,32 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
  *
  * If cropBox is provided (L2), only the cropped ROI is retained and returned.
  * If cropBox is omitted (L3), the entire viewport is returned with all sensitive areas masked.
+ *
+ * Returns a `SanitizeResult` containing the sanitized PNG data URL AND a
+ * `VisualRedactionManifest` that formally records which boxes were evaluated and burned.
+ * Callers MUST attach this manifest to any outbound disclosure (Strict Visual Contract).
  */
 export async function sanitizeScreenshot(
   rawScreenshotDataUrl: string,
   sensitiveBoxes: BoundingBox[],
   cropBox?: BoundingBox,
   viewport?: { width: number; height: number }
-): Promise<string> {
+): Promise<SanitizeResult> {
+  const failClosed: SanitizeResult = {
+    dataUrl: "",
+    manifest: {
+      sourceSensitiveBoxCount: sensitiveBoxes.length,
+      intersectingBoxCount: 0,
+      redactedBoxCount: 0,
+      redactedBoxes: [],
+      sanitizationTimestamp: Date.now(),
+    },
+  };
+
   if (typeof document === "undefined") {
     // Fail-closed in headless/non-DOM environments without canvas: NEVER return raw screenshot
     console.error("[SanitizeScreenshot] Document not defined. Failing closed: 0 bytes dispatched.");
-    return "";
+    return failClosed;
   }
 
   try {
@@ -82,7 +117,7 @@ export async function sanitizeScreenshot(
     const ctx = canvas.getContext("2d");
     if (!ctx) {
       console.error("[SanitizeScreenshot] Canvas 2D context unavailable. Failing closed: 0 bytes dispatched.");
-      return "";
+      return failClosed;
     }
 
     const imgW = img.naturalWidth || img.width;
@@ -101,6 +136,9 @@ export async function sanitizeScreenshot(
 
     const scaleX = viewportW > 0 ? imgW / viewportW : 1.0;
     const scaleY = viewportH > 0 ? imgH / viewportH : 1.0;
+
+    // Track which boxes were actually burned
+    const burnedBoxes: BoundingBox[] = [];
 
     if (cropBox) {
       // L2: Crop to ROI with DPR scaling
@@ -127,7 +165,8 @@ export async function sanitizeScreenshot(
       );
 
       // Mask sensitive boxes that intersect with the crop, scaled to device pixels
-      for (const [bx, by, bw, bh] of sensitiveBoxes) {
+      for (const box of sensitiveBoxes) {
+        const [bx, by, bw, bh] = box;
         const sbx = Math.round(bx * scaleX);
         const sby = Math.round(by * scaleY);
         const sbw = Math.round(bw * scaleX);
@@ -160,6 +199,8 @@ export async function sanitizeScreenshot(
           ctx.fillStyle = "#ffffff";
           ctx.font = "bold 11px sans-serif";
           ctx.fillText("[REDACTED PII]", drawX + 4, drawY + Math.min(drawH / 2 + 4, drawH - 4));
+
+          burnedBoxes.push(box);
         }
       }
     } else {
@@ -170,7 +211,8 @@ export async function sanitizeScreenshot(
       ctx.drawImage(img, 0, 0);
 
       // Mask all sensitive bounding boxes across the viewport scaled to device pixels
-      for (const [bx, by, bw, bh] of sensitiveBoxes) {
+      for (const box of sensitiveBoxes) {
+        const [bx, by, bw, bh] = box;
         const sbx = Math.round(bx * scaleX);
         const sby = Math.round(by * scaleY);
         const sbw = Math.round(bw * scaleX);
@@ -186,13 +228,23 @@ export async function sanitizeScreenshot(
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 12px sans-serif";
         ctx.fillText("[REDACTED PII]", sbx + 4, sby + Math.min(sbh / 2 + 4, sbh - 4));
+
+        burnedBoxes.push(box);
       }
     }
 
-    return canvas.toDataURL("image/png");
+    const manifest: VisualRedactionManifest = {
+      sourceSensitiveBoxCount: sensitiveBoxes.length,
+      intersectingBoxCount: burnedBoxes.length,
+      redactedBoxCount: burnedBoxes.length,
+      redactedBoxes: burnedBoxes,
+      sanitizationTimestamp: Date.now(),
+    };
+
+    return { dataUrl: canvas.toDataURL("image/png"), manifest };
   } catch (err) {
     console.error("[SanitizeScreenshot] Error processing image, strictly failing closed (0 bytes):", err);
-    return "";
+    return failClosed;
   }
 }
 
@@ -204,14 +256,18 @@ import { detectVisualSensitivity } from "../perception/visual-sensitivity";
 /**
  * High-level orchestration: captures the current tab, runs visual detection,
  * merges sensitive regions, and sanitizes all sensitive areas.
+ *
+ * Returns a `CaptureAndSanitizeResult` containing both the sanitized screenshot
+ * and the formal `VisualRedactionManifest` (Strict Visual Contract). Callers MUST
+ * attach the manifest to any outbound L2/L3 disclosure payload.
  */
 export async function captureAndSanitizeTab(
   pageState: any,
   cropBox?: BoundingBox
-): Promise<string | undefined> {
+): Promise<CaptureAndSanitizeResult> {
   const result = await captureRawTab();
   if (!result.success || !result.dataUrl) {
-    return undefined;
+    return {};
   }
 
   // Time budget: detect visual sensitivity with 150ms timeout
@@ -251,10 +307,15 @@ export async function captureAndSanitizeTab(
     console.error("[VisualSensitivity] Engine failed, falling back:", err);
   }
 
-  const sanitized = await sanitizeScreenshot(result.dataUrl, sensitiveBoxes, cropBox, pageState?.viewport);
-  if (!sanitized) {
+  const sanitizeResult = await sanitizeScreenshot(result.dataUrl, sensitiveBoxes, cropBox, pageState?.viewport);
+  if (!sanitizeResult.dataUrl) {
     console.error("[CaptureTab] Screenshot sanitization failed — strictly failing closed (0 bytes sent).");
-    return undefined;
+    return {};
   }
-  return sanitized;
+
+  return {
+    dataUrl: sanitizeResult.dataUrl,
+    manifest: sanitizeResult.manifest,
+  };
 }
+

@@ -87,6 +87,15 @@ export const DisclosedElementSchema = z.object({
 });
 export type DisclosedElement = z.infer<typeof DisclosedElementSchema>;
 
+export const VisualRedactionManifestSchema = z.object({
+  sourceSensitiveBoxCount: z.number().int().nonnegative(),
+  intersectingBoxCount: z.number().int().nonnegative(),
+  redactedBoxCount: z.number().int().nonnegative(),
+  redactedBoxes: z.array(BoundingBoxSchema),
+  sanitizationTimestamp: z.number().optional(),
+});
+export type VisualRedactionManifest = z.infer<typeof VisualRedactionManifestSchema>;
+
 export const DisclosureSchema = z.object({
   level: DisclosureLevelSchema,
   reason: z.string(),
@@ -95,6 +104,7 @@ export const DisclosureSchema = z.object({
   crop_box: BoundingBoxSchema.optional(),
   screenshot_data: z.string().optional(), // base64 encoded sanitized image
   redacted_token_count: z.number().int().nonnegative().optional().default(0),
+  redaction_manifest: VisualRedactionManifestSchema.optional(),
 });
 export type Disclosure = z.infer<typeof DisclosureSchema>;
 

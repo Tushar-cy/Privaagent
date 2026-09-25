@@ -129,6 +129,19 @@ export function validateAction(
         };
       }
 
+      // 4b. ARIA role binding verification (prevent role spoofing, e.g. button -> link)
+      const liveRole = (liveEl.getAttribute("role") || "").toLowerCase().trim();
+      const recordedRole = ((recordedEl.metadata?.ariaRole as string) || "").toLowerCase().trim();
+      if (recordedRole && liveRole && recordedRole !== liveRole && recordedRole !== "generic" && liveRole !== "generic") {
+        return {
+          valid: false,
+          verdict: "BLOCK",
+          element: liveEl,
+          error: `Pre-execution semantic validation failed: ARIA role changed from "${recordedRole}" to "${liveRole}" (possible role spoofing/bait-and-switch).`,
+          requiresReplan: true,
+        };
+      }
+
       // 4b. Text identity verification (prevent target swap / bait-and-switch)
       const liveText = (liveEl.textContent?.trim() || "").toLowerCase();
       const recordedText = (recordedEl.text || "").trim().toLowerCase();

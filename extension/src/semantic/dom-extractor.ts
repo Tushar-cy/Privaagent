@@ -75,15 +75,9 @@ function isElementVisible(el: Element, rect: DOMRect): boolean {
 /**
  * Generates a stable, deterministic target_id for a DOM element.
  */
-function generateStableTargetId(el: Element, index: number): string {
-  if (el.id && el.id.trim() && !/^[0-9]+$/.test(el.id)) {
-    return el.id.trim();
-  }
-
-  const tagName = el.tagName.toLowerCase();
-  const role = el.getAttribute("role") || "";
-  const prefix = role ? `${tagName}_${role}` : tagName;
-  return `${prefix}_${index}`;
+function generateStableTargetId(_el: Element, index: number): string {
+  // Purely opaque session-local target ID. DOM IDs and attributes NEVER cross into target_id.
+  return `el_${String(index).padStart(4, "0")}`;
 }
 
 /**
@@ -275,7 +269,10 @@ export function extractPageState(): ExtractionResult {
                     && tagName !== "div" && tagName !== "section" && tagName !== "article",
       metadata: {
         tagName,
+        ariaRole: (el.getAttribute("role") || a11y.role || "").toLowerCase().trim(),
+        accessibleName: a11y.accessibleName || "",
         isPassword,
+        domId: (el as HTMLElement).id || undefined,
       },
     };
 

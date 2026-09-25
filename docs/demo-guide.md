@@ -115,6 +115,6 @@ This guide provides a step-by-step presentation walkthrough for evaluating **Pri
 | **Visual Context Accuracy** | 25% | 1/5 elements matched · CV detected 4 bars (generic labels); Tesseract read value text (`$12k`–`$28k`), not Q-labels (12px font — OCR limitation) · 1 face via chrominance | **20.00%** |
 | **PII Detection Accuracy (F1)** | 20% | 265 labeled snippets · 220 TP, 0 FP, 0 FN, 45 TN · **100% F1** | **100.00%** |
 | **Redaction Precision & Quality** | 20% | 0 raw leaks across all outbound payloads; 100% context retention | **100.00%** |
-| **Client Resource Utilization** | 20% | Avg DOM latency **2.19 ms** (< 50 ms); Heap **70.09 MB** (< 150 MB budget) | **97.98%** |
-| **End-to-End Task Latency** | 15% | Local fast-path **3.25 ms** (< 15 ms target); **10/10** tasks passed | **100.00%** |
-| **COMPOSITE SCORE** | **100%** | Internal self-evaluation · canvas-backed real pixel rendering | **79.60 / 100.00** |
+| **Client Resource Utilization** | 20% | Avg DOM latency **5.70 ms** (< 50 ms); Heap **70.33 MB** (< 150 MB budget) | **96.998%** |
+| **End-to-End Task Latency** | 15% | Local fast-path **4.68 ms** (< 15 ms target); **10/10** tasks passed | **100.00%** |
+| **COMPOSITE SCORE** | **100%** | Internal self-evaluation · canvas-backed real pixel rendering | **79.40 / 100.00** |
