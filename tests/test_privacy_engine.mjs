@@ -29,6 +29,23 @@ if (isValidLuhn(invalidCard)) throw new Error("Invalid Luhn card passed check!")
 console.log("✓ Luhn algorithm correctly distinguishes valid vs invalid credit card checksums.");
 
 // ----------------------------------------------------
+// TEST 1b: Verhoeff Aadhaar Checksum
+// ----------------------------------------------------
+console.log("\n[TEST 1b] Testing Aadhaar Verhoeff Checksum Detection...");
+const validAadhaar = "9999 0000 0016";
+const invalidAadhaar = "9999 0000 0017";
+const validAadhaarDetections = detectStructuredPII(validAadhaar);
+const invalidAadhaarDetections = detectStructuredPII(invalidAadhaar);
+
+if (!validAadhaarDetections.some((detection) => detection.type === "AADHAAR")) {
+  throw new Error(`Checksum-valid Aadhaar was not detected: ${validAadhaar}`);
+}
+if (invalidAadhaarDetections.some((detection) => detection.type === "AADHAAR")) {
+  throw new Error(`Checksum-invalid Aadhaar was detected: ${invalidAadhaar}`);
+}
+console.log("✓ Aadhaar detection accepts a valid Verhoeff checksum and rejects a one-digit mutation.");
+
+// ----------------------------------------------------
 // TEST 2: Shannon Entropy on API Keys
 // ----------------------------------------------------
 console.log("\n[TEST 2] Testing Shannon Entropy on Secrets...");
