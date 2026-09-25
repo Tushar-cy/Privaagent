@@ -148,9 +148,15 @@ export function verifyOutgoingDisclosure(disclosure: Disclosure): PrivacyGuardRe
   }
   }
 
-  // 3. Visual payload validation: L2/L3 visual disclosures must contain valid data URL
+  // 3. Visual payload validation: L2/L3 visual disclosures must contain valid data URL and manifest
   if (disclosure.level === "L2" || disclosure.level === "L3") {
-    if (disclosure.screenshot_data !== undefined) {
+    if (disclosure.screenshot_data === undefined) {
+      detectedLeaks.push({
+        type: "MISSING_VISUAL_PAYLOAD",
+        snippet: "L2/L3 disclosure must contain screenshot_data",
+        field: "screenshot_data",
+      });
+    } else {
       const sd = disclosure.screenshot_data;
       const isValidDataUrl = typeof sd === "string" && sd.startsWith("data:image/");
       if (!isValidDataUrl) {
