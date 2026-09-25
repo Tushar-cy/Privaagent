@@ -15,6 +15,10 @@ const OVERLAY_CONTAINER_ID = "privaagent-redaction-root";
 const HUD_BADGE_ID = "privaagent-status-hud";
 const GHOST_STYLE_ID = "privaagent-ghost-style";
 
+const shieldSvg = `<svg class="icon" style="width:12px;height:12px;vertical-align:-2px;" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
+const ghostSvg = `<svg class="icon" style="width:12px;height:12px;vertical-align:-2px;" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>`;
+const synthSvg = `<svg class="icon" style="width:12px;height:12px;vertical-align:-2px;" viewBox="0 0 24 24"><polygon fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"></polygon></svg>`;
+
 export type RedactionMode = "BLUR" | "GHOST" | "SYNTHETIC";
 
 interface OverlayEntry {
@@ -135,7 +139,7 @@ export class OverlayManager {
       this.doc.body.appendChild(hud);
     }
 
-    const modeIndicator = this.mode === "GHOST" ? "👻 GHOST" : this.mode === "SYNTHETIC" ? "🍯 SYNTH" : "🛡️ BLUR";
+    const modeIndicator = this.mode === "GHOST" ? `${ghostSvg} GHOST` : this.mode === "SYNTHETIC" ? `${synthSvg} SYNTH` : `${shieldSvg} BLUR`;
 
     hud.innerHTML = `
       <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#34d399; box-shadow:0 0 6px #34d399;"></span>
@@ -150,7 +154,7 @@ export class OverlayManager {
   private computeLabel(type: string, isSecret: boolean): string {
     if (this.mode === "SYNTHETIC") {
       const surrogate = generateSyntheticSurrogate(type);
-      return `🍯 ${surrogate}`;
+      return `${synthSvg} ${surrogate}`;
     }
 
     if (isSecret) return "⬛ [SECRET]";
@@ -169,7 +173,7 @@ export class OverlayManager {
       case "VOTER_ID": return "🗳️ [VOTER ID]";
       case "UPI_ID": return "💸 [UPI]";
       case "IFSC": return "🏦 [IFSC]";
-      case "PERSON": return "🛡️ [NAME]";
+      case "PERSON": return `${shieldSvg} [NAME]`;
       case "PASSWORD": return "🔑 [PASSWORD]";
       default: return "🔒 [REDACTED]";
     }
@@ -321,7 +325,7 @@ export class OverlayManager {
           badge.style.background = "rgba(10, 15, 29, 0.95)";
         }
 
-        badge.textContent = entry.label;
+        badge.innerHTML = entry.label;
         overlay.appendChild(badge);
 
         container.appendChild(overlay);

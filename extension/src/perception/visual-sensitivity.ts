@@ -16,8 +16,6 @@ export interface VisualSensitivityResult {
 
 const VISUAL_CACHE = new Map<string, VisualSensitivityResult>();
 
-// Unique marker to prove this file is bundled:
-// __PRIVAAGENT_VISUAL_SENSITIVITY_MODULE_BUNDLED__
 
 async function loadImage(dataUrl: string): Promise<ImageBitmap> {
   const base64Match = dataUrl.match(/^data:image\/[a-z]+;base64,(.+)$/);

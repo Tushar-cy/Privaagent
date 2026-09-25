@@ -32,8 +32,10 @@ async function getTesseractWorker(): Promise<any> {
 
   _workerPromise = (async () => {
     // Notify UI that a heavy lazy-load operation is starting
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("PRIVAAGENT_OCR_INIT_START"));
+    if (typeof window !== "undefined" && typeof window.CustomEvent !== "undefined") {
+      try {
+        window.dispatchEvent(new window.CustomEvent("PRIVAAGENT_OCR_INIT_START"));
+      } catch (e) {}
     }
 
     // Dynamic import so the extension bundle only loads Tesseract when first needed
@@ -49,8 +51,10 @@ async function getTesseractWorker(): Promise<any> {
     console.log("[OCR] Tesseract.js WASM worker initialized (eng)");
 
     // Notify UI that initialization is complete
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("PRIVAAGENT_OCR_INIT_END"));
+    if (typeof window !== "undefined" && typeof window.CustomEvent !== "undefined") {
+      try {
+        window.dispatchEvent(new window.CustomEvent("PRIVAAGENT_OCR_INIT_END"));
+      } catch (e) {}
     }
 
     return worker;

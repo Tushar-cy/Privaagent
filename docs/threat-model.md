@@ -15,12 +15,12 @@ In an autonomous or semi-autonomous browser agent, threats originate from two di
 - Remote models are strictly restricted to structured Action schemas (`click`, `type`, `scroll`, `select`, `navigate`).
 - Arbitrary JavaScript evaluation (`eval()`, `chrome.tabs.executeScript` with raw code strings) is strictly banned in the architecture.
 
-### Invariant 3: Pre-Execution Action Validation
-Before any action returned by the remote server is dispatched to the browser runtime, the **Local Action Validator** must:
-- Re-resolve `target_id` against the current, live DOM snapshot.
-- Verify the element is visible, non-zero-sized, and not obscured by overlay attacks.
-- Verify element text has not mutated into an injection attack since the disclosure was sent.
-- Enforce the Risk Policy:
-  - `ALLOW`: Safe reads, scrolls, non-destructive navigation.
-  - `CONFIRM`: Destructive actions (submit, delete, pay, transfer funds) trigger a user confirmation dialog.
-  - `BLOCK`: Malformed actions, unknown targets, detected prompt injections.
+### Invariant 3: Comprehensive Prompt Injection & Pre-Execution Validation
+- **Global Pre-Flight Scan**: Before any action is decided (locally or via remote VLM), the orchestration engine maps over *all* disclosed candidate elements in the page state and runs prompt injection detection globally. If a concealed instruction or injection attack is found anywhere in the candidate set, the task is immediately blocked.
+- After an action is resolved, the **Local Action Validator** must still:
+  - Re-resolve `target_id` against the current, live DOM snapshot.
+  - Verify the element is visible, non-zero-sized, and not obscured by overlay attacks.
+  - Enforce the Risk Policy:
+    - `ALLOW`: Safe reads, scrolls, non-destructive navigation.
+    - `CONFIRM`: Destructive actions (submit, delete, pay, transfer funds) trigger a user confirmation dialog.
+    - `BLOCK`: Malformed actions, unknown targets, detected prompt injections.
