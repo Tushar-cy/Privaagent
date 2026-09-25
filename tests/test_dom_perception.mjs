@@ -3,6 +3,8 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { JSDOM } from "../extension/node_modules/jsdom/lib/api.js";
+import { extractPageState } from "../extension/src/semantic/dom-extractor.ts";
+import { executeAction } from "../extension/src/execution/index.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const htmlPath = path.resolve(__dirname, "../benchmark/pages/test-page-1.html");
@@ -66,19 +68,27 @@ dom.window.Element.prototype.scrollBy = function () {};
 dom.window.scrollBy = function () {};
 
 
-// Load and evaluate the extension bundle
-const bundlePath = path.resolve(__dirname, "../extension/dist/src/content/index.js");
-const bundleCode = fs.readFileSync(bundlePath, "utf-8");
+// Exercise the same isolated extension modules without publishing internal controls on page.window.
+global.window = dom.window;
+global.document = dom.window.document;
+global.Element = dom.window.Element;
+global.HTMLElement = dom.window.HTMLElement;
+global.HTMLInputElement = dom.window.HTMLInputElement;
+global.HTMLTextAreaElement = dom.window.HTMLTextAreaElement;
+global.HTMLButtonElement = dom.window.HTMLButtonElement;
+global.HTMLAnchorElement = dom.window.HTMLAnchorElement;
+global.HTMLSelectElement = dom.window.HTMLSelectElement;
+global.HTMLCanvasElement = dom.window.HTMLCanvasElement;
+global.SVGElement = dom.window.SVGElement;
+global.XMLSerializer = dom.window.XMLSerializer;
+global.Node = dom.window.Node;
+global.getComputedStyle = dom.window.getComputedStyle.bind(dom.window);
 
-console.log("[TEST] Evaluating extension content script bundle...");
-dom.window.eval(bundleCode);
-
-// Verify window.__privaagent_extract exists and call it
-const extraction = dom.window.eval("window.__privaagent_extract ? window.__privaagent_extract() : null");
-if (!extraction) {
-  throw new Error("window.__privaagent_extract was not initialized on window!");
-}
+const extraction = extractPageState(dom.window.document);
 const { pageState, durationMs } = extraction;
+if ("__privaagent_extract" in dom.window || "__privaagent_execute_action" in dom.window) {
+  throw new Error("Privileged Privaagent internals must not be exposed on the page window.");
+}
 
 console.log("--------------------------------------------------");
 console.log(`[PERFORMANCE] DOM Extraction Time: ${durationMs.toFixed(3)} ms`);
@@ -131,8 +141,9 @@ console.log(`[VERIFIED] User profile PII elements extracted correctly.`);
 
 // Assertion 5: Test action execution - Click "Open Rahul's invoice"
 console.log("[TEST] Dispatching click action to 'btn-open-invoice'...");
-const actionResult = await dom.window.eval(
-  `window.__privaagent_execute_action({ action: 'click', target_id: '${invoiceBtn.target_id}', reason: 'Open Rahul invoice' })`
+const actionResult = await executeAction(
+  { action: "click", target_id: invoiceBtn.target_id, reason: "Open Rahul invoice" },
+  { pageState, doc: dom.window.document }
 );
 
 if (!actionResult.success || actionResult.target_id !== invoiceBtn.target_id) {

@@ -9,7 +9,7 @@ import { annotatePageStateSensitivity } from "../extension/src/privacy/sensitivi
 import { OverlayManager } from "../extension/src/content/overlay-manager.ts";
 import { resolveTaskAction } from "../extension/src/agent/target-resolver.ts";
 import { validateAction } from "../extension/src/validator/action-validator.ts";
-import { dispatchUserApprovedAction } from "../extension/popup/confirmation.ts";
+import { dispatchUserApprovedAction, dispatchUserApprovedGoal } from "../extension/popup/confirmation.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const htmlPath = path.resolve(__dirname, "../benchmark/pages/test-page-1.html");
@@ -111,6 +111,26 @@ if (approvalMessage?.type !== "EXECUTE_ACTION" || approvalMessage.userConfirmed 
 }
 if (approvalResponse?.success !== true) throw new Error("Popup approval dispatch did not receive the execution result.");
 console.log("✓ Explicit popup approval dispatch includes userConfirmed=true and preserves the disclosure level.");
+
+let goalApprovalMessage;
+let goalApprovalResponse;
+dispatchUserApprovedGoal(
+  (_tabId, message, callback) => {
+    goalApprovalMessage = message;
+    callback?.({ status: "SUCCESS" });
+  },
+  7,
+  "single-use-continuation",
+  true,
+  (response) => { goalApprovalResponse = response; }
+);
+if (goalApprovalMessage?.type !== "RESUME_GOAL"
+  || goalApprovalMessage.continuationId !== "single-use-continuation"
+  || goalApprovalMessage.approved !== true) {
+  throw new Error("Compound-goal approval must resume its retained continuation through the extension message channel.");
+}
+if (goalApprovalResponse?.status !== "SUCCESS") throw new Error("Compound-goal approval did not receive the resumed result.");
+console.log("✓ Compound-goal approval resumes the paused goal using its continuation token.");
 
 // ----------------------------------------------------
 // TEST 2: Live Non-Mutating Viewport Redaction Overlays

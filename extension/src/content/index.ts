@@ -3,30 +3,17 @@
 // pre-execution action validation, and agent task dispatch.
 
 import { DisclosureLevel, PageState } from "../common/types";
-import { extractPageState, resolveElementByTargetId } from "../semantic/dom-extractor";
+import { extractPageState } from "../semantic/dom-extractor";
 import { startObservingDOM, stopObservingDOM } from "../semantic/mutation-observer";
 import { annotatePageStateSensitivity } from "../privacy/sensitivity";
 import { executeAction, ExecutionResult } from "../execution";
 import { OverlayManager } from "./overlay-manager";
 import { resolveTaskAction, AgentResolutionResult } from "../agent/target-resolver";
 import { validateAction, ValidationResult } from "../validator/action-validator";
-import { runMultiTurnAgent, MultiTurnGoalResult, AgentLoopOptions } from "../agent/agent-loop";
+import { runMultiTurnAgent, resumeMultiTurnAgent, MultiTurnGoalResult } from "../agent/agent-loop";
+import { AgentPrivacyBudget, BudgetStatus } from "../agent/privacy-budget";
 import { PrivacyAuditVault, PrivacyAuditSummary } from "../privacy/audit-vault";
 import { parseTask } from "../agent/task-parser";
-
-declare global {
-  interface Window {
-    __privaagent_page_state?: PageState;
-    __privaagent_extraction_time_ms?: number;
-    __privaagent_extract?: () => { pageState: PageState; durationMs: number };
-    __privaagent_execute_action?: (action: any) => Promise<ExecutionResult>;
-    __privaagent_resolve_element?: (targetId: string) => Element | null;
-    __privaagent_overlay_manager?: OverlayManager;
-    __privaagent_run_goal?: (goal: string, options?: AgentLoopOptions) => Promise<MultiTurnGoalResult>;
-    __privaagent_audit_vault?: PrivacyAuditVault;
-    __privaagent_session_token?: string;
-  }
-}
 
 function safeSendBackgroundMessage(message: any): void {
   if (typeof chrome === "undefined" || !chrome.runtime?.sendMessage) return;
@@ -49,9 +36,58 @@ function normalizeDisclosureLevel(value: unknown): DisclosureLevel {
     ? value
     : "L0";
 }
-if (typeof window !== "undefined") {
-  window.__privaagent_overlay_manager = overlayManager;
 
+class TabSessionPrivacyBudget implements AgentPrivacyBudget {
+  private status: BudgetStatus = {
+    exceeded: false,
+    cumulativeBytesSent: 0,
+    remoteCallsMade: 0,
+    stepsExecuted: 0,
+  };
+  private readonly maxSteps = 8;
+
+  async initialize(): Promise<void> {
+    await this.request({ type: "GET_PRIVACY_BUDGET" });
+  }
+
+  canExecuteNextStep(): boolean { return this.status.stepsExecuted < this.maxSteps; }
+  getSteps(): number { return this.status.stepsExecuted; }
+  getMaxSteps(): number { return this.maxSteps; }
+  getStatus(): BudgetStatus { return { ...this.status }; }
+
+  async reserveStep(): Promise<boolean> {
+    const response = await this.request({ type: "RESERVE_PRIVACY_STEP" });
+    return response?.allowed === true;
+  }
+
+  async reserveRemote(estimatedBytes: number): Promise<boolean> {
+    const response = await this.request({ type: "RESERVE_PRIVACY_REMOTE", estimatedBytes });
+    return response?.allowed === true;
+  }
+
+  private async request(message: Record<string, unknown>): Promise<any> {
+    try {
+      if (typeof chrome === "undefined" || !chrome.runtime?.sendMessage) throw new Error("Extension budget service unavailable.");
+      const response = await chrome.runtime.sendMessage(message);
+      if (response?.budget) {
+        this.status = {
+          exceeded: Boolean(response.budget.exceeded),
+          cumulativeBytesSent: Number(response.budget.cumulativeBytesSent) || 0,
+          remoteCallsMade: Number(response.budget.remoteCallsMade) || 0,
+          stepsExecuted: Number(response.budget.stepsExecuted) || 0,
+          reason: typeof response.budget.reason === "string" ? response.budget.reason : undefined,
+        };
+      } else {
+        this.status = { ...this.status, exceeded: true, reason: response?.error || "Privacy budget service unavailable; request was not sent." };
+      }
+      return response;
+    } catch {
+      this.status = { ...this.status, exceeded: true, reason: "Privacy budget service unavailable; request was not sent." };
+      return { allowed: false, error: this.status.reason };
+    }
+  }
+}
+if (typeof window !== "undefined") {
   // Listen for OCR lazy-loading events to display honest loading states
   window.addEventListener("PRIVAAGENT_OCR_INIT_START", () => {
     overlayManager.updateHUD("Loading", "Initializing Vision Engine (~4MB)...");
@@ -86,9 +122,6 @@ function runPerception(): PageState {
   latestPageState = sensitiveState;
   latestDurationMs = result.durationMs;
 
-  window.__privaagent_page_state = latestPageState;
-  window.__privaagent_extraction_time_ms = latestDurationMs;
-
   if (shieldEnabled) {
     overlayManager.renderRedactionOverlays(latestPageState);
     overlayManager.updateHUD("L0", "Privacy Shield Active");
@@ -109,13 +142,6 @@ function runPerception(): PageState {
   return latestPageState;
 }
 
-if (typeof window !== "undefined") {
-  window.__privaagent_extract = () => {
-    const state = runPerception();
-    return { pageState: state, durationMs: latestDurationMs };
-  };
-}
-
 /**
  * Mandatory Execution Gatekeeper:
  * Enforces local validation before allowing any action to reach the browser execution engine.
@@ -125,7 +151,8 @@ export async function requestValidatedExecution(
   action: any,
   options?: { userConfirmed?: boolean }
 ): Promise<ExecutionResult> {
-  const valResult = validateAction(action, latestPageState || undefined, document);
+  const pageState = runPerception();
+  const valResult = validateAction(action, pageState, document);
   if (!valResult.valid || valResult.verdict === "BLOCK") {
     return {
       success: false,
@@ -141,24 +168,10 @@ export async function requestValidatedExecution(
     };
   }
   return executeAction(action, {
-    pageState: latestPageState || undefined,
+    pageState,
     doc: document,
     userConfirmed: options?.userConfirmed,
   });
-}
-
-if (typeof window !== "undefined") {
-  window.__privaagent_execute_action = (action: any) => requestValidatedExecution(action);
-  window.__privaagent_resolve_element = (targetId: string) => resolveElementByTargetId(targetId);
-  window.__privaagent_run_goal = (goal: string, options?: AgentLoopOptions) => {
-    if (!latestPageState) runPerception();
-    return runMultiTurnAgent(goal, latestPageState || undefined, {
-      doc: typeof document !== "undefined" ? document : ({} as any),
-      delayBetweenStepsMs: 250,
-      ...options,
-    });
-  };
-  window.__privaagent_audit_vault = PrivacyAuditVault.getInstance();
 }
 
 // ─── Scroll & Resize Re-render ─────────────────────────────────────────────
@@ -195,7 +208,7 @@ function setShieldEnabled(enabled: boolean): void {
   } else {
     overlayManager.setVisible(false);
     // Clear overlays by re-rendering with visible=false
-    overlayManager.updateHUD("OFF", "Shield Disabled");
+    overlayManager.updateHUD("OFF", "Visual Shield OFF · Action Security ACTIVE");
     safeSendBackgroundMessage({ type: "UPDATE_BADGE", level: "BLOCKED", text: "OFF" });
   }
   overlayManager.setVisible(enabled);
@@ -206,7 +219,7 @@ function initialize(): void {
   // Restore shield state, redaction mode, AND audit ledger from chrome.storage
   if (typeof chrome !== "undefined" && chrome.storage?.local) {
     chrome.storage.local.get(
-      ["privaagent_shield_enabled", "privaagent_redaction_mode", "privaagent_audit_ledger", "privaagent_session_token"],
+    ["privaagent_shield_enabled", "privaagent_redaction_mode", "privaagent_audit_ledger"],
       (result) => {
         const stored = result?.privaagent_shield_enabled;
         shieldEnabled = stored === undefined ? true : Boolean(stored);
@@ -222,11 +235,6 @@ function initialize(): void {
             `[Privaagent] Audit ledger restored: ${restoreResult.loaded} records, integrity=${restoreResult.valid ? "VERIFIED" : "COMPROMISED"}`
           );
         }
-
-        // Provision Mandatory Session Auth Token
-        window.__privaagent_session_token = typeof result?.privaagent_session_token === "string"
-          ? result.privaagent_session_token
-          : undefined;
 
         runPerception();
       }
@@ -249,8 +257,6 @@ function initialize(): void {
       overlayManager.renderRedactionOverlays(latestPageState);
     }
 
-    window.__privaagent_page_state = latestPageState;
-    window.__privaagent_extraction_time_ms = latestDurationMs;
   });
 }
 
@@ -274,7 +280,13 @@ if (typeof window !== "undefined") {
 
 // Chrome Extension Runtime Message Listener
 if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const privilegedMessageTypes = new Set(["EXECUTE_ACTION", "RUN_TASK", "RUN_GOAL", "RESUME_GOAL"]);
+  if (privilegedMessageTypes.has(message?.type) && sender?.id !== chrome.runtime.id) {
+    sendResponse({ success: false, error: "Privileged agent messages are accepted only from this extension." });
+    return false;
+  }
+
   if (message?.type === "GET_PAGE_STATE") {
     if (!latestPageState) runPerception();
     const sensitiveElementsCount = latestPageState?.elements.filter((e) => e.sensitive).length || 0;
@@ -297,6 +309,7 @@ if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
       underConstraint: latestDurationMs < 50,
       sensitiveElementsCount,
       shieldEnabled,
+      actionSecurityEnabled: true,
       redactionMode: overlayManager.getMode(),
       threatFeed,
       url: window.location.href,
@@ -364,6 +377,17 @@ if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
     handleRunGoalMessage(message.goal, message.budgetLimits, normalizeDisclosureLevel(message.maxLevel ?? "L2"))
       .then((res) => sendResponse(res))
       .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message?.type === "RESUME_GOAL") {
+    const continuationId = typeof message.continuationId === "string" ? message.continuationId : "";
+    resumeMultiTurnAgent(continuationId, message.approved === true)
+      .then((res) => {
+        overlayManager.updateHUD(res.status, `${res.totalSteps} steps | ${res.cumulativeBytesSent} B`);
+        sendResponse(res);
+      })
+      .catch((err) => sendResponse({ status: "FAILED", success: false, error: err?.message || "Could not resume the approved goal." }));
     return true;
   }
 
@@ -463,11 +487,14 @@ async function handleRunGoalMessage(
   budgetLimits?: any,
   maxLevel: DisclosureLevel = "L2"
 ): Promise<MultiTurnGoalResult> {
+  const sessionBudget = new TabSessionPrivacyBudget();
+  await sessionBudget.initialize();
   const initialState = runPerception();
   overlayManager.updateHUD("Multi-Turn", `Decomposing: "${goalStr.slice(0, 20)}..."`);
 
   const result = await runMultiTurnAgent(goalStr, initialState, {
     budgetLimits,
+    sessionBudget,
     maxDisclosureLevel: maxLevel,
     doc: document,
     delayBetweenStepsMs: 250,
@@ -491,6 +518,13 @@ async function handleRunTaskMessage(
   execution?: ExecutionResult;
   error?: string;
 }> {
+  const sessionBudget = new TabSessionPrivacyBudget();
+  await sessionBudget.initialize();
+  if (!await sessionBudget.reserveStep()) {
+    const reason = sessionBudget.getStatus().reason || "The tab session has reached its action-step limit.";
+    return { success: false, error: reason };
+  }
+
   const pageState = runPerception();
   if (!pageState) throw new Error("Unable to capture page state.");
 
@@ -502,6 +536,7 @@ async function handleRunTaskMessage(
   const resolution = await resolveTaskAction(taskStr, pageState, {
     simulateUnsafeSanitization,
     maxDisclosureLevel: maxLevel,
+    beforeRemoteRequest: (_disclosure, outboundBytes) => sessionBudget.reserveRemote(outboundBytes),
   });
 
   // Check if Pre-Flight Privacy Guard blocked the request

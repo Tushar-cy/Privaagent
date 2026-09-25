@@ -49,14 +49,14 @@ export interface AgentResolutionResult {
 export interface ResolverOptions extends RemoteResolutionOptions {
   forceEscalationLevel?: "L0" | "L1" | "L2" | "L3";
   maxDisclosureLevel?: DisclosureLevel;
-  beforeRemoteRequest?: (disclosure: Disclosure, outboundBytes: number) => boolean;
+  beforeRemoteRequest?: (disclosure: Disclosure, outboundBytes: number) => boolean | Promise<boolean>;
   sanitizedScreenshotBase64?: string;
   sanitizedScreenshotManifest?: VisualRedactionManifest;
   resolveLiveElement?: (targetId: string) => Element | null;
   simulateUnsafeSanitization?: boolean; // For testing/demonstrating BLOCKED state in SIH demo
 }
 
-function perceptionStillMatchesLiveDom(snapshot: PageState): boolean {
+export function perceptionStillMatchesLiveDom(snapshot: PageState): boolean {
   if (typeof document === "undefined" || typeof window === "undefined") return true;
   const boundElements = snapshot.elements.filter((element) =>
     typeof element.metadata?.derived_from !== "string" &&
@@ -244,7 +244,10 @@ export async function resolveTaskAction(
 
   let targetCropId: string | undefined = undefined;
   if (isVisualEscalation && options.forceEscalationLevel !== "L3") {
-    const matchingEl = pageState.elements.find((el) => {
+    const visualCandidates = pageState.elements.filter((el) => {
+      const hasUsableBox = Array.isArray(el.bbox) && el.bbox.length === 4 &&
+        el.bbox[2] > 0 && el.bbox[3] > 0;
+      if (!hasUsableBox) return false;
       const matchesRole = Boolean(parsedTask.targetRoleHint && el.role === parsedTask.targetRoleHint);
       const matchesKw = parsedTask.keywords.some(
         (kw) =>
@@ -256,17 +259,24 @@ export async function resolveTaskAction(
         el.role === "img" ||
         el.role === "chart_bar" ||
         el.sources.includes("vision");
-      return (matchesRole || matchesKw) && isVisualRole;
+      return isVisualRole;
     });
-
-    if (matchingEl) {
-      targetCropId =
-        ((matchingEl.metadata as Record<string, unknown> | undefined)?.derived_from as string) ||
-        matchingEl.target_id;
-    } else {
-      targetCropId = pageState.elements.find(
-        (el) => el.role === "canvas" || el.role === "img"
-      )?.target_id;
+    const resolveCropId = (el: typeof pageState.elements[number]) =>
+      ((el.metadata as Record<string, unknown> | undefined)?.derived_from as string) || el.target_id;
+    const semanticMatches = visualCandidates.filter((el) => {
+      const matchesRole = Boolean(parsedTask.targetRoleHint && el.role === parsedTask.targetRoleHint);
+      const matchesKw = parsedTask.keywords.some((kw) =>
+        el.target_id.toLowerCase().includes(kw) || (el.text && el.text.toLowerCase().includes(kw)));
+      return matchesRole || matchesKw;
+    });
+    const matchedTargets = Array.from(new Set(semanticMatches.map(resolveCropId)));
+    if (matchedTargets.length === 1) {
+      targetCropId = matchedTargets[0];
+    } else if (matchedTargets.length === 0) {
+      const availableTargets = Array.from(new Set(visualCandidates.map(resolveCropId)));
+      // A fallback crop is only unambiguous when the page has one visual target.
+      // With multiple candidates, keep context explicit and use L3 if permitted.
+      if (availableTargets.length === 1) targetCropId = availableTargets[0];
     }
   }
 
@@ -510,7 +520,8 @@ export async function resolveTaskAction(
   const exceedsCeiling = Boolean(
     levelOrder[disclosure.level] > ceilingRank
   );
-  const budgetAllowsRequest = !options.beforeRemoteRequest || options.beforeRemoteRequest(disclosure, outboundBytes);
+  const budgetAllowsRequest = exceedsCeiling || !options.beforeRemoteRequest ||
+    await options.beforeRemoteRequest(disclosure, outboundBytes);
 
   if (exceedsCeiling || !budgetAllowsRequest) {
     const budgetExceeded = !exceedsCeiling && !budgetAllowsRequest;

@@ -9,6 +9,7 @@ import {
   decomposeGoal,
   SessionPrivacyBudget,
   runMultiTurnAgent,
+  resumeMultiTurnAgent,
 } from "../extension/src/agent/index.ts";
 import { extractPageState } from "../extension/src/semantic/dom-extractor.ts";
 import { processVisualRegion } from "../extension/src/perception/index.ts";
@@ -411,7 +412,31 @@ if (riskResult.history[0].verdict !== "ALLOW" || !riskResult.history[0].success)
 if (riskResult.history[1].verdict !== "CONFIRM") {
   throw new Error(`Step 2 verdict should be CONFIRM, got ${riskResult.history[1].verdict}`);
 }
-console.log("✓ Security Risk Engine halted dangerous action requiring user confirmation.");
+if (!riskResult.continuationId) {
+  throw new Error("A paused compound goal must return a one-use continuation ID.");
+}
+const resumedRiskResult = await resumeMultiTurnAgent(riskResult.continuationId, true);
+if (resumedRiskResult.status !== "SUCCESS" || !resumedRiskResult.history[1]?.success) {
+  throw new Error(`Approving the retained action should execute it and finish the goal, got: ${resumedRiskResult.status}`);
+}
+const replayedRiskResult = await resumeMultiTurnAgent(riskResult.continuationId, true);
+if (replayedRiskResult.status !== "FAILED") {
+  throw new Error("A consumed continuation must not be replayable.");
+}
+
+const staleDom = setupDOM(financialHtml);
+let staleTargetClicked = false;
+staleDom.window.document.getElementById("btn-pay-now")?.addEventListener("click", () => { staleTargetClicked = true; });
+const stalePause = await runMultiTurnAgent(highRiskGoal, extractPageState(staleDom.window.document).pageState, {
+  doc: staleDom.window.document,
+});
+const oldButton = staleDom.window.document.getElementById("btn-pay-now");
+oldButton?.replaceWith(oldButton.cloneNode(true));
+const staleResume = await resumeMultiTurnAgent(stalePause.continuationId, true);
+if (staleResume.status !== "FAILED" || staleTargetClicked) {
+  throw new Error("Approval must not execute after the originally bound target node was replaced.");
+}
+console.log("✓ Confirmation resumes the same target, completes the goal, rejects replay, and blocks a replaced target.");
 
 // ----------------------------------------------------
 // TEST 6: Privacy Budget Exhaustion Protection

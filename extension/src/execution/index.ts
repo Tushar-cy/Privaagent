@@ -99,7 +99,7 @@ export async function executeAction(
 
   // Enforce mandatory security and semantic validation
   const doc = context?.doc || (typeof document !== "undefined" ? document : undefined);
-  const pageState = context?.pageState || (typeof window !== "undefined" ? (window as any).__privaagent_page_state : undefined);
+  const pageState = context?.pageState;
   const valResult = validateAction(validAction, pageState, doc);
 
   if (!valResult.valid || valResult.verdict === "BLOCK") {

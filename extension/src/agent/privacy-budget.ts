@@ -15,6 +15,16 @@ export interface BudgetStatus {
   reason?: string;
 }
 
+/** Budget operations used by the agent loop. Implementations may reserve in extension storage. */
+export interface AgentPrivacyBudget {
+  reserveStep(): Promise<boolean>;
+  reserveRemote(estimatedBytes: number): Promise<boolean>;
+  canExecuteNextStep(): boolean;
+  getSteps(): number;
+  getMaxSteps(): number;
+  getStatus(): BudgetStatus;
+}
+
 export class SessionPrivacyBudget {
   private maxBytes: number;
   private maxRemoteCalls: number;
@@ -51,6 +61,21 @@ export class SessionPrivacyBudget {
   public canEscalate(estimatedBytes: number = 0): boolean {
     if (this.remoteCalls >= this.maxRemoteCalls) return false;
     if (this.cumulativeBytes + estimatedBytes > this.maxBytes) return false;
+    return true;
+  }
+
+  /** Reserves a step before resolving or executing it. */
+  public async reserveStep(): Promise<boolean> {
+    if (!this.canExecuteNextStep()) return false;
+    this.steps++;
+    return true;
+  }
+
+  /** Accounts for a remote disclosure before the request is sent. */
+  public async reserveRemote(estimatedBytes: number): Promise<boolean> {
+    if (!this.canEscalate(estimatedBytes)) return false;
+    this.cumulativeBytes += estimatedBytes;
+    this.remoteCalls++;
     return true;
   }
 

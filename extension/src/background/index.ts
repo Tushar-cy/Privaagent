@@ -30,6 +30,115 @@ function sendOCRStatus(tabId: number, status: "loading" | "ready" | "error"): vo
 
 let sessionTokenProvisioning = false;
 
+const PRIVACY_BUDGET_LIMITS = {
+  maxCumulativeBytes: 50 * 1024,
+  maxRemoteCalls: 4,
+  maxSteps: 8,
+};
+
+interface StoredTabBudget {
+  cumulativeBytesSent: number;
+  remoteCallsMade: number;
+  stepsExecuted: number;
+}
+
+const tabBudgetQueues = new Map<number, Promise<unknown>>();
+
+function sessionBudgetKey(tabId: number): string {
+  return `privaagent_privacy_budget_tab_${tabId}`;
+}
+
+function readSessionStorage(key: string): Promise<Record<string, unknown>> {
+  return new Promise((resolve) => {
+    chrome.storage.session.get(key, (result) => {
+      const error = chrome.runtime.lastError;
+      if (error) reject(new Error(error.message));
+      else resolve(result);
+    });
+  });
+}
+
+function writeSessionStorage(values: Record<string, unknown>): Promise<void> {
+  return new Promise((resolve, reject) => {
+    chrome.storage.session.set(values, () => {
+      const error = chrome.runtime.lastError;
+      if (error) reject(new Error(error.message));
+      else resolve();
+    });
+  });
+}
+
+function normalizeStoredBudget(value: unknown): StoredTabBudget {
+  const candidate = value && typeof value === "object" ? value as Partial<StoredTabBudget> : {};
+  return {
+    cumulativeBytesSent: Number.isFinite(candidate.cumulativeBytesSent) ? Math.max(0, Number(candidate.cumulativeBytesSent)) : 0,
+    remoteCallsMade: Number.isFinite(candidate.remoteCallsMade) ? Math.max(0, Number(candidate.remoteCallsMade)) : 0,
+    stepsExecuted: Number.isFinite(candidate.stepsExecuted) ? Math.max(0, Number(candidate.stepsExecuted)) : 0,
+  };
+}
+
+function budgetStatus(budget: StoredTabBudget, reason?: string) {
+  return {
+    exceeded: Boolean(reason),
+    cumulativeBytesSent: budget.cumulativeBytesSent,
+    remoteCallsMade: budget.remoteCallsMade,
+    stepsExecuted: budget.stepsExecuted,
+    maxCumulativeBytes: PRIVACY_BUDGET_LIMITS.maxCumulativeBytes,
+    maxRemoteCalls: PRIVACY_BUDGET_LIMITS.maxRemoteCalls,
+    maxSteps: PRIVACY_BUDGET_LIMITS.maxSteps,
+    reason,
+  };
+}
+
+async function updateTabBudget(
+  tabId: number,
+  operation: "status" | "step" | "remote",
+  estimatedBytes = 0
+): Promise<{ allowed: boolean; budget: ReturnType<typeof budgetStatus> }> {
+  const previous = tabBudgetQueues.get(tabId) || Promise.resolve();
+  let result: { allowed: boolean; budget: ReturnType<typeof budgetStatus> } | null = null;
+  const operationPromise = previous.catch(() => undefined).then(async () => {
+    const key = sessionBudgetKey(tabId);
+    const stored = await readSessionStorage(key);
+    const budget = normalizeStoredBudget(stored[key]);
+    let reason: string | undefined;
+
+    if (operation === "step") {
+      if (budget.stepsExecuted >= PRIVACY_BUDGET_LIMITS.maxSteps) {
+        reason = `Tab session step limit reached (${budget.stepsExecuted}/${PRIVACY_BUDGET_LIMITS.maxSteps}).`;
+      } else {
+        budget.stepsExecuted++;
+      }
+    } else if (operation === "remote") {
+      if (!Number.isSafeInteger(estimatedBytes) || estimatedBytes < 0) {
+        reason = "Invalid outbound byte estimate; request was not sent.";
+      } else if (budget.remoteCallsMade >= PRIVACY_BUDGET_LIMITS.maxRemoteCalls) {
+        reason = `Tab session remote-call limit reached (${budget.remoteCallsMade}/${PRIVACY_BUDGET_LIMITS.maxRemoteCalls}).`;
+      } else if (budget.cumulativeBytesSent + estimatedBytes > PRIVACY_BUDGET_LIMITS.maxCumulativeBytes) {
+        reason = `Tab session privacy budget would exceed ${PRIVACY_BUDGET_LIMITS.maxCumulativeBytes} bytes.`;
+      } else {
+        budget.remoteCallsMade++;
+        budget.cumulativeBytesSent += estimatedBytes;
+      }
+    }
+
+    if (operation !== "status" && !reason) await writeSessionStorage({ [key]: budget });
+    result = { allowed: !reason, budget: budgetStatus(budget, reason) };
+  });
+  tabBudgetQueues.set(tabId, operationPromise);
+  try {
+    await operationPromise;
+  } finally {
+    if (tabBudgetQueues.get(tabId) === operationPromise) tabBudgetQueues.delete(tabId);
+  }
+  return result!;
+}
+
+chrome.tabs?.onRemoved?.addListener((tabId) => {
+  tabBudgetQueues.delete(tabId);
+  chrome.storage.session.remove(sessionBudgetKey(tabId), () => { void chrome.runtime.lastError; });
+});
+
 function ensureSessionToken(): void {
   if (sessionTokenProvisioning) return;
   sessionTokenProvisioning = true;
@@ -87,6 +196,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || !message.type) return false;
 
   switch (message.type) {
+    case "GET_PRIVACY_BUDGET":
+    case "RESERVE_PRIVACY_STEP":
+    case "RESERVE_PRIVACY_REMOTE": {
+      const tabId = sender.tab?.id;
+      if (!Number.isInteger(tabId)) {
+        sendResponse({ allowed: false, error: "Privacy budget requests require an active browser tab." });
+        break;
+      }
+      const operation = message.type === "GET_PRIVACY_BUDGET"
+        ? "status"
+        : message.type === "RESERVE_PRIVACY_STEP" ? "step" : "remote";
+      updateTabBudget(tabId!, operation, Number(message.estimatedBytes || 0))
+        .then(sendResponse)
+        .catch(() => sendResponse({ allowed: false, error: "Could not update the tab privacy budget; request was not sent." }));
+      return true;
+    }
+
     case "PING": {
       sendResponse({ status: "alive", timestamp: Date.now() });
       break;

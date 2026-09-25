@@ -4,7 +4,7 @@ import { detectStructuredPII } from "../src/privacy/pii-detector";
 import { detectSecrets } from "../src/privacy/secret-detector";
 import { verifyOutgoingDisclosure } from "../src/privacy/privacy-guard";
 import { PrivacyAuditVault } from "../src/privacy/audit-vault";
-import { dispatchUserApprovedAction } from "./confirmation";
+import { dispatchUserApprovedAction, dispatchUserApprovedGoal } from "./confirmation";
 import { initializeOCRWorker, recognizeOCRImage } from "../src/perception/ocr";
 
 // OCR runs in the extension popup because Chrome can host its local Web Worker
@@ -137,7 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let lastHealthData: Record<string, unknown> | null = null;
-  let pendingApproval: { tabId: number; action: any; isCompound: boolean; disclosureLevel: string } | null = null;
+  let pendingApproval: { tabId: number; action: any; isCompound: boolean; disclosureLevel: string; continuationId?: string } | null = null;
 
   // ─── Toast System (replaces alert) ──────────────────────────────────────
   function showToast(msg: string, type: "error" | "success" | "warning" = "error", durationMs = 3500) {
@@ -154,6 +154,22 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!element) return;
     element.classList.remove("tone-success", "tone-warning", "tone-danger", "tone-primary", "tone-neutral", "tone-alert");
     element.classList.add(`tone-${tone}`);
+  }
+
+  function formatVisualTrace(trace: any): string {
+    if (!trace || (trace.level !== "L2" && trace.level !== "L3")) return "";
+    const formatBox = (box: unknown) => Array.isArray(box) && box.length === 4
+      ? `[${box.map((value) => Number(value).toFixed(0)).join(", ")}]`
+      : "unlocalized viewport";
+    const detectedRoi = trace.targetRoi ? formatBox(trace.targetRoi) : "full viewport";
+    const redactedBoxes = Array.isArray(trace.redactedBoxes) ? trace.redactedBoxes : [];
+    const redactedAreas = redactedBoxes.slice(0, 4).map(formatBox).join(", ");
+    const extraCount = Math.max(0, redactedBoxes.length - 4);
+    const redactedRoi = redactedAreas
+      ? `${redactedBoxes.length}/${Number(trace.sourceSensitiveBoxCount) || 0} detected box(es): ${redactedAreas}${extraCount ? `, +${extraCount} more` : ""}`
+      : `0/${Number(trace.sourceSensitiveBoxCount) || 0} detected boxes`;
+    const vlmRoi = trace.level === "L2" ? `L2 crop ${detectedRoi}` : "L3 full viewport";
+    return `Detected ROI ${detectedRoi} → Redacted ROI ${redactedRoi} → VLM ROI ${vlmRoi}`;
   }
 
   // ─── Zero-Leak Message Dispatchers (Suppresses Unchecked runtime.lastError) ──
@@ -201,6 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const confirmedStep = isCompound && res?.status === "PAUSED_CONFIRMATION" && lastStep?.verdict === "CONFIRM"
       ? lastStep
       : null;
+    if (isCompound && !res?.continuationId) return;
     const requiresConfirmation = confirmedStep !== null || (!isCompound && res?.validation?.verdict === "CONFIRM");
     const action = confirmedStep?.action || res?.resolution?.action;
     if (!requiresConfirmation || !action || typeof action.action !== "string" || typeof action.target_id !== "string") return;
@@ -210,6 +227,7 @@ document.addEventListener("DOMContentLoaded", () => {
       action,
       isCompound,
       disclosureLevel: String(confirmedStep?.level || res?.resolution?.disclosure?.level || "L0"),
+      continuationId: isCompound ? res.continuationId : undefined,
     };
     const reason = String(
       confirmedStep?.error ||
@@ -221,7 +239,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ? `Type into ${action.target_id}; the value is withheld in this prompt.`
       : `${action.action} target ${action.target_id}`;
     const continuationNote = isCompound
-      ? " Approving executes this action only; remaining goal steps stay paused."
+      ? " Approval revalidates and executes this step, then continues the remaining goal."
       : " The page will be revalidated before execution.";
 
     if (confirmationMessageEl) {
@@ -241,7 +259,32 @@ document.addEventListener("DOMContentLoaded", () => {
       if (confirmationCancelEl) confirmationCancelEl.disabled = true;
       if (confirmationMessageEl) confirmationMessageEl.textContent = "Revalidating the current page and executing the approved action…";
 
-      dispatchUserApprovedAction(sendTabMsg, approval.tabId, approval.action, (response) => {
+      const handleApprovalResponse = (response: any) => {
+        if (approval.isCompound && response?.decomposed) {
+          showLedger(response, true, approval.tabId);
+          const stillPaused = response.status === "PAUSED_CONFIRMATION";
+          const success = response.status === "SUCCESS" || response.status === "NAVIGATION_PENDING";
+          if (lVerdictEl && !stillPaused) {
+            lVerdictEl.textContent = success ? "APPROVED · GOAL RESUMED" : response.status || "NOT EXECUTED";
+            setTone(lVerdictEl, success ? "success" : "danger");
+          }
+          const resultMessage = stillPaused
+            ? response.error || "The next goal step needs approval."
+            : success
+              ? response.status === "NAVIGATION_PENDING"
+                ? "Approved action executed. The goal will need fresh perception after navigation."
+                : "Approved action executed and the remaining goal steps completed."
+              : String(response.error || "The goal could not continue after revalidation.");
+          if (lReasonEl && !stillPaused) lReasonEl.textContent = resultMessage;
+          if (!stillPaused) {
+            if (confirmationPanelEl) confirmationPanelEl.hidden = true;
+            showToast(resultMessage, success ? "success" : "warning", 4500);
+          }
+          setPopupState(stillPaused ? "confirm" : success ? "active" : "error");
+          refreshPageState();
+          return;
+        }
+
         if (confirmationPanelEl) confirmationPanelEl.hidden = true;
         const success = response?.success === true;
         if (lVerdictEl) {
@@ -249,21 +292,29 @@ document.addEventListener("DOMContentLoaded", () => {
           setTone(lVerdictEl, success ? "success" : "danger");
         }
         const resultMessage = success
-          ? approval.isCompound
-            ? "Approved action executed. Remaining goal steps stayed paused; run the remaining task when ready."
-            : "Approved action executed after current-page revalidation."
+          ? "Approved action executed after current-page revalidation."
           : String(response?.error || "The action could not be revalidated and was not executed.");
         if (lReasonEl) lReasonEl.textContent = resultMessage;
         showToast(resultMessage, success ? "success" : "warning", 4500);
         setPopupState(success ? "active" : "error");
         refreshPageState();
-      }, approval.disclosureLevel);
+      };
+
+      if (approval.isCompound && approval.continuationId) {
+        dispatchUserApprovedGoal(sendTabMsg, approval.tabId, approval.continuationId, true, handleApprovalResponse);
+      } else {
+        dispatchUserApprovedAction(sendTabMsg, approval.tabId, approval.action, handleApprovalResponse, approval.disclosureLevel);
+      }
     });
   }
 
   if (confirmationCancelEl) {
     confirmationCancelEl.addEventListener("click", () => {
+      const approval = pendingApproval;
       pendingApproval = null;
+      if (approval?.isCompound && approval.continuationId) {
+        dispatchUserApprovedGoal(sendTabMsg, approval.tabId, approval.continuationId, false, () => {});
+      }
       if (confirmationPanelEl) confirmationPanelEl.hidden = true;
       if (lVerdictEl) {
         lVerdictEl.textContent = "CANCELLED";
@@ -417,8 +468,12 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       if (shieldStatusEl) shieldStatusEl.className = "shield-status off";
       if (statusDotEl) statusDotEl.className = "status-dot off";
-      if (statusLabelEl) statusLabelEl.textContent = "PAUSED";
+      if (statusLabelEl) statusLabelEl.textContent = "VISUAL OFF · ACTIONS ACTIVE";
       setPopupState("empty");
+      const statusTitle = document.getElementById("status-title");
+      const statusDesc = document.getElementById("status-desc");
+      if (statusTitle) statusTitle.textContent = "Visual Shield Off · Action Security Active";
+      if (statusDesc) statusDesc.textContent = "Sensitive overlays are hidden. Action validation and confirmation checks remain active.";
     }
   }
 
@@ -584,7 +639,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       if (lReasonEl) {
         lReasonEl.textContent = (res.history || [])
-          .map((h: any) => `Step ${h.stepIndex}: [${h.level}] ${h.action.action.toUpperCase()} → ${h.action.target_id} (${h.verdict}, ${h.bytesSent}B)`)
+          .map((h: any) => {
+            const trace = formatVisualTrace(h.visualTrace);
+            return `Step ${h.stepIndex}: [${h.level}] ${h.action.action.toUpperCase()} → ${h.action.target_id} (${h.verdict}, ${h.bytesSent}B)${trace ? `\n  ${trace}` : ""}`;
+          })
           .join("\n") || res.error || "Completed.";
       }
       renderConfirmation(res, isCompound, tabId);
@@ -657,7 +715,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (lActionEl) lActionEl.textContent = r.action.action.toUpperCase();
       if (lTargetEl) lTargetEl.textContent = r.action.target_id;
-      if (lReasonEl) lReasonEl.textContent = r.blockReason || r.action.reason || "";
+      if (lReasonEl) {
+        const reason = r.blockReason || r.action.reason || "";
+        const trace = formatVisualTrace({
+          level: r.disclosure?.level,
+          targetRoi: r.disclosure?.crop_box,
+          sourceSensitiveBoxCount: r.disclosure?.redaction_manifest?.sourceSensitiveBoxCount,
+          redactedBoxes: r.disclosure?.redaction_manifest?.redactedBoxes,
+        });
+        lReasonEl.textContent = [reason, trace].filter(Boolean).join("\n");
+      }
     }
 
     if (res.validation) {

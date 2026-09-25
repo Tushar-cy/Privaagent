@@ -26,10 +26,12 @@ This project uses local-first processing and data-minimization ideas associated 
    | `L2` | A target crop, screenshot, and redaction manifest | A localized chart or image |
    | `L3` | A sanitized viewport screenshot and manifest | Visual context across multiple regions |
 
-4. Before a remote request, the extension checks the disclosure policy, privacy budget, and outgoing payload. The backend applies its own request-size, schema, image, manifest, and sensitive-data checks.
+4. Before a remote request, the extension checks the disclosure policy, privacy budget, and outgoing payload. The backend applies its own request-size, schema, image, manifest, and sensitive-data checks. A budget of 50 KiB, 4 remote calls, and 8 task steps is reserved in extension session storage per browser tab and survives page navigation in that tab.
 5. The backend returns a proposed action. The extension checks the target against the current page and evaluates the action risk. `CONFIRM` actions wait for an explicit user approval, then undergo live validation again.
 
-The visual detector and sensitive-data detector are heuristic. Passing these checks does not prove that every sensitive value was found or removed; see [Known limitations](docs/KNOWN_LIMITATIONS.md).
+Compound goals keep a one-use, short-lived continuation while confirmation is pending. Approval revalidates the original page-bound target, executes that exact step, and continues the remaining goal. The popup's task ledger shows detected visual ROI coordinates, redacted box coordinates, and the L2 crop or L3 viewport sent for reasoning.
+
+The visual detector, sensitive-data detector, and prompt-injection scanner are heuristic. Detection and action validation reduce risk but cannot prove that all adversarial instructions or sensitive regions were found; see [Known limitations](docs/KNOWN_LIMITATIONS.md).
 
 ## What we tested
 
@@ -46,7 +48,8 @@ The GitHub Actions workflow type-checks and builds the extension before running 
 ## Current limitations
 
 - The default visual path uses classical pixel contrast analysis and Tesseract OCR. It is not a general-purpose visual understanding model; the Florence-2 path is experimental.
-- OCR can miss small or low-contrast text. Crop selection depends on target localization.
+- OCR can miss small or low-contrast text. Crop selection depends on target localization; ambiguous pages with multiple visual candidates use the wider L3 viewport only when the disclosure ceiling permits it.
+- Prompt-injection scanning recognizes known patterns and normalizes some obfuscation. It is not a complete detector or a guarantee that page content is safe.
 - PII detection combines patterns, checksums, entropy heuristics, and heuristic name detection. It can miss values outside its supported patterns and languages.
 - Tasks that need broader visual or semantic reasoning require a configured backend and VLM provider. The extension does not include model credentials.
 - The included showcase page uses scripted scenario logs. Those logs are not measurements of the live extension/backend path.
@@ -70,7 +73,9 @@ npm ci
 npm run build
 ```
 
-The build is written to `extension/dist/` and mirrored to the root `privaagent-extension/` folder. In Chrome, open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `privaagent-extension/`.
+`extension/` is the canonical source tree. The build is written to `extension/dist/` and mirrored to the generated root `privaagent-extension/` folder; edit source files in `extension/` and do not hand-edit the generated copy. In Chrome, open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `privaagent-extension/`.
+
+The prototype declares `<all_urls>` host access so it can inspect and protect arbitrary pages during evaluation. This is broad access. A production distribution should request narrower site access or use optional host permissions.
 
 ### Start the backend
 
@@ -98,8 +103,8 @@ npx.cmd tsx ..\benchmark\scripts\run-benchmark.mjs
 ## Project map
 
 ```text
-extension/                Chrome extension source (TypeScript)
-privaagent-extension/     Built unpacked extension for local loading
+extension/                Canonical Chrome extension source (TypeScript)
+privaagent-extension/     Generated unpacked build for local loading; do not edit
 server/                   FastAPI API, schemas, and VLM client
 demo/                     Scripted showcase page and sample scenarios
 tests/                    Extension, backend, security, and integration tests

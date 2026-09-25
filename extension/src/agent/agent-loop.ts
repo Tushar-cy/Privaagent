@@ -4,8 +4,8 @@
 
 import { Action, DisclosureLevel, PageState, VisualRedactionManifest } from "../common/types";
 import { decomposeGoal, DecomposedGoal } from "./goal-decomposer";
-import { SessionPrivacyBudget, BudgetLimits } from "./privacy-budget";
-import { resolveTaskAction, AgentResolutionResult } from "./target-resolver";
+import { SessionPrivacyBudget, BudgetLimits, AgentPrivacyBudget } from "./privacy-budget";
+import { resolveTaskAction, AgentResolutionResult, perceptionStillMatchesLiveDom } from "./target-resolver";
 import { validateAction, ValidationResult } from "../validator/action-validator";
 import { executeAction, ExecutionResult } from "../execution";
 import { extractPageState } from "../semantic/dom-extractor";
@@ -23,6 +23,26 @@ export interface StepRecord {
   success: boolean;
   verdict: string;
   error?: string;
+  visualTrace?: {
+    level: "L2" | "L3";
+    targetRoi?: number[];
+    sourceSensitiveBoxCount: number;
+    redactedBoxCount: number;
+    redactedBoxes: number[][];
+  };
+}
+
+function visualDisclosureTrace(resolution: AgentResolutionResult): StepRecord["visualTrace"] {
+  const disclosure = resolution.disclosure;
+  if (disclosure.level !== "L2" && disclosure.level !== "L3") return undefined;
+  const manifest = disclosure.redaction_manifest;
+  return {
+    level: disclosure.level,
+    targetRoi: disclosure.crop_box ? [...disclosure.crop_box] : undefined,
+    sourceSensitiveBoxCount: manifest?.sourceSensitiveBoxCount || 0,
+    redactedBoxCount: manifest?.redactedBoxCount || 0,
+    redactedBoxes: (manifest?.redactedBoxes || []).map((box) => [...box]),
+  };
 }
 
 function extractSensitiveEntityTypes(state: PageState | null): string[] {
@@ -42,11 +62,12 @@ function extractAnnotatedPageState(): PageState {
 export interface MultiTurnGoalResult {
   goal: string;
   decomposed: DecomposedGoal;
-  status: "SUCCESS" | "FAILED" | "PAUSED_CONFIRMATION" | "BUDGET_EXCEEDED" | "NAVIGATION_PENDING";
+  status: "SUCCESS" | "FAILED" | "CANCELLED" | "PAUSED_CONFIRMATION" | "BUDGET_EXCEEDED" | "NAVIGATION_PENDING";
   totalSteps: number;
   cumulativeBytesSent: number;
   history: StepRecord[];
   error?: string;
+  continuationId?: string;
 }
 
 export interface AgentLoopOptions {
@@ -58,6 +79,46 @@ export interface AgentLoopOptions {
   sanitizedScreenshotBase64?: string;
   sanitizedScreenshotManifest?: VisualRedactionManifest;
   resolveLiveElement?: (targetId: string) => Element | null;
+  sessionBudget?: AgentPrivacyBudget;
+}
+
+interface AgentRunContext {
+  decomposed: DecomposedGoal;
+  history: StepRecord[];
+  budget: AgentPrivacyBudget;
+  startIndex: number;
+}
+
+interface PendingAgentContinuation {
+  goal: string;
+  options: AgentLoopOptions;
+  runContext: AgentRunContext;
+  pageState: PageState;
+  resolution: AgentResolutionResult;
+  stepIndex: number;
+  expiresAt: number;
+}
+
+const pendingContinuations = new Map<string, PendingAgentContinuation>();
+const CONTINUATION_TTL_MS = 10 * 60 * 1000;
+const MAX_PENDING_CONTINUATIONS = 32;
+
+function newContinuationId(): string {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function prunePendingContinuations(): void {
+  const now = Date.now();
+  for (const [id, pending] of pendingContinuations) {
+    if (pending.expiresAt <= now) pendingContinuations.delete(id);
+  }
+  while (pendingContinuations.size >= MAX_PENDING_CONTINUATIONS) {
+    const oldestId = pendingContinuations.keys().next().value as string | undefined;
+    if (!oldestId) break;
+    pendingContinuations.delete(oldestId);
+  }
 }
 
 /**
@@ -68,10 +129,136 @@ export async function runMultiTurnAgent(
   initialPageState?: PageState,
   options: AgentLoopOptions = {}
 ): Promise<MultiTurnGoalResult> {
+  return runAgentLoop(goalStr, initialPageState, options);
+}
+
+/** Consumes a one-use approval continuation, revalidates the retained target, then resumes the goal. */
+export async function resumeMultiTurnAgent(
+  continuationId: string,
+  approved: boolean
+): Promise<MultiTurnGoalResult> {
+  const pending = pendingContinuations.get(continuationId);
+  pendingContinuations.delete(continuationId);
+  if (!pending || pending.expiresAt <= Date.now()) {
+    return {
+      goal: "",
+      decomposed: decomposeGoal(""),
+      status: "FAILED",
+      totalSteps: 0,
+      cumulativeBytesSent: 0,
+      history: [],
+      error: "This approval expired or was already used. Run the goal again.",
+    };
+  }
+
+  const { goal, options, runContext, pageState, resolution, stepIndex } = pending;
+  const lastStep = runContext.history[runContext.history.length - 1];
+  const finish = (status: MultiTurnGoalResult["status"], error: string): MultiTurnGoalResult => {
+    if (lastStep?.stepIndex === stepIndex + 1) {
+      lastStep.success = false;
+      lastStep.error = error;
+      if (status === "CANCELLED") lastStep.verdict = "CANCELLED";
+    }
+    return {
+      goal,
+      decomposed: runContext.decomposed,
+      status,
+      totalSteps: runContext.history.length,
+      cumulativeBytesSent: runContext.budget.getStatus().cumulativeBytesSent,
+      history: runContext.history,
+      error,
+    };
+  };
+
+  if (!approved) {
+    PrivacyAuditVault.getInstance().record({
+      goal,
+      subtask: runContext.decomposed.subtasks[stepIndex],
+      disclosureLevel: resolution.disclosure.level,
+      entitiesMasked: extractSensitiveEntityTypes(pageState),
+      outboundBytes: 0,
+      action: resolution.action.action,
+      targetId: resolution.action.target_id,
+      riskVerdict: "CANCELLED",
+      policyApplied: "User declined the pending confirmation; action was not executed.",
+      isLocal: true,
+    });
+    return finish("CANCELLED", "Cancelled. The pending action was not executed.");
+  }
+
   const doc = options.doc || (typeof document !== "undefined" ? document : null);
-  const decomposed = decomposeGoal(goalStr);
-  const budget = new SessionPrivacyBudget(options.budgetLimits);
-  const history: StepRecord[] = [];
+  if (!doc || !perceptionStillMatchesLiveDom(pageState)) {
+    return finish("FAILED", "The page or target changed while approval was pending. The action was not executed; run the goal again.");
+  }
+
+  const validation: ValidationResult = validateAction(resolution.action, pageState, doc);
+  if (!validation.valid || validation.verdict === "BLOCK") {
+    return finish("FAILED", validation.error || "The approved action no longer passes validation.");
+  }
+
+  const subtask = runContext.decomposed.subtasks[stepIndex];
+  const execution = await executeAction(resolution.action, {
+    pageState,
+    doc,
+    userConfirmed: true,
+  });
+
+  if (lastStep?.stepIndex === stepIndex + 1) {
+    lastStep.success = execution.success;
+    lastStep.error = execution.error;
+  }
+  PrivacyAuditVault.getInstance().record({
+    goal,
+    subtask,
+    disclosureLevel: resolution.disclosure.level,
+    entitiesMasked: extractSensitiveEntityTypes(pageState),
+    outboundBytes: 0,
+    action: resolution.action.action,
+    targetId: resolution.action.target_id,
+    riskVerdict: execution.success ? "CONFIRM" : "BLOCK",
+    policyApplied: execution.success
+      ? "User approved; the exact retained target passed live-page revalidation and executed."
+      : execution.error || "The approved action failed during execution.",
+    isLocal: true,
+  });
+
+  if (!execution.success) {
+    return finish("FAILED", `Approved action failed: ${execution.error || "Unknown execution error"}`);
+  }
+  if (execution.navigationPending && stepIndex + 1 < runContext.decomposed.subtasks.length) {
+    return {
+      goal,
+      decomposed: runContext.decomposed,
+      status: "NAVIGATION_PENDING",
+      totalSteps: runContext.history.length,
+      cumulativeBytesSent: runContext.budget.getStatus().cumulativeBytesSent,
+      history: runContext.history,
+      error: "Navigation started. Remaining steps need fresh perception after the destination page loads.",
+    };
+  }
+
+  if (options.delayBetweenStepsMs && options.delayBetweenStepsMs > 0) {
+    await new Promise((resolve) => setTimeout(resolve, options.delayBetweenStepsMs));
+  }
+  const nextPageState = doc === (typeof document !== "undefined" ? document : null)
+    ? extractAnnotatedPageState()
+    : pageState;
+  return runAgentLoop(goal, nextPageState, options, {
+    ...runContext,
+    startIndex: stepIndex + 1,
+  });
+}
+
+async function runAgentLoop(
+  goalStr: string,
+  initialPageState: PageState | undefined,
+  options: AgentLoopOptions,
+  resumedContext?: AgentRunContext
+): Promise<MultiTurnGoalResult> {
+  const doc = options.doc || (typeof document !== "undefined" ? document : null);
+  const decomposed = resumedContext?.decomposed || decomposeGoal(goalStr);
+  const budget = resumedContext?.budget || options.sessionBudget || new SessionPrivacyBudget(options.budgetLimits);
+  const history = resumedContext?.history || [];
 
   let currentState: PageState | null = initialPageState
     ? annotatePageStateSensitivity(initialPageState)
@@ -79,12 +266,12 @@ export async function runMultiTurnAgent(
       ? extractAnnotatedPageState()
       : null;
 
-  for (let i = 0; i < decomposed.subtasks.length; i++) {
+  for (let i = resumedContext?.startIndex || 0; i < decomposed.subtasks.length; i++) {
     const subtask = decomposed.subtasks[i];
     const stepNum = i + 1;
 
     // 1. Budget verification
-    if (!budget.canExecuteNextStep()) {
+    if (!await budget.reserveStep()) {
       const budgetStatus = budget.getStatus();
       return {
         goal: goalStr,
@@ -134,7 +321,7 @@ export async function runMultiTurnAgent(
       sanitizedScreenshotManifest: options.sanitizedScreenshotManifest,
       resolveLiveElement: options.resolveLiveElement,
       maxDisclosureLevel: options.maxDisclosureLevel,
-      beforeRemoteRequest: (_disclosure, outboundBytes) => budget.canEscalate(outboundBytes),
+      beforeRemoteRequest: (_disclosure, outboundBytes) => budget.reserveRemote(outboundBytes),
     });
 
     // The resolver checks byte and call limits before sending. A rejected
@@ -164,12 +351,8 @@ export async function runMultiTurnAgent(
       };
     }
 
-    // Account for the request immediately after it returns, including remote
-    // responses that are later paused or rejected by action validation.
-    budget.recordStep(
-      resolution.externalRequestMade ? resolution.networkBytesSent : 0,
-      resolution.externalRequestMade
-    );
+    // Step and remote-disclosure limits are reserved before work begins, so
+    // they also cover failed requests and survive a page navigation.
     const postResolutionBudget = budget.getStatus();
 
     // 3b. Pre-flight Security Block Check (e.g., global prompt injection detected)
@@ -186,6 +369,7 @@ export async function runMultiTurnAgent(
         success: false,
         verdict: "BLOCK",
         error: blockMsg,
+        visualTrace: visualDisclosureTrace(resolution),
       });
 
       PrivacyAuditVault.getInstance().record({
@@ -229,6 +413,7 @@ export async function runMultiTurnAgent(
         success: false,
         verdict: validation.verdict,
         error: validation.error,
+        visualTrace: visualDisclosureTrace(resolution),
       });
 
       PrivacyAuditVault.getInstance().record({
@@ -267,6 +452,7 @@ export async function runMultiTurnAgent(
         success: false,
         verdict: "CONFIRM",
         error: validation.policyResult?.requiredUserConfirmation || "Action requires user confirmation.",
+        visualTrace: visualDisclosureTrace(resolution),
       });
 
       PrivacyAuditVault.getInstance().record({
@@ -282,6 +468,18 @@ export async function runMultiTurnAgent(
         isLocal: resolution.isLocal,
       });
 
+      prunePendingContinuations();
+      const continuationId = newContinuationId();
+      pendingContinuations.set(continuationId, {
+        goal: goalStr,
+        options,
+        runContext: { decomposed, history, budget, startIndex: i },
+        pageState: currentState,
+        resolution,
+        stepIndex: i,
+        expiresAt: Date.now() + CONTINUATION_TTL_MS,
+      });
+
       return {
         goal: goalStr,
         decomposed,
@@ -290,6 +488,7 @@ export async function runMultiTurnAgent(
         cumulativeBytesSent: postResolutionBudget.cumulativeBytesSent,
         history,
         error: validation.policyResult?.requiredUserConfirmation || "Action requires user confirmation.",
+        continuationId,
       };
     }
 
@@ -311,6 +510,7 @@ export async function runMultiTurnAgent(
       success: execution.success,
       verdict: validation.verdict,
       error: execution.error,
+      visualTrace: visualDisclosureTrace(resolution),
     });
 
     PrivacyAuditVault.getInstance().record({

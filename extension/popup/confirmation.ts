@@ -19,3 +19,18 @@ export function dispatchUserApprovedAction(
     disclosureLevel,
   }, callback);
 }
+
+/** Resumes the retained compound goal through the extension-only content-script message channel. */
+export function dispatchUserApprovedGoal(
+  sendTabMessage: TabMessageSender,
+  tabId: number,
+  continuationId: string,
+  approved: boolean,
+  callback: (response: any) => void
+): void {
+  sendTabMessage(tabId, {
+    type: "RESUME_GOAL",
+    continuationId,
+    approved,
+  }, callback);
+}

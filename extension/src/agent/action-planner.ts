@@ -30,6 +30,19 @@ export function buildResolverEndpoint(baseUrl: string): string {
   return `${parsed.origin}${parsed.pathname.replace(/\/+$/, "")}/api/resolve-action`;
 }
 
+async function getExtensionSessionToken(): Promise<string | undefined> {
+  if (typeof chrome === "undefined" || !chrome.storage?.local) return undefined;
+  return new Promise((resolve) => {
+    chrome.storage.local.get(["privaagent_session_token"], (result) => {
+      const error = chrome.runtime?.lastError;
+      const token = !error && typeof result?.privaagent_session_token === "string"
+        ? result.privaagent_session_token
+        : undefined;
+      resolve(token);
+    });
+  });
+}
+
 /**
  * Sends a sanitized Disclosure payload across the network to the VLM fallback API.
  */
@@ -39,9 +52,7 @@ export async function requestRemoteAction(
 ): Promise<Action> {
   const serverBaseUrl = options.serverBaseUrl || "http://127.0.0.1:8000";
   const fetchClient = options.fetchFn || fetch;
-  const sessionToken =
-    options.sessionToken ||
-    (typeof window !== "undefined" ? (window as any).__privaagent_session_token : undefined);
+  const sessionToken = options.sessionToken || await getExtensionSessionToken();
 
   const endpoint = buildResolverEndpoint(serverBaseUrl);
 

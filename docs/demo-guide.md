@@ -1,6 +1,6 @@
 # Privaagent walkthrough
 
-This guide is for presenting the project. The preset buttons in `demo/index.html` run scripted scenarios and print illustrative logs; they do not exercise the extension's request path. For evidence about implementation behavior, use the automated test suite. For an interactive extension run, load `privaagent-extension/` and submit a task through the extension popup on a test page.
+This guide is for presenting the project. The preset buttons in `demo/index.html` run scripted scenarios and print illustrative logs; they do not exercise the extension's request path. For evidence about implementation behavior, use the automated test suite. For an interactive extension run, build the canonical source in `extension/`, load the generated `privaagent-extension/` folder, and submit a task through the extension popup on a test page.
 
 ## A short presentation
 
@@ -21,7 +21,7 @@ Use a simple task on the fixture page, such as opening the invoice. When using t
 
 ### 2. Visual task
 
-Keep the Privaagent popup open while a visual task runs; it initializes the local OCR worker and loads its bundled language data on first use. Then use a chart task on a page with a canvas. The extension attempts to localize the target and prepare an L2 crop; the backend requires screenshot data and a matching redaction manifest. OCR and chart localization may fail on small labels or unusual layouts. The saved internal benchmark's chart fixture detected 1 of 5 visual elements; see [Known limitations](KNOWN_LIMITATIONS.md).
+Keep the Privaagent popup open while a visual task runs; it initializes the local OCR worker and loads its bundled language data on first use. Then use a chart task on a page with a canvas. The extension attempts to localize the target and prepare an L2 crop; the backend requires screenshot data and a matching redaction manifest. The popup ledger shows the selected ROI, reported redaction boxes, and whether the VLM received an L2 crop or L3 viewport. OCR and chart localization may fail on small labels or unusual layouts. The saved internal benchmark's chart fixture detected 1 of 5 visual elements; see [Known limitations](KNOWN_LIMITATIONS.md).
 
 ### 3. Risky action
 

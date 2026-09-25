@@ -32,11 +32,11 @@ This log records design choices visible in the current implementation. “Altern
 
 **Alternatives considered**  Account for payloads after each response; or calculate the serialized request size and ask the session budget before dispatch.
 
-**Decision**  The resolver checks the disclosure ceiling and estimated serialized body size before calling the remote request function. A denied request returns locally with zero network bytes recorded.
+**Decision**  The resolver checks the disclosure ceiling and reserves the estimated serialized body size in Chrome extension session storage before calling the remote request function. Step, call, and byte reservations are serialized by the background service worker and keyed to the active tab, so repeated runs and page navigation share the 8-step, 4-call, and 50 KiB caps until the tab closes or the browser session ends. A denied request returns locally with zero request bytes sent.
 
 **Why**  A limit is useful as a privacy control only if it can stop the request that would exceed it.
 
-**Trade-off**  A task can stop before completion when its next required disclosure exceeds the configured ceiling or budget. The request estimate must stay aligned with the serialization used by the HTTP client.
+**Trade-off**  A task can stop before completion when its next required disclosure exceeds the configured ceiling or the tab's shared budget. The request estimate must stay aligned with the serialization used by the HTTP client; reservations are conservative if a network request fails after dispatch.
 
 ## 4. Send an L2 crop when one visual target is enough
 
@@ -44,7 +44,7 @@ This log records design choices visible in the current implementation. “Altern
 
 **Alternatives considered**  Send a whole viewport for every visual task; or crop to a localized target and reserve L3 for tasks needing broader visual context.
 
-**Decision**  Use `L2` for a localized target and `L3` when the task requires wider context. The screenshot's manifest records source sensitive boxes, boxes intersecting the disclosed image, and redacted boxes. The contract requires each intersecting sensitive box to be redacted.
+**Decision**  Use `L2` for one localized target and `L3` when the task requires wider context or localization is ambiguous. The resolver only uses an unambiguous visual candidate; it does not select the first canvas or image by page order. The popup reports the detected crop ROI, redacted box coordinates, and the L2 crop or L3 viewport sent. The screenshot's manifest records source sensitive boxes, boxes intersecting the disclosed image, and redacted boxes. The contract requires each intersecting sensitive box to be redacted.
 
 **Why**  This keeps the crop contract aligned with the pixels actually disclosed, including when sensitive content is outside the crop.
 
