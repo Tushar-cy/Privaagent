@@ -20,7 +20,7 @@ $suites = @(
     @{ Name = "10. Live HTTP Trust Boundary and Defense-in-Depth"; Cmd = "node ..\tests\test_live_http_end_to_end.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "11. Zero-Trust Red-Team Security & Invariants Suite"; Cmd = "npx.cmd tsx ..\tests\test_redteam_security.mjs"; Dir = "$ROOT\extension" },
     @{ Name = "12. Internal 5-Metric Benchmark Harness"; Cmd = "npx.cmd tsx ..\benchmark\scripts\run-benchmark.mjs"; Dir = "$ROOT\extension" },
-    @{ Name = "13. FastAPI Backend Pytest Suite"; Cmd = ".\venv\Scripts\python.exe -m pytest -p no:cacheprovider ..\tests\test_backend_api.py ..\tests\test_contracts.py"; Dir = "$ROOT\server" }
+    @{ Name = "13. FastAPI Backend Pytest Suite"; Cmd = ".\venv\Scripts\python.exe -m pytest -p no:cacheprovider ..\tests\test_backend_api.py ..\tests\test_backend_visual_contract.py ..\tests\test_request_size_limit.py ..\tests\test_contracts.py"; Dir = "$ROOT\server" }
 )
 
 $passed = 0
@@ -40,9 +40,9 @@ foreach ($s in $suites) {
 
 Set-Location $ROOT
 
-# Read the actual composite score from the benchmark report produced in suite 11
+# Read the actual composite score from the benchmark report produced in suite 12
 $reportPath = Join-Path $ROOT "benchmark\results\report.json"
-$scoreDisplay = "(not available - suite 11 did not run or failed)"
+$scoreDisplay = "(not available - suite 12 did not run or failed)"
 if (Test-Path $reportPath) {
     try {
         $report = Get-Content $reportPath -Raw | ConvertFrom-Json

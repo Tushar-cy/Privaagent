@@ -107,7 +107,7 @@ jobs:
       - name: Run FastAPI Backend API, Visual Contract, and Schema Tests
         run: |
           cd server
-          python -m pytest -p no:cacheprovider ../tests/test_backend_api.py ../tests/test_backend_visual_contract.py ../tests/test_contracts.py -v
+          python -m pytest -p no:cacheprovider ../tests/test_backend_api.py ../tests/test_backend_visual_contract.py ../tests/test_request_size_limit.py ../tests/test_contracts.py -v
 
       - name: Run Internal 5-Metric Benchmark Smoke Test
         run: |

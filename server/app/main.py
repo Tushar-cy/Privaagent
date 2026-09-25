@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.api.routes import router as api_router
+from app.request_size_limit import RequestBodySizeLimitMiddleware
 
 
 @asynccontextmanager
@@ -36,6 +37,10 @@ _chrome_ext_regex = (
     if _ext_id
     else r"^chrome-extension://[a-z]{32}$"  # Any valid 32-char extension ID
 )
+
+# This middleware is registered before CORS so CORS remains the outer layer and
+# can add the expected headers to early 413 responses.
+app.add_middleware(RequestBodySizeLimitMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
