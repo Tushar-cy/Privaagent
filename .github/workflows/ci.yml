@@ -54,9 +54,6 @@ jobs:
           cd extension
           npx vite build
 
-      - name: Verify Committed Unpacked Extension Matches Source Build
-        run: git diff --exit-code -- privaagent-extension
-
       - name: Extension Test - Live Chrome Visual Disclosure and OCR
         run: |
           cd extension
@@ -141,3 +138,29 @@ jobs:
         run: |
           cd extension
           npx tsx ../benchmark/scripts/run-benchmark.mjs
+
+  source-build-parity:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+          cache-dependency-path: extension/package-lock.json
+
+      - name: Install Node Dependencies
+        run: |
+          cd extension
+          npm ci
+
+      - name: Build Extension and Verify Committed Package
+        run: |
+          cd extension
+          npm run build
+          cd ..
+          git diff --exit-code -- privaagent-extension
