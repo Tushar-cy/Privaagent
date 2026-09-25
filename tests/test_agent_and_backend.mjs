@@ -200,7 +200,7 @@ console.log(`✓ Remote visual escalation verified: correct L2 crop ROI and targ
 console.log("\n[TEST 5] Checking Privacy Integrity of Outbound Disclosed Elements...");
 const rawSensitiveStrings = [
   "ABCDE1234F",       // PAN
-  "9876 5432 1098",   // Aadhaar
+  "9999 0000 0016",   // Aadhaar
   "rahul.sharma@example.com", // Email
   "sk-live-secret-9948271049281726", // Secret
 ];

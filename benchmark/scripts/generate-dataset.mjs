@@ -67,26 +67,26 @@ for (const item of panSamples) {
 // 2. Aadhaar Numbers (20 items)
 // ----------------------------------------------------
 const aadhaarSamples = [
-  { num: "9876 5432 1098", text: "Customer Aadhaar identity card: 9876 5432 1098 submitted for eKYC." },
-  { num: "2345-6789-0123", text: "Aadhaar verification completed for 2345-6789-0123 under UIDAI standards." },
-  { num: "3456 7890 1234", text: "Resident UIDAI unique identification number 3456 7890 1234 on biometric file." },
-  { num: "4567-8901-2345", text: "Masked e-Aadhaar PDF copy authenticated with number 4567-8901-2345." },
-  { num: "5678 9012 3456", text: "Government welfare benefit subsidy linked to Aadhaar 5678 9012 3456." },
-  { num: "6789-0123-4567", text: "Direct benefit transfer DBT mapped to primary UID 6789-0123-4567." },
-  { num: "7890 1234 5678", text: "Biometric authentication approved for citizen Aadhaar 7890 1234 5678." },
-  { num: "8901-2345-6789", text: "Digital locker identity card verified against Aadhaar 8901-2345-6789." },
-  { num: "2345 8901 6789", text: "Pension account life certificate submitted for Aadhaar 2345 8901 6789." },
-  { num: "3456-9012-7890", text: "EPFO UAN linked to employee Aadhaar record 3456-9012-7890." },
-  { num: "4567 0123 8901", text: "Ration card biometric seed completed with Aadhaar 4567 0123 8901." },
-  { num: "5678-1234-9012", text: "Passport application police verification verified Aadhaar 5678-1234-9012." },
-  { num: "6789 2345 0123", text: "Telecommunication SIM card re-verified via e-KYC for 6789 2345 0123." },
-  { num: "7890-3456-1234", text: "NPS Tier 1 retirement account linked to Aadhaar 7890-3456-1234." },
-  { num: "8901 4567 2345", text: "Post office savings scheme opened using Aadhaar card 8901 4567 2345." },
-  { num: "2468-1357-9246", text: "National health ID PMJAY card registered with Aadhaar 2468-1357-9246." },
-  { num: "3579 2468 1357", text: "Farmer PM-KISAN installment credited to Aadhaar 3579 2468 1357." },
-  { num: "4680-3579-2468", text: "Student national scholarship portal verified Aadhaar 4680-3579-2468." },
-  { num: "5791 4680 3579", text: "Housing subsidy PMAY beneficiary verified with Aadhaar 5791 4680 3579." },
-  { num: "6802-5791-4680", text: "Sub-registrar property registration deed notes Aadhaar 6802-5791-4680." }
+  { num: "9999 0000 0016", text: "Customer Aadhaar identity card: 9999 0000 0016 submitted for eKYC." },
+  { num: "9999-0000-0028", text: "Aadhaar verification completed for 9999-0000-0028 under UIDAI standards." },
+  { num: "9999 0000 0037", text: "Resident UIDAI unique identification number 9999 0000 0037 on biometric file." },
+  { num: "9999-0000-0044", text: "Masked e-Aadhaar PDF copy authenticated with number 9999-0000-0044." },
+  { num: "9999 0000 0059", text: "Government welfare benefit subsidy linked to Aadhaar 9999 0000 0059." },
+  { num: "9999-0000-0063", text: "Direct benefit transfer DBT mapped to primary UID 9999-0000-0063." },
+  { num: "9999 0000 0071", text: "Biometric authentication approved for citizen Aadhaar 9999 0000 0071." },
+  { num: "9999-0000-0085", text: "Digital locker identity card verified against Aadhaar 9999-0000-0085." },
+  { num: "9999 0000 0092", text: "Pension account life certificate submitted for Aadhaar 9999 0000 0092." },
+  { num: "9999-0000-0102", text: "EPFO UAN linked to employee Aadhaar record 9999-0000-0102." },
+  { num: "9999 0000 0118", text: "Ration card biometric seed completed with Aadhaar 9999 0000 0118." },
+  { num: "9999-0000-0125", text: "Passport application police verification verified Aadhaar 9999-0000-0125." },
+  { num: "9999 0000 0139", text: "Telecommunication SIM card re-verified via e-KYC for 9999 0000 0139." },
+  { num: "9999-0000-0141", text: "NPS Tier 1 retirement account linked to Aadhaar 9999-0000-0141." },
+  { num: "9999 0000 0156", text: "Post office savings scheme opened using Aadhaar card 9999 0000 0156." },
+  { num: "9999-0000-0160", text: "National health ID PMJAY card registered with Aadhaar 9999-0000-0160." },
+  { num: "9999 0000 0173", text: "Farmer PM-KISAN installment credited to Aadhaar 9999 0000 0173." },
+  { num: "9999-0000-0187", text: "Student national scholarship portal verified Aadhaar 9999-0000-0187." },
+  { num: "9999 0000 0194", text: "Housing subsidy PMAY beneficiary verified with Aadhaar 9999 0000 0194." },
+  { num: "9999-0000-0207", text: "Sub-registrar property registration deed notes Aadhaar 9999-0000-0207." }
 ];
 for (const item of aadhaarSamples) {
   addSnippet(item.text, [{ type: "AADHAAR", text: item.num }]);

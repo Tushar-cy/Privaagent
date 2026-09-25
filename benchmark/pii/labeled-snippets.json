@@ -23,9 +23,9 @@
   },
   {
     "id": "snippet-04",
-    "text": "Customer Aadhaar identity card: 9876 5432 1098 submitted for eKYC.",
+    "text": "Customer Aadhaar identity card: 9999 0000 0016 submitted for eKYC.",
     "ground_truth": [
-      { "type": "AADHAAR", "text": "9876 5432 1098" }
+      { "type": "AADHAAR", "text": "9999 0000 0016" }
     ]
   },
   {
@@ -117,9 +117,9 @@
   },
   {
     "id": "snippet-18",
-    "text": "Aadhaar verification completed for 2345-6789-0123 under UIDAI standards.",
+    "text": "Aadhaar verification completed for 9999-0000-0028 under UIDAI standards.",
     "ground_truth": [
-      { "type": "AADHAAR", "text": "2345-6789-0123" }
+      { "type": "AADHAAR", "text": "9999-0000-0028" }
     ]
   },
   {

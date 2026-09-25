@@ -63,7 +63,7 @@ const testItems = [
   { id: "user-email", text: "rahul.sharma@example.com", expectedType: "EMAIL" },
   { id: "user-phone", text: "+91 98765 43210", expectedType: "PHONE" },
   { id: "user-pan", text: "ABCDE1234F", expectedType: "PAN" },
-  { id: "user-aadhaar", text: "9876 5432 1098", expectedType: "AADHAAR" },
+  { id: "user-aadhaar", text: "9999 0000 0016", expectedType: "AADHAAR" },
   { id: "secret-key", text: "sk-proj-7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t", expectedType: "SECRET_KEY" },
   { id: "internal-ip", text: "192.168.1.145", expectedType: "IPV4" },
 ];

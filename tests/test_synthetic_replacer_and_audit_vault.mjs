@@ -73,7 +73,7 @@ console.log(`✓ Formatted synthetic test card: ${formattedCard}\n`);
 
 // [TEST 4] Testing Synthetic Example Replacement vs Redaction
 console.log("[TEST 4] Testing Synthetic Example Replacement vs Redaction...");
-const testDoc = "Citizen Rahul Sharma Aadhaar 987654321098 PAN ABCDE1234F";
+const testDoc = "Citizen Rahul Sharma Aadhaar 999900000016 PAN ABCDE1234F";
 const detections = [
   { type: "AADHAAR", span: [29, 41] },
   { type: "PAN", span: [46, 56] },
@@ -82,11 +82,11 @@ const detections = [
 const maskedDoc = obfuscateText(testDoc, detections, "REDACT_MASK");
 assert.ok(maskedDoc.includes("🔒 [REDACTED_AADHAAR]"), "Mask mode must inject redact token");
 assert.ok(maskedDoc.includes("🔒 [REDACTED_PAN]"), "Mask mode must inject redact token");
-assert.ok(!maskedDoc.includes("987654321098"), "Raw Aadhaar must be completely removed");
+assert.ok(!maskedDoc.includes("999900000016"), "Raw Aadhaar must be completely removed");
 assert.ok(!maskedDoc.includes("ABCDE1234F"), "Raw PAN must be completely removed");
 
 const surrogateDoc = obfuscateText(testDoc, detections, "SYNTHETIC_SURROGATE");
-assert.ok(!surrogateDoc.includes("987654321098"), "Raw Aadhaar must not exist in surrogate text");
+assert.ok(!surrogateDoc.includes("999900000016"), "Raw Aadhaar must not exist in surrogate text");
 assert.ok(!surrogateDoc.includes("ABCDE1234F"), "Raw PAN must not exist in surrogate text");
 console.log(`✓ Redaction Mask output: "${maskedDoc}"`);
 console.log(`✓ Synthetic Surrogate output: "${surrogateDoc}"\n`);

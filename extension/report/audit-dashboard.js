@@ -226,7 +226,7 @@ async function reverifyChain() {
 }
 
 function generateSyntheticPreview() {
-  const fakeAadhaar = `9999 ${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)}`;
+  const fakeAadhaar = "9999 0000 0016";
   const fakePAN = `ABCPE${Math.floor(1000 + Math.random() * 9000)}Z`;
   setText("synthetic-demo-val", `Synthetic example only · ${fakeAadhaar} · ${fakePAN}`);
 }

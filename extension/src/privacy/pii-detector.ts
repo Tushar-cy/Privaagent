@@ -1,6 +1,8 @@
 // Structured PII Detector: Zero-network deterministic regex & algorithmic detectors
 // Returns exact character spans and types.
 
+import { validateVerhoeff } from "./synthetic-replacer";
+
 export interface PIISpan {
   type:
     | "EMAIL"
@@ -78,13 +80,13 @@ const PATTERNS: Array<{
     },
     confidence: 0.95,
   },
-  // 3. Indian Aadhaar: 12 digits, cannot start with 0 or 1, optionally 4-4-4 grouped
+  // 3. Indian Aadhaar: starts 2-9, has a valid Verhoeff checksum, optionally 4-4-4 grouped
   {
     type: "AADHAAR",
     regex: /(?<!\d)[2-9]\d{3}[\s-]?\d{4}[\s-]?\d{4}(?!\d)/g,
     validate: (m, fullText, start) => {
       const digits = m.replace(/\D/g, "");
-      if (digits.length !== 12 || /^(\d)\1{11}$/.test(digits)) return false;
+      if (digits.length !== 12 || /^(\d)\1{11}$/.test(digits) || !validateVerhoeff(digits)) return false;
 
       // Reject if immediately adjacent to surrounding space-separated digit blocks (e.g. 16-digit cards)
       const prefix = fullText.slice(Math.max(0, start - 6), start);

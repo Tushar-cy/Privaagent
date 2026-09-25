@@ -675,7 +675,7 @@ document.addEventListener("DOMContentLoaded", () => {
         { text: "ayashmuthal@gmail.com", type: "EMAIL" },
         { text: "981652472", type: "PHONE" },
         { text: "+91 98165 24721", type: "PHONE" },
-        { text: "9999 2345 6789", type: "AADHAAR" },
+        { text: "9999 0000 0016", type: "AADHAAR" },
         { text: "ABCDE1234F", type: "PAN" },
         { text: "27ABCDE1234F1Z5", type: "GSTIN" },
         { text: "DL-1420180123456", type: "DRIVING_LICENSE" },

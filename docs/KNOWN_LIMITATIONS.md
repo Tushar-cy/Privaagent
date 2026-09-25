@@ -4,6 +4,7 @@ Privaagent is a prototype. The controls below reduce some risks in the tested pa
 
 ## Perception and localization
 
+- **Iframe content is outside the current perception scope.** The content script injects into the top-level frame only; text and controls inside iframe documents are not independently inspected.
 - **Visual recognition is narrow.** The default path uses contrast-based pixel segmentation for visual components and Tesseract for OCR. The saved internal evaluation report detected **1 of 5** visual elements in its chart fixture. Unusual charts, layouts, colors, or backgrounds may perform worse.
 - **Small or low-contrast text can be missed.** OCR confidence varies with size, contrast, font, and image quality. The demo chart's small axis labels were below the reliable OCR threshold in the documented evaluation.
 - **The L2 crop depends on localization.** If the target bounding box is wrong, the crop may omit the information needed for the task. The redaction manifest checks the boxes reported by the detector; it cannot prove that the detector found every sensitive region.
@@ -12,6 +13,7 @@ Privaagent is a prototype. The controls below reduce some risks in the tested pa
 ## Sensitive-data handling
 
 - PII and secret detection combine known patterns, checksum checks, entropy heuristics, and heuristic name detection. Unsupported formats, languages, misspellings, and context-dependent values can be missed; ordinary text can also be flagged by mistake.
+- **Aadhaar checks validate the Verhoeff checksum, not UIDAI issuance.** A checksum-valid synthetic or unissued number can be detected as Aadhaar-shaped; a number with an invalid checksum is not classified as Aadhaar by the live structured detector.
 - The client and backend validate outgoing text and visual contracts, but detection is not exhaustive. A successful validation is not proof that a payload contains no sensitive information.
 - Synthetic replacements are format-compatible examples for testing. The project does **not** implement differential privacy or an epsilon/delta privacy guarantee. These values should not be treated as anonymized real data or as production identities.
 - The audit hash chain helps identify edits to a recorded chain. It is stored with the local application state; it is not a remote signature, trusted timestamp, or protection against a compromised device or extension.
