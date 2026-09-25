@@ -12,12 +12,51 @@ const BADGE_COLORS: Record<string, string> = {
   OFF: "#6b7280",     // Grey (Shield disabled by user)
 };
 
-function sendPopupOCRMessage(message: Record<string, unknown>): Promise<any> {
+// ---------------------------------------------------------------------------
+// Offscreen document lifecycle — persistent OCR context (popup-independent)
+// ---------------------------------------------------------------------------
+const OFFSCREEN_URL = "offscreen/ocr-worker.html";
+
+/** Returns true if an offscreen document with our URL is already alive. */
+async function hasOffscreenDocument(): Promise<boolean> {
+  // chrome.offscreen.hasDocument() was added in Chrome 116 alongside the API.
+  if (typeof (chrome as any).offscreen?.hasDocument === "function") {
+    return (chrome as any).offscreen.hasDocument();
+  }
+  // Fallback: enumerate all existing contexts (Chrome 116 guaranteed to have this).
+  const contexts = await chrome.runtime.getContexts({
+    contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
+    documentUrls: [chrome.runtime.getURL(OFFSCREEN_URL)],
+  });
+  return contexts.length > 0;
+}
+
+/** Ensures the offscreen document is running, creating it if necessary. */
+async function ensureOffscreenDocument(): Promise<void> {
+  if (await hasOffscreenDocument()) return;
+  await (chrome as any).offscreen.createDocument({
+    url: chrome.runtime.getURL(OFFSCREEN_URL),
+    reasons: [(chrome as any).offscreen.Reason.WORKERS],
+    justification: "Hosts the Tesseract.js WASM OCR Web Worker inside an extension-origin context so it runs independently of the action popup.",
+  });
+  console.log("[Privaagent] Offscreen OCR document created.");
+}
+
+/**
+ * Sends an OCR message to the extension-origin offscreen document, creating
+ * it first if it does not yet exist. This replaces the former popup-dependent
+ * sendPopupOCRMessage() path — OCR now works even when the popup is closed.
+ */
+async function sendOffscreenOCRMessage(message: Record<string, unknown>): Promise<any> {
+  await ensureOffscreenDocument();
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(message, (response) => {
       const error = chrome.runtime.lastError;
-      if (error || !response) reject(new Error(error?.message || "The Privaagent popup did not respond to the OCR request"));
-      else resolve(response);
+      if (error || !response) {
+        reject(new Error(error?.message || "The Privaagent offscreen OCR document did not respond"));
+      } else {
+        resolve(response);
+      }
     });
   });
 }
@@ -93,7 +132,8 @@ function budgetStatus(budget: StoredTabBudget, reason?: string) {
 async function updateTabBudget(
   tabId: number,
   operation: "status" | "step" | "remote",
-  estimatedBytes = 0
+  estimatedBytes = 0,
+  budgetLimits?: any
 ): Promise<{ allowed: boolean; budget: ReturnType<typeof budgetStatus> }> {
   const previous = tabBudgetQueues.get(tabId) || Promise.resolve();
   let result: { allowed: boolean; budget: ReturnType<typeof budgetStatus> } | null = null;
@@ -207,7 +247,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const operation = message.type === "GET_PRIVACY_BUDGET"
         ? "status"
         : message.type === "RESERVE_PRIVACY_STEP" ? "step" : "remote";
-      updateTabBudget(tabId!, operation, Number(message.estimatedBytes || 0))
+      updateTabBudget(tabId!, operation, Number(message.estimatedBytes || 0), message.budgetLimits)
         .then(sendResponse)
         .catch(() => sendResponse({ allowed: false, error: "Could not update the tab privacy budget; request was not sent." }));
       return true;
@@ -242,15 +282,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     case "OCR_RECOGNIZE": {
-      console.debug("[OCR background] Received on-device OCR request.");
+      console.debug("[OCR background] Routing OCR request to offscreen document.");
       if (!sender.tab?.id || typeof message.imageDataUrl !== "string") {
         sendResponse({ complete: false, error: "OCR requests are accepted only from a browser tab" });
         break;
       }
       const tabId = sender.tab.id;
       sendOCRStatus(tabId, "loading");
-      sendPopupOCRMessage({ type: "OCR_RECOGNIZE_POPUP", imageDataUrl: message.imageDataUrl })
-        .then((result) => {
+      sendOffscreenOCRMessage({
+        type: "OCR_RECOGNIZE_OFFSCREEN",
+        imageDataUrl: message.imageDataUrl,
+      })
+        .then((result: any) => {
           sendOCRStatus(tabId, result?.complete ? "ready" : "error");
           sendResponse(result);
         })
@@ -258,28 +301,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendOCRStatus(tabId, "error");
           sendResponse({
             complete: false,
-            error: error instanceof Error ? error.message : "Extension popup OCR is unavailable",
+            error: error instanceof Error ? error.message : "Offscreen OCR worker unavailable",
           });
         });
       return true;
     }
 
     case "OCR_WARMUP": {
-      console.debug("[OCR background] Received OCR warmup request.");
+      console.debug("[OCR background] Routing OCR warmup to offscreen document.");
       if (!sender.tab?.id) {
         sendResponse({ ready: false, error: "OCR warmup must be requested by a browser tab" });
         break;
       }
       const tabId = sender.tab.id;
       sendOCRStatus(tabId, "loading");
-      sendPopupOCRMessage({ type: "OCR_WARM_POPUP" })
-        .then((result) => {
+      sendOffscreenOCRMessage({ type: "OCR_WARM_OFFSCREEN" })
+        .then((result: any) => {
           sendOCRStatus(tabId, result?.ready ? "ready" : "error");
           sendResponse(result);
         })
         .catch((error: unknown) => {
           sendOCRStatus(tabId, "error");
-          sendResponse({ ready: false, error: error instanceof Error ? error.message : "Extension popup OCR is unavailable" });
+          sendResponse({
+            ready: false,
+            error: error instanceof Error ? error.message : "Offscreen OCR worker unavailable",
+          });
         });
       return true;
     }

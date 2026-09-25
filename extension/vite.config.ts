@@ -24,6 +24,12 @@ function extensionPostBuildPlugin() {
         fs.copyFileSync(sourcePath, targetPath);
       }
 
+      // 0. Copy offscreen HTML to dist/offscreen/ (the JS bundle is built as an entry above)
+      const offscreenHtmlSrc = resolve(__dirname, "offscreen/ocr-worker.html");
+      const offscreenHtmlDest = resolve(__dirname, "dist/offscreen/ocr-worker.html");
+      fs.mkdirSync(resolve(offscreenHtmlDest, ".."), { recursive: true });
+      fs.copyFileSync(offscreenHtmlSrc, offscreenHtmlDest);
+
       // 1. Copy manifest.json to dist
       const manifestSrc = resolve(__dirname, "manifest.json");
       const manifestDest = resolve(__dirname, "dist/manifest.json");
@@ -87,11 +93,15 @@ export default defineConfig({
         popup: resolve(__dirname, "popup/index.html"),
         audit: resolve(__dirname, "report/audit-dashboard.html"),
         background: resolve(__dirname, "src/background/index.ts"),
+        "ocr-worker": resolve(__dirname, "offscreen/ocr-worker.ts"),
       },
       output: {
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === "background") {
             return "src/background/index.js";
+          }
+          if (chunkInfo.name === "ocr-worker") {
+            return "offscreen/ocr-worker.js";
           }
           return "assets/[name]-[hash].js";
         },

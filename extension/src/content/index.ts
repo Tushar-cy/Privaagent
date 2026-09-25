@@ -38,6 +38,7 @@ function normalizeDisclosureLevel(value: unknown): DisclosureLevel {
 }
 
 class TabSessionPrivacyBudget implements AgentPrivacyBudget {
+  constructor(private budgetLimits?: any) {}
   private status: BudgetStatus = {
     exceeded: false,
     cumulativeBytesSent: 0,
@@ -47,7 +48,7 @@ class TabSessionPrivacyBudget implements AgentPrivacyBudget {
   private readonly maxSteps = 8;
 
   async initialize(): Promise<void> {
-    await this.request({ type: "GET_PRIVACY_BUDGET" });
+    await this.request({ type: "GET_PRIVACY_BUDGET", budgetLimits: this.budgetLimits });
   }
 
   canExecuteNextStep(): boolean { return this.status.stepsExecuted < this.maxSteps; }
@@ -493,7 +494,7 @@ async function handleRunGoalMessage(
   budgetLimits?: any,
   maxLevel: DisclosureLevel = "L2"
 ): Promise<MultiTurnGoalResult> {
-  const sessionBudget = new TabSessionPrivacyBudget();
+  const sessionBudget = new TabSessionPrivacyBudget(budgetLimits);
   await sessionBudget.initialize();
   const initialState = runPerception();
   overlayManager.updateHUD("Multi-Turn", `Decomposing: "${goalStr.slice(0, 20)}..."`);
@@ -585,7 +586,7 @@ async function handleRunTaskMessage(
     overlayManager.updateHUD("BLOCKED", "Action blocked by safety policy");
     PrivacyAuditVault.getInstance().record({
       goal: taskStr, subtask: taskStr, disclosureLevel: resolution.disclosure.level,
-      entitiesMasked: extractSensitiveEntityTypes(pageState), outboundBytes: resolution.networkBytesSent,
+      entitiesMasked: extractSensitiveEntityTypes(pageState), outboundBytes: resolution.reservedOutboundBytes,
       action: resolution.action.action, targetId: resolution.action.target_id,
       riskVerdict: "BLOCK", policyApplied: validation.error || "Blocked by security policy", isLocal: resolution.isLocal,
     });
@@ -596,7 +597,7 @@ async function handleRunTaskMessage(
     overlayManager.updateHUD("CONFIRM", "User confirmation required");
     PrivacyAuditVault.getInstance().record({
       goal: taskStr, subtask: taskStr, disclosureLevel: resolution.disclosure.level,
-      entitiesMasked: extractSensitiveEntityTypes(pageState), outboundBytes: resolution.networkBytesSent,
+      entitiesMasked: extractSensitiveEntityTypes(pageState), outboundBytes: resolution.reservedOutboundBytes,
       action: resolution.action.action, targetId: resolution.action.target_id,
       riskVerdict: "CONFIRM", policyApplied: validation.policyResult?.requiredUserConfirmation || "High-risk action", isLocal: resolution.isLocal,
     });
@@ -612,7 +613,7 @@ async function handleRunTaskMessage(
 
   PrivacyAuditVault.getInstance().record({
     goal: taskStr, subtask: taskStr, disclosureLevel: resolution.disclosure.level,
-    entitiesMasked: extractSensitiveEntityTypes(pageState), outboundBytes: resolution.networkBytesSent,
+    entitiesMasked: extractSensitiveEntityTypes(pageState), outboundBytes: resolution.reservedOutboundBytes,
     action: resolution.action.action, targetId: resolution.action.target_id,
     riskVerdict: validation.verdict, policyApplied: execution.error || "Executed successfully", isLocal: resolution.isLocal,
   });

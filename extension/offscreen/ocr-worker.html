@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<!--
+  Privaagent Offscreen OCR Worker Document
+  ==========================================
+  This document exists solely to host the Tesseract.js WASM worker inside a
+  persistent extension-origin browsing context (chrome.offscreen API, MV3).
+
+  Why an offscreen document instead of the popup?
+  - The action popup is destroyed the moment the user clicks away from it.
+  - A service worker cannot host a Web Worker (no DOM, no postMessage to worker threads).
+  - An offscreen document is the only MV3 context that (a) persists independently of
+    the popup, (b) has access to the extension origin so wasm-unsafe-eval and local
+    worker paths resolve correctly, and (c) can run Tesseract Web Workers.
+
+  The document has no visible UI. It registers a chrome.runtime.onMessage listener
+  and responds to OCR_RECOGNIZE and OCR_WARMUP messages brokered by the background
+  service worker.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Privaagent OCR Worker (Offscreen)</title>
+</head>
+<body>
+  <script src="ocr-worker.js" type="module"></script>
+</body>
+</html>

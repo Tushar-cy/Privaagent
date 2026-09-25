@@ -28,15 +28,15 @@ This log records design choices visible in the current implementation. “Altern
 
 ## 3. Check disclosure ceilings and byte budgets before the request
 
-**Problem**  Enforcing a session budget after a remote call would detect excess only after the disclosure had already left the browser.
+**Problem**  Enforcing a tab-scoped privacy budget after a remote call would detect excess only after the disclosure had already left the browser.
 
-**Alternatives considered**  Account for payloads after each response; or calculate the serialized request size and ask the session budget before dispatch.
+**Alternatives considered**  Account for payloads after each response; or calculate the serialized request size and ask the tab-scoped privacy budget before dispatch.
 
-**Decision**  The resolver checks the disclosure ceiling and reserves the estimated serialized body size in Chrome extension session storage before calling the remote request function. Step, call, and byte reservations are serialized by the background service worker and keyed to the active tab, so repeated runs and page navigation share the 8-step, 4-call, and 50 KiB caps until the tab closes or the browser session ends. A denied request returns locally with zero request bytes sent.
+**Decision**  The resolver checks the disclosure ceiling and reserves the estimated serialized body size in Chrome extension session storage before calling the remote request function. The budget strictly governs autonomous agent operations (multi-turn), independently from the `requestValidatedExecution` gatekeeper which governs safety. Step, call, and byte reservations are serialized by the background service worker and strictly scoped to the active tab, so repeated runs and page navigation share the default 8-step, 4-call, and 50 KiB limits. This budget is explicitly tab-scoped and resets per tab; it is not a global browser-session budget. A denied request returns locally with zero request bytes sent.
 
-**Why**  A limit is useful as a privacy control only if it can stop the request that would exceed it.
+**Why**  A limit is useful as a privacy control only if it can stop the request that would exceed it, and tab isolation prevents one noisy tab from draining global limits.
 
-**Trade-off**  A task can stop before completion when its next required disclosure exceeds the configured ceiling or the tab's shared budget. The request estimate must stay aligned with the serialization used by the HTTP client; reservations are conservative if a network request fails after dispatch.
+**Trade-off**  A task can stop before completion when its next required disclosure exceeds the configured ceiling or the tab-scoped budget. The request estimate must stay aligned with the serialization used by the HTTP client; reservations are conservative if a network request fails after dispatch.
 
 ## 4. Send an L2 crop when one visual target is enough
 

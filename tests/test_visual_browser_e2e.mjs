@@ -89,11 +89,18 @@ try {
       "--window-size=1280,900",
     ],
   });
+
+  // Wait for the service worker to register — this is all we need; no popup.
   const serviceWorkerTarget = await browser.waitForTarget((target) =>
     target.type() === "service_worker" && target.url().startsWith("chrome-extension://"),
     { timeout: 20000 }
   );
   const extensionId = new URL(serviceWorkerTarget.url()).host;
+
+  // Open only the test fixture page — the popup is intentionally NOT opened.
+  // This validates that OCR runs via the offscreen document which is
+  // popup-independent: the background creates it on first OCR_RECOGNIZE
+  // if it doesn't already exist.
   const page = await browser.newPage();
   const browserErrors = [];
   page.on("pageerror", (error) => browserErrors.push(error.message));
@@ -102,47 +109,50 @@ try {
   });
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await page.goto("http://127.0.0.1:8000/visual-test.html", { waitUntil: "networkidle0" });
-  await new Promise((resolve) => setTimeout(resolve, 1000));
 
-  const popup = await browser.newPage();
-  await popup.goto(`chrome-extension://${extensionId}/popup/index.html`, { waitUntil: "domcontentloaded" });
-  await popup.waitForSelector("#task-input");
-  // Keep the popup extension context alive for OCR while captureVisibleTab
-  // sees the page underneath the browser action popup.
-  await page.bringToFront();
-  const taskResult = await popup.evaluate(() => new Promise((resolve, reject) => {
-    chrome.tabs.query({ url: "http://127.0.0.1:8000/visual-test.html" }, (tabs) => {
-      const tab = tabs[0];
-      if (!tab?.id) return reject(new Error("Could not find the visual fixture tab."));
-      chrome.tabs.sendMessage(tab.id, {
-        type: "RUN_TASK",
-        task: "Click the bar representing Q4",
-        maxLevel: "L2",
-      }, (result) => {
-        const error = chrome.runtime.lastError;
-        if (error) reject(new Error(error.message));
-        else resolve(result);
+  // Give the content script time to initialize
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+
+  // Send RUN_TASK directly to the content script via the service worker context.
+  // The popup is deliberately closed/never opened — this is the gold-standard test:
+  //   webpage → RUN_TASK → content script → captureVisibleTab → offscreen OCR
+  //   → pixel redaction → L2 disclosure → remote mock → action validation
+  const swPage = await serviceWorkerTarget.worker();
+  const taskResult = await swPage.evaluate(() => {
+    return new Promise((resolve, reject) => {
+      chrome.tabs.query({ url: "http://127.0.0.1:8000/visual-test.html" }, (tabs) => {
+        const tab = tabs[0];
+        if (!tab?.id) return reject(new Error("Could not find the visual fixture tab."));
+        chrome.tabs.sendMessage(tab.id, {
+          type: "RUN_TASK",
+          task: "Click the bar representing Q4",
+          maxLevel: "L2",
+        }, (result) => {
+          const error = chrome.runtime.lastError;
+          if (error) reject(new Error(error.message));
+          else resolve(result);
+        });
       });
     });
-  }));
+  });
 
   if (!outboundDisclosure) {
     console.error("Live visual task result:", JSON.stringify(taskResult));
     console.error("Browser errors:", browserErrors.join(" | "));
   }
-  assert.ok(outboundDisclosure, `The live visual task must reach the test resolver: ${JSON.stringify(taskResult)}`);
+  assert.ok(outboundDisclosure, `The live visual task must reach the test resolver (popup was NOT opened — OCR runs via offscreen document): ${JSON.stringify(taskResult)}`);
   assert.equal(outboundDisclosure.level, "L2");
   assert.match(outboundDisclosure.screenshot_data || "", /^data:image\/png;base64,/);
   assert.ok(outboundDisclosure.redaction_manifest, "The live request must carry a redaction manifest.");
   assert.ok(outboundDisclosure.redaction_manifest.sourceSensitiveBoxCount > 0,
-    `On-device OCR must detect the PAN rendered inside the canvas: ${JSON.stringify(outboundDisclosure.redaction_manifest)}; elements=${JSON.stringify(outboundDisclosure.elements)}`);
+    `On-device OCR (via offscreen document) must detect the PAN rendered inside the canvas: ${JSON.stringify(outboundDisclosure.redaction_manifest)}; elements=${JSON.stringify(outboundDisclosure.elements)}`);
   assert.ok(outboundDisclosure.redaction_manifest.redactedBoxCount > 0,
     "The detected OCR region must be burned into the captured image.");
   assert.ok(!JSON.stringify(outboundDisclosure).includes("ABCDE1234F"),
     "The raw PAN must not appear in the outgoing disclosure.");
   assert.equal(taskResult?.success, true, `The returned visual target must validate and execute: ${JSON.stringify(taskResult)}`);
   assert.deepEqual(browserErrors, [], `Browser errors: ${browserErrors.join(" | ")}`);
-  console.log("✓ Live Chrome capture → local OCR → pixel redaction → L2 request → validated action succeeded.");
+  console.log("✓ Live Chrome capture → offscreen OCR (popup NOT open) → pixel redaction → L2 request → validated action succeeded.");
 } finally {
   if (browser) await browser.close();
   await new Promise((resolve) => server.close(resolve));
